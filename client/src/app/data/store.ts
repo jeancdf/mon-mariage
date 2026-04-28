@@ -3,12 +3,12 @@ import {
   Budget, BudgetCategory, BudgetItem, Guest, House, Room, Table, TodoGroup, Task, ThemeKey,
 } from './types';
 import {
-  INITIAL_BUDGET, INITIAL_GUESTS, INITIAL_HOUSES, INITIAL_TABLES, INITIAL_TODOS,
+  INITIAL_BUDGET, INITIAL_HOUSES, INITIAL_TABLES, INITIAL_TODOS,
 } from './seed';
 
 @Injectable({ providedIn: 'root' })
 export class WeddingStore {
-  readonly guests = signal<Guest[]>(INITIAL_GUESTS);
+  readonly guests = signal<Guest[]>([]);
   readonly houses = signal<House[]>(INITIAL_HOUSES);
   readonly tables = signal<Table[]>(INITIAL_TABLES);
   readonly budget = signal<Budget>(INITIAL_BUDGET);

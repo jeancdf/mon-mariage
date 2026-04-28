@@ -59,7 +59,11 @@ const parseSheetRows = (
   }
 
   const [header, ...bodyRows] = rows;
-  const nameCol = findColumnIndex(header, ['nom', 'prénom nom', 'prenom nom']);
+  const nameCol = findColumnIndex(header, [
+    'prénom nom',
+    'prenom nom',
+    'nom',
+  ]);
   const plusOneCol = findColumnIndex(header, ['plus 1']);
   const linkCol = findColumnIndex(header, ['liens', 'invite par', 'invité par']);
   const categoryCol = findColumnIndex(header, ['catégorie', 'categorie']);
@@ -111,9 +115,27 @@ const findColumnIndex = (header: unknown[], names: string[]): number => {
   const normalizedHeader = header.map(cell =>
     normalize(getCellText(cell)),
   );
-  return normalizedHeader.findIndex(column =>
-    names.some(name => column.includes(normalize(name))),
-  );
+  for (const name of names) {
+    const expected = normalize(name);
+    const exactMatchIndex = normalizedHeader.findIndex(column =>
+      column === expected,
+    );
+    if (exactMatchIndex >= 0) {
+      return exactMatchIndex;
+    }
+  }
+
+  for (const name of names) {
+    const expected = normalize(name);
+    const looseMatchIndex = normalizedHeader.findIndex(column =>
+      column.includes(expected),
+    );
+    if (looseMatchIndex >= 0) {
+      return looseMatchIndex;
+    }
+  }
+
+  return -1;
 };
 
 const getOwnerCategory = (sheetName: string): GuestCategory => {
@@ -156,6 +178,7 @@ const splitName = (raw: string): { firstName: string; lastName: string } => {
 const isValidGuestName = (value: string): boolean => {
   const normalized = normalize(value);
   if (!normalized) return false;
+  if (/^\d+$/.test(normalized)) return false;
   if (normalized.includes('label')) return false;
   if (normalized.includes('nombre d')) return false;
   if (normalized.includes('pourcentage')) return false;

@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { NgStyle } from '@angular/common';
 import { ThemeKey } from '../data/types';
 import { WeddingStore } from '../data/store';
+import { GuestApiService } from '../data/guest-api.service';
 import { DashboardComponent } from '../features/dashboard/dashboard.component';
 import { GuestsComponent } from '../features/guests/guests.component';
 import { HousingComponent } from '../features/housing/housing.component';
@@ -28,10 +29,15 @@ import { NAV_ITEMS, PageId, THEMES, THEME_KEYS } from '../shared/wedding-utils';
 })
 export class WeddingShellComponent {
   readonly store = inject(WeddingStore);
+  readonly guestApi = inject(GuestApiService);
   readonly navItems = NAV_ITEMS;
   readonly themeKeys = THEME_KEYS;
   readonly themes = THEMES;
   page: PageId = 'dashboard';
+
+  constructor() {
+    void this.loadGuestsFromDatabase();
+  }
 
   readonly themeVars = computed(() => {
     const theme = THEMES[this.store.theme()];
@@ -50,5 +56,14 @@ export class WeddingShellComponent {
 
   setTheme(theme: ThemeKey): void {
     this.store.setTheme(theme);
+  }
+
+  private async loadGuestsFromDatabase(): Promise<void> {
+    try {
+      const guests = await this.guestApi.loadGuests();
+      this.store.replaceGuests(guests);
+    } catch {
+      // Keep local state when API is unavailable (local frontend-only run).
+    }
   }
 }
