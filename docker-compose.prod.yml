@@ -32,8 +32,8 @@ services:
       DB_USER: ${DB_USER:-mon_mariage}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       DB_SSL: ${DB_SSL:-false}
-    expose:
-      - "${BACKEND_PORT:-3000}"
+    ports:
+      - "${BACKEND_HOST_PORT:-3001}:${BACKEND_PORT:-3000}"
     healthcheck:
       test:
         [
@@ -53,9 +53,9 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    # Frontend stays internal; external Nginx proxies to frontend:80.
-    expose:
-      - "80"
+    # Publish frontend on a dedicated host port to avoid conflicts.
+    ports:
+      - "${FRONTEND_HOST_PORT:-8081}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null"]
       interval: 10s
