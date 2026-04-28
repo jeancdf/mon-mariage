@@ -3,8 +3,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { BudgetModule } from './budget/budget.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { GuestsModule } from './guests/guests.module';
+import { HousingModule } from './housing/housing.module';
 import { PlannerModule } from './planner/planner.module';
+import { SeatingModule } from './seating/seating.module';
+import { TodosModule } from './todos/todos.module';
 
 @Module({
   imports: [
@@ -27,6 +32,11 @@ import { PlannerModule } from './planner/planner.module';
       }),
     }),
     GuestsModule,
+    HousingModule,
+    SeatingModule,
+    BudgetModule,
+    TodosModule,
+    DashboardModule,
     PlannerModule,
   ],
   controllers: [AppController],

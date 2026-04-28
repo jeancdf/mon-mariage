@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GuestEntity } from './guest.entity';
@@ -16,6 +16,31 @@ export class GuestsService {
     return this.guestsRepository.find({
       order: { firstName: 'ASC', lastName: 'ASC' },
     });
+  }
+
+  async create(rawGuest: GuestInput): Promise<GuestEntity> {
+    const guest = this.guestsRepository.create(this.normalizeGuest(rawGuest));
+    return this.guestsRepository.save(guest);
+  }
+
+  async update(id: string, rawGuest: Partial<GuestInput>): Promise<GuestEntity> {
+    const existing = await this.guestsRepository.findOne({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Guest not found');
+    }
+
+    const merged = this.guestsRepository.merge(existing, this.normalizeGuest({
+      ...existing,
+      ...rawGuest,
+    }));
+    return this.guestsRepository.save(merged);
+  }
+
+  async delete(id: string): Promise<void> {
+    const result = await this.guestsRepository.delete(id);
+    if (!result.affected) {
+      throw new NotFoundException('Guest not found');
+    }
   }
 
   async replaceAll(rawGuests: GuestInput[]): Promise<GuestEntity[]> {
