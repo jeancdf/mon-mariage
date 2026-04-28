@@ -33,4 +33,4 @@ npm run start:dev
 Endpoints de base :
 
 - `GET /`
-- `GET /health`
+- `GET /api/health`
