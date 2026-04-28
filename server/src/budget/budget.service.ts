@@ -5,6 +5,18 @@ import { Budget, BudgetCategory, BudgetItem } from '../planner/planner-state.ent
 import { BudgetCategoryEntity } from './budget-category.entity';
 import { BudgetItemEntity } from './budget-item.entity';
 
+const DEFAULT_BUDGET: Budget = {
+  categories: [
+    { id: 'b1', name: 'Traiteur', estimated: 0, items: [] },
+    { id: 'b2', name: 'Photographie', estimated: 0, items: [] },
+    { id: 'b3', name: 'Tente & Mobilier', estimated: 0, items: [] },
+    { id: 'b4', name: 'Lumières', estimated: 0, items: [] },
+    { id: 'b5', name: 'DJ & Musique', estimated: 0, items: [] },
+    { id: 'b6', name: 'Fleurs & Décoration', estimated: 0, items: [] },
+    { id: 'b7', name: "Voiture de l'église", estimated: 0, items: [] },
+  ],
+};
+
 @Injectable()
 export class BudgetService {
   constructor(
@@ -15,6 +27,7 @@ export class BudgetService {
   ) {}
 
   async find(): Promise<Budget> {
+    await this.seedDefaultsIfEmpty();
     const categories = await this.categoriesRepository.find({
       relations: { items: true },
       order: { name: 'ASC', items: { date: 'ASC' } },
@@ -71,6 +84,18 @@ export class BudgetService {
     const result = await this.itemsRepository.delete(id);
     if (!result.affected) throw new NotFoundException('Budget item not found');
     return this.find();
+  }
+
+  private async seedDefaultsIfEmpty(): Promise<void> {
+    const count = await this.categoriesRepository.count();
+    if (count > 0) return;
+
+    for (const category of DEFAULT_BUDGET.categories) {
+      await this.categoriesRepository.save(this.categoriesRepository.create({
+        name: category.name,
+        estimated: 0,
+      }));
+    }
   }
 
   private mapCategory(category: BudgetCategoryEntity): BudgetCategory {
