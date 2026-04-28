@@ -83,12 +83,3 @@ export interface Assignee {
   label: string;
   color: string;
 }
-
-export interface PlannerState {
-  guests: Guest[];
-  houses: House[];
-  tables: Table[];
-  budget: Budget;
-  todos: TodoGroup[];
-  theme: ThemeKey;
-}
