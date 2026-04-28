@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mon-mariage-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mon_mariage
+      POSTGRES_USER: mon_mariage
+      POSTGRES_PASSWORD: mon_mariage
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mon_mariage -d mon_mariage"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

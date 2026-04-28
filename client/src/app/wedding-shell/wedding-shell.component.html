@@ -1,0 +1,49 @@
+<div class="app-shell" [ngStyle]="themeVars()">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-title">Mariage</div>
+      <div class="brand-subtitle">16 juillet 2027 · Escayrac</div>
+    </div>
+
+    <nav class="nav-list" aria-label="Sections du planning">
+      @for (item of navItems; track item.id) {
+        <button class="nav-item" [class.active]="page === item.id" type="button" (click)="page = item.id">
+          <app-icon [name]="item.icon" />
+          <span>{{ item.label }}</span>
+        </button>
+      }
+    </nav>
+
+    <div class="theme-picker">
+      <div class="eyebrow">Thème</div>
+      <div class="theme-swatches">
+        @for (themeKey of themeKeys; track themeKey) {
+          <button
+            class="theme-swatch"
+            type="button"
+            [class.active]="store.theme() === themeKey"
+            [style.background]="themes[themeKey].bg"
+            [attr.title]="themes[themeKey].name"
+            (click)="setTheme(themeKey)">
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="sidebar-total">
+      <div class="sidebar-count">{{ store.confirmedCount() }}</div>
+      <div>invités confirmés</div>
+    </div>
+  </aside>
+
+  <main class="main-panel">
+    @switch (page) {
+      @case ('dashboard') { <app-dashboard /> }
+      @case ('guests') { <app-guests /> }
+      @case ('housing') { <app-housing /> }
+      @case ('seating') { <app-seating /> }
+      @case ('budget') { <app-budget /> }
+      @case ('todos') { <app-todos /> }
+    }
+  </main>
+</div>

@@ -1,0 +1,99 @@
+<div class="modal-backdrop" (click)="closeModal.emit()">
+  <div class="modal wide" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <h2>{{ isEditing ? "Modifier l'invité" : "Ajouter un invité" }}</h2>
+      <button class="icon-button" type="button" (click)="closeModal.emit()" aria-label="Fermer">
+        <app-icon name="x" />
+      </button>
+    </header>
+
+    <div class="form-grid">
+      <label class="field">
+        <span>Prénom</span>
+        <input [(ngModel)]="form.firstName" />
+      </label>
+      <label class="field">
+        <span>Nom</span>
+        <input [(ngModel)]="form.lastName" />
+      </label>
+      <label class="field">
+        <span>Catégorie</span>
+        <select [(ngModel)]="form.category">
+          @for (option of categoryOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <label class="field">
+        <span>RSVP</span>
+        <select [(ngModel)]="form.rsvp">
+          @for (option of rsvpOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="field">
+      <span>Événements</span>
+      <div class="chip-row">
+        @for (eventOption of eventOptions; track eventOption.value) {
+          <button
+            class="chip"
+            type="button"
+            [class.active]="form.events.includes(eventOption.value)"
+            (click)="toggleEvent(eventOption.value)">
+            {{ eventOption.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <label class="field">
+        <span>Restrictions alimentaires</span>
+        <input [(ngModel)]="form.dietary" placeholder="Ex: végétarien" />
+      </label>
+      <label class="field">
+        <span>Transport</span>
+        <input [(ngModel)]="form.transport" placeholder="Voiture, train" />
+      </label>
+    </div>
+
+    <div class="field">
+      <span>Accompagnateur (+1)</span>
+      <div class="inline-form">
+        <button class="chip" type="button" [class.active]="form.hasPlusOne" (click)="form.hasPlusOne = !form.hasPlusOne">+1</button>
+        @if (form.hasPlusOne) {
+          <input [(ngModel)]="form.plusOneName" placeholder="Nom" />
+        }
+      </div>
+    </div>
+
+    <div class="field">
+      <span>Enfants</span>
+      @for (kid of form.kids; track trackKid($index, kid)) {
+        <div class="inline-form kid-row">
+          <input [(ngModel)]="kid.name" placeholder="Prénom" />
+          <input class="age-input" type="number" min="0" max="17" [(ngModel)]="kid.age" placeholder="Âge" />
+          <button class="icon-button" type="button" (click)="removeKid($index)" aria-label="Retirer l'enfant">
+            <app-icon name="x" />
+          </button>
+        </div>
+      }
+      <button class="btn ghost small" type="button" (click)="addKid()">
+        <app-icon name="plus" /> Ajouter un enfant
+      </button>
+    </div>
+
+    <label class="field">
+      <span>Notes</span>
+      <input [(ngModel)]="form.notes" placeholder="Remarques" />
+    </label>
+
+    <footer class="modal-actions">
+      <button class="btn secondary" type="button" (click)="closeModal.emit()">Annuler</button>
+      <button class="btn primary" type="button" [disabled]="!form.firstName || !form.lastName" (click)="submit()">Enregistrer</button>
+    </footer>
+  </div>
+</div>

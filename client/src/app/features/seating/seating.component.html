@@ -1,0 +1,75 @@
+<section class="page page-wide">
+  <header class="page-header split">
+    <div>
+      <h1>Plan de table</h1>
+      <p>{{ totals().placed }} / {{ totals().totalSeats }} places · {{ unplacedGuests().length }} confirmés non placés</p>
+    </div>
+    <button class="btn primary" type="button" (click)="addingTable = true">
+      <app-icon name="plus" /> Ajouter une table
+    </button>
+  </header>
+
+  @if (unplacedGuests().length) {
+    <div class="notice">
+      <div class="eyebrow">Non placés · confirmés ({{ unplacedGuests().length }})</div>
+      <div class="mini-list">
+        @for (guest of unplacedGuests(); track guest.id) {
+          <button class="mini-pill selectable" type="button" [class.active]="selectedGuestId === guest.id" (click)="selectedGuestId = selectedGuestId === guest.id ? null : guest.id">
+            {{ guest.firstName }} {{ guest.lastName }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  @if (addingTable) {
+    <div class="inline-panel">
+      <input autofocus [(ngModel)]="tableForm.name" placeholder="Nom de la table" />
+      <input class="number-input" type="number" min="2" max="40" [(ngModel)]="tableForm.seats" placeholder="Places" />
+      <button class="btn primary" type="button" (click)="addTable()">Ajouter</button>
+      <button class="btn secondary" type="button" (click)="addingTable = false">Annuler</button>
+    </div>
+  }
+
+  <div class="table-grid">
+    @for (table of store.tables(); track table.id) {
+      @let full = table.guestIds.length >= table.seats;
+      @let canPlace = selectedGuestId && !full && !table.guestIds.includes(selectedGuestId);
+      <article class="seating-card" [class.can-place]="canPlace" (click)="placeGuest(table.id, full)">
+        <header>
+          <strong>{{ table.name }}</strong>
+          <span [class.full]="full">{{ table.guestIds.length }}/{{ table.seats }}</span>
+          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); store.deleteTable(table.id)" aria-label="Supprimer la table">
+            <app-icon name="trash" />
+          </button>
+        </header>
+
+        <div class="seat-dots">
+          @for (_ of [].constructor(table.seats); track $index) {
+            @let guestId = table.guestIds[$index];
+            @let guest = guestId ? guestById(guestId) : undefined;
+            <button
+              type="button"
+              class="seat-dot"
+              [class.occupied]="guest"
+              [attr.title]="guest ? guest.firstName + ' ' + guest.lastName : 'Place libre'"
+              (click)="$event.stopPropagation(); guest ? store.removeGuestTable(table.id, guest.id) : null">
+              {{ initials(guest) }}
+            </button>
+          }
+        </div>
+
+        @if (table.guestIds.length) {
+          <p class="seated-names">
+            @for (guestId of table.guestIds; track guestId) {
+              @let guest = guestById(guestId);
+              @if (guest) {
+                <span>{{ guest.firstName }} {{ guest.lastName }}</span>
+              }
+            }
+          </p>
+        }
+      </article>
+    }
+  </div>
+</section>

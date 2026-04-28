@@ -1,0 +1,86 @@
+<section class="page">
+  <header class="page-header split">
+    <div>
+      <h1>À faire</h1>
+      <p>
+        {{ totals().done }} / {{ totals().total }} tâches complétées
+        <span class="mini-progress"><i [style.width.%]="totals().percent"></i></span>
+      </p>
+    </div>
+    <button class="btn primary" type="button" (click)="addingGroup = true">
+      <app-icon name="plus" /> Nouveau groupe
+    </button>
+  </header>
+
+  @if (addingGroup) {
+    <div class="inline-panel">
+      <input autofocus [(ngModel)]="groupName" placeholder="Nom du groupe de tâches" (keydown.enter)="addGroup()" />
+      <button class="btn primary" type="button" (click)="addGroup()">Ajouter</button>
+      <button class="btn secondary" type="button" (click)="addingGroup = false">Annuler</button>
+    </div>
+  }
+
+  <div class="stack">
+    @for (group of store.todos(); track group.id) {
+      @let open = expanded[group.id] !== false;
+      @let done = completedCount(group.tasks);
+      <article class="collapsible">
+        <header class="collapsible-header" (click)="toggleGroup(group.id)">
+          <app-icon class="chevron" [class.closed]="!open" name="chevron" />
+          <strong>{{ group.title }}</strong>
+          <span>{{ done }}/{{ group.tasks.length }}</span>
+          <div class="mini-progress"><i [style.width.%]="group.tasks.length ? (done / group.tasks.length) * 100 : 0"></i></div>
+          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); store.deleteTodoGroup(group.id)" aria-label="Supprimer le groupe">
+            <app-icon name="trash" />
+          </button>
+        </header>
+
+        @if (open) {
+          <div class="todo-list">
+            @for (task of group.tasks; track task.id) {
+              <div class="todo-row">
+                <button class="check-button" type="button" [class.done]="task.done" (click)="toggleDone(group.id, task)" aria-label="Basculer la tâche">
+                  @if (task.done) {
+                    <app-icon name="check" [size]="13" />
+                  }
+                </button>
+                <span class="todo-label" [class.done]="task.done">{{ task.label }}</span>
+                <select [ngModel]="task.assignee" (ngModelChange)="updateAssignee(group.id, task, $event)" [style.color]="assigneeColor(task.assignee)">
+                  @for (assignee of assigneeOptions; track assignee.value) {
+                    <option [value]="assignee.value">{{ assignee.label }}</option>
+                  }
+                </select>
+                @if (task.dueDate) {
+                  <time>{{ fmtShortDate(task.dueDate) }}</time>
+                }
+                <button class="icon-button danger" type="button" (click)="store.deleteTodoTask(group.id, task.id)" aria-label="Supprimer la tâche">
+                  <app-icon name="trash" />
+                </button>
+              </div>
+            }
+
+            @if (addingTaskFor === group.id) {
+              <div class="inline-form add-task-form">
+                <input autofocus [(ngModel)]="taskForm.label" placeholder="Description de la tâche" (keydown.enter)="addTask(group.id)" />
+                <select [(ngModel)]="taskForm.assignee">
+                  @for (assignee of assigneeOptions; track assignee.value) {
+                    <option [value]="assignee.value">{{ assignee.label }}</option>
+                  }
+                </select>
+                <input type="date" [(ngModel)]="taskForm.dueDate" />
+                <button class="btn primary small" type="button" (click)="addTask(group.id)">Ajouter</button>
+                <button class="btn secondary small" type="button" (click)="addingTaskFor = null">Annuler</button>
+              </div>
+            } @else {
+              <div class="todo-add-row">
+                <button class="btn ghost small" type="button" (click)="addingTaskFor = group.id">
+                  <app-icon name="plus" /> Ajouter une tâche
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </article>
+    }
+  </div>
+</section>

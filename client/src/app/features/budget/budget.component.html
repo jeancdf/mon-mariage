@@ -1,0 +1,94 @@
+<section class="page">
+  <header class="page-header split">
+    <div>
+      <h1>Budget</h1>
+      <p>Total estimé : {{ fmtCurrency(totals().estimated) }}</p>
+    </div>
+    <button class="btn primary" type="button" (click)="addingCategory = true">
+      <app-icon name="plus" /> Ajouter un poste
+    </button>
+  </header>
+
+  <article class="total-panel">
+    <div>
+      <strong>{{ fmtCurrency(totals().spent) }}</strong>
+      <span>engagés</span>
+      <em>{{ fmtCurrency(totals().remaining) }} restants</em>
+    </div>
+    <div class="progress-track">
+      <i [style.width.%]="totals().percent"></i>
+    </div>
+    <p>{{ totals().percent | number:'1.0-0' }}% du budget total utilisé</p>
+  </article>
+
+  @if (addingCategory) {
+    <div class="inline-panel">
+      <input autofocus [(ngModel)]="categoryForm.name" placeholder="Nom du poste" />
+      <input class="money-input" type="number" [(ngModel)]="categoryForm.estimated" placeholder="Budget estimé (€)" />
+      <button class="btn primary" type="button" (click)="addCategory()">Ajouter</button>
+      <button class="btn secondary" type="button" (click)="addingCategory = false">Annuler</button>
+    </div>
+  }
+
+  <div class="stack">
+    @for (category of store.budget().categories; track category.id) {
+      @let spent = spentFor(category);
+      @let over = category.estimated > 0 && spent > category.estimated;
+      <article class="budget-card">
+        <header>
+          <strong>{{ category.name }}</strong>
+          <span [class.over]="over"><b>{{ fmtCurrency(spent) }}</b> / {{ fmtCurrency(category.estimated) }}</span>
+          @if (editingEstimateFor === category.id) {
+            <input
+              class="money-input small-input"
+              type="number"
+              [ngModel]="category.estimated"
+              (blur)="updateEstimate(category, $any($event.target).value)"
+              (keydown.enter)="updateEstimate(category, $any($event.target).value)" />
+          } @else {
+            <button class="icon-button" type="button" (click)="editingEstimateFor = category.id" aria-label="Modifier le budget">
+              <app-icon name="edit" />
+            </button>
+          }
+          <button class="icon-button" type="button" (click)="addingItemFor = addingItemFor === category.id ? null : category.id" aria-label="Ajouter une dépense">
+            <app-icon name="plus" />
+          </button>
+          <button class="icon-button danger" type="button" (click)="store.deleteBudgetCat(category.id)" aria-label="Supprimer le poste">
+            <app-icon name="trash" />
+          </button>
+        </header>
+
+        <div class="progress-track slim">
+          <i [class.danger-fill]="over" [style.width.%]="percentFor(category)"></i>
+        </div>
+
+        @if (category.items.length) {
+          <div class="budget-items">
+            @for (item of category.items; track item.id) {
+              <div>
+                <span>{{ item.label }}</span>
+                @if (item.date) {
+                  <time>{{ fmtDate(item.date) }}</time>
+                }
+                <strong>{{ fmtCurrency(item.amount) }}</strong>
+                <button class="icon-button danger" type="button" (click)="store.deleteBudgetItem(category.id, item.id)" aria-label="Supprimer la dépense">
+                  <app-icon name="trash" />
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        @if (addingItemFor === category.id) {
+          <div class="inline-form add-item-form">
+            <input autofocus [(ngModel)]="itemForm.label" placeholder="Description de la dépense" />
+            <input class="money-input" type="number" [(ngModel)]="itemForm.amount" placeholder="Montant (€)" />
+            <input type="date" [(ngModel)]="itemForm.date" />
+            <button class="btn primary small" type="button" (click)="addItem(category.id)">Ajouter</button>
+            <button class="btn secondary small" type="button" (click)="addingItemFor = null">Annuler</button>
+          </div>
+        }
+      </article>
+    }
+  </div>
+</section>

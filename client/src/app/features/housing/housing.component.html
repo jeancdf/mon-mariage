@@ -1,0 +1,107 @@
+<section class="page">
+  <header class="page-header split">
+    <div>
+      <h1>Hébergement</h1>
+      <p>{{ totals().occupied }} / {{ totals().totalBeds }} places occupées · {{ unassignedGuests().length }} invités sans logement</p>
+    </div>
+    <button class="btn primary" type="button" (click)="addingHouse = true">
+      <app-icon name="plus" /> Ajouter une maison
+    </button>
+  </header>
+
+  @if (unassignedGuests().length) {
+    <div class="notice">
+      <div class="eyebrow">Sans logement ({{ unassignedGuests().length }})</div>
+      <div class="mini-list">
+        @for (guest of unassignedGuests(); track guest.id) {
+          <app-badge [variant]="guest.rsvp">{{ guest.firstName }} {{ guest.lastName }}</app-badge>
+        }
+      </div>
+    </div>
+  }
+
+  @if (addingHouse) {
+    <div class="inline-panel">
+      <input autofocus [(ngModel)]="houseName" placeholder="Nom de la maison" (keydown.enter)="addHouse()" />
+      <button class="btn primary" type="button" (click)="addHouse()">Ajouter</button>
+      <button class="btn secondary" type="button" (click)="addingHouse = false">Annuler</button>
+    </div>
+  }
+
+  <div class="stack">
+    @for (house of store.houses(); track house.id) {
+      @let open = expanded[house.id] !== false;
+      <article class="collapsible">
+        <header class="collapsible-header" (click)="toggleHouse(house.id)">
+          <app-icon class="chevron" [class.closed]="!open" name="chevron" />
+          <strong>{{ house.name }}</strong>
+          <span>{{ house.rooms.length }} chambres · {{ houseOccupied(house) }}/{{ houseCapacity(house) }} places</span>
+          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); store.deleteHouse(house.id)" aria-label="Supprimer la maison">
+            <app-icon name="trash" />
+          </button>
+        </header>
+
+        @if (open) {
+          <div class="collapsible-body">
+            <div class="card-grid">
+              @for (room of house.rooms; track room.id) {
+                <article class="room-card">
+                  <header>
+                    <app-icon name="bed" />
+                    <strong>{{ room.name }}</strong>
+                    <span>{{ bedLabel(room) }}</span>
+                    <button class="icon-button danger" type="button" (click)="store.deleteRoom(house.id, room.id)" aria-label="Supprimer la chambre">
+                      <app-icon name="trash" />
+                    </button>
+                  </header>
+
+                  @if (room.guestIds.length) {
+                    <div class="mini-list">
+                      @for (guestId of room.guestIds; track guestId) {
+                        @let guest = guestById(guestId);
+                        @if (guest) {
+                          <span class="mini-pill">
+                            {{ guest.firstName }} {{ guest.lastName }}
+                            <button type="button" (click)="store.assignGuestRoom(guestId, null, null)" aria-label="Retirer">
+                              <app-icon name="x" [size]="11" />
+                            </button>
+                          </span>
+                        }
+                      }
+                    </div>
+                  }
+
+                  @if (unassignedGuests().length) {
+                    <select class="dashed-select" (change)="store.assignGuestRoom($any($event.target).value, house.id, room.id); $any($event.target).value = ''">
+                      <option value="">+ Assigner un invité</option>
+                      @for (guest of unassignedGuests(); track guest.id) {
+                        <option [value]="guest.id">{{ guest.firstName }} {{ guest.lastName }}</option>
+                      }
+                    </select>
+                  }
+                </article>
+              }
+            </div>
+
+            @if (addingRoomFor === house.id) {
+              <div class="inline-form room-form">
+                <input autofocus [(ngModel)]="roomForm.name" placeholder="Nom de la chambre" />
+                <select [(ngModel)]="roomForm.bedType">
+                  <option value="double">Lit double</option>
+                  <option value="single">Lit simple</option>
+                </select>
+                <input class="number-input" type="number" min="1" max="8" [(ngModel)]="roomForm.beds" />
+                <button class="btn primary small" type="button" (click)="addRoom(house.id)">OK</button>
+                <button class="btn secondary small" type="button" (click)="addingRoomFor = null">Annuler</button>
+              </div>
+            } @else {
+              <button class="btn ghost small" type="button" (click)="addingRoomFor = house.id">
+                <app-icon name="plus" /> Ajouter une chambre
+              </button>
+            }
+          </div>
+        }
+      </article>
+    }
+  </div>
+</section>

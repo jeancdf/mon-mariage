@@ -1,0 +1,97 @@
+<section class="page page-wide">
+  <header class="page-header split">
+    <div>
+      <h1>Liste des invités</h1>
+      <p>{{ store.guests().length }} invités · {{ store.confirmedCount() }} confirmés · {{ store.guests().filter(g => g.rsvp === 'pending').length }} en attente</p>
+    </div>
+    <button class="btn primary" type="button" (click)="openAdd()">
+      <app-icon name="plus" /> Ajouter
+    </button>
+  </header>
+
+  <div class="filters">
+    <input class="search-input" [(ngModel)]="search" placeholder="Rechercher un invité" />
+    <div class="chip-row">
+      <button class="chip" type="button" [class.active]="categoryFilter === 'all'" (click)="categoryFilter = 'all'">Tous</button>
+      @for (category of categoryOptions; track category.value) {
+        <button class="chip" type="button" [class.active]="categoryFilter === category.value" (click)="categoryFilter = category.value">{{ category.short }}</button>
+      }
+    </div>
+    <div class="chip-row push">
+      <button class="chip" type="button" [class.active]="rsvpFilter === 'all'" (click)="rsvpFilter = 'all'">Tous RSVP</button>
+      <button class="chip" type="button" [class.active]="rsvpFilter === 'confirmed'" (click)="rsvpFilter = 'confirmed'">Confirmés</button>
+      <button class="chip" type="button" [class.active]="rsvpFilter === 'pending'" (click)="rsvpFilter = 'pending'">En attente</button>
+      <button class="chip" type="button" [class.active]="rsvpFilter === 'declined'" (click)="rsvpFilter = 'declined'">Déclinés</button>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Invité</th>
+          <th>Catégorie</th>
+          <th>RSVP</th>
+          <th>Enfants</th>
+          <th>Événements</th>
+          <th>Transport</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (guest of filteredGuests(); track guest.id) {
+          <tr>
+            <td>
+              <strong>{{ guest.firstName }} {{ guest.lastName }}</strong>
+              @if (guest.hasPlusOne) {
+                <span class="muted">+1{{ guest.plusOneName ? ' (' + guest.plusOneName + ')' : '' }}</span>
+              }
+              @if (guest.dietary) {
+                <small>{{ guest.dietary }}</small>
+              }
+            </td>
+            <td><app-badge>{{ cats[guest.category].short }}</app-badge></td>
+            <td><app-badge [variant]="guest.rsvp">{{ rsvpLabels[guest.rsvp] }}</app-badge></td>
+            <td>
+              @if (guest.kids.length) {
+                <div class="mini-list">
+                  @for (kid of guest.kids; track kid.name) {
+                    <app-badge>{{ kid.name }}{{ kid.age ? ', ' + kid.age + 'a' : '' }}</app-badge>
+                  }
+                </div>
+              } @else {
+                <span class="empty">-</span>
+              }
+            </td>
+            <td>
+              <div class="mini-list">
+                @for (eventKey of guest.events; track eventKey) {
+                  <app-badge>{{ eventLabels[eventKey] }}</app-badge>
+                }
+              </div>
+            </td>
+            <td class="muted">{{ guest.transport || '-' }}</td>
+            <td>
+              <div class="row-actions">
+                <button class="icon-button" type="button" (click)="editingGuest = guest" aria-label="Modifier">
+                  <app-icon name="edit" />
+                </button>
+                <button class="icon-button danger" type="button" (click)="store.deleteGuest(guest.id)" aria-label="Supprimer">
+                  <app-icon name="trash" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td class="empty-state" colspan="7">Aucun invité trouvé</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (editingGuest || isAdding) {
+    <app-guest-modal [guest]="editingGuest" (closeModal)="closeModal()" (saveGuest)="saveGuest($event)" />
+  }
+</section>
