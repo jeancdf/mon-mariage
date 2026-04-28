@@ -8,6 +8,8 @@ async function bootstrap() {
   const clientOrigin = config.get<string>('CLIENT_ORIGIN', 'http://localhost:4201');
   const port = Number(config.get<string>('PORT', '3000'));
 
+  app.setGlobalPrefix('api');
+
   app.enableCors({
     origin: clientOrigin,
     credentials: true,

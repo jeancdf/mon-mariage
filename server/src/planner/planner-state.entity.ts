@@ -1,5 +1,12 @@
+import { Column, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+
 export type Rsvp = 'confirmed' | 'pending' | 'declined';
-export type GuestCategory = 'famille-moi' | 'famille-elle' | 'amis' | 'temoins' | 'enfants';
+export type GuestCategory =
+  | 'famille-moi'
+  | 'famille-elle'
+  | 'amis'
+  | 'temoins'
+  | 'enfants';
 export type EventKey = 'rehearsal' | 'ceremony' | 'dinner';
 export type BedType = 'double' | 'single';
 export type AssigneeId = 'marie' | 'elle' | 'famille' | 'prestataire';
@@ -78,12 +85,6 @@ export interface Budget {
   categories: BudgetCategory[];
 }
 
-export interface Assignee {
-  id: AssigneeId;
-  label: string;
-  color: string;
-}
-
 export interface PlannerState {
   guests: Guest[];
   houses: House[];
@@ -91,4 +92,16 @@ export interface PlannerState {
   budget: Budget;
   todos: TodoGroup[];
   theme: ThemeKey;
+}
+
+@Entity({ name: 'planner_states' })
+export class PlannerStateEntity {
+  @PrimaryColumn({ type: 'text' })
+  id!: string;
+
+  @Column({ type: 'jsonb' })
+  state!: PlannerState;
+
+  @UpdateDateColumn()
+  updatedAt!: Date;
 }

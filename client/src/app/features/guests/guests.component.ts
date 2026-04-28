@@ -8,7 +8,6 @@ import { IconComponent } from '../../shared/icon.component';
 import { CATEGORY_OPTIONS } from '../../shared/wedding-utils';
 import { GuestModalComponent } from './guest-modal.component';
 import { parseGuestWorkbook } from './guest-import';
-import { GuestApiService } from '../../data/guest-api.service';
 
 @Component({
   selector: 'app-guests',
@@ -18,7 +17,6 @@ import { GuestApiService } from '../../data/guest-api.service';
 })
 export class GuestsComponent {
   readonly store = inject(WeddingStore);
-  readonly guestApi = inject(GuestApiService);
   readonly importInput = viewChild<ElementRef<HTMLInputElement>>('importInput');
   readonly categoryOptions = CATEGORY_OPTIONS;
   readonly cats = CATS;
@@ -84,9 +82,8 @@ export class GuestsComponent {
         return;
       }
 
-      const savedGuests = await this.guestApi.replaceGuests(importResult.guests);
-      this.store.replaceGuests(savedGuests);
-      this.importMessage = `${savedGuests.length} invités importés`;
+      this.store.replaceGuests(importResult.guests);
+      this.importMessage = `${importResult.guests.length} invités importés`;
       if (importResult.skippedRows) {
         this.importMessage += ` (${importResult.skippedRows} lignes ignorées)`;
       }
