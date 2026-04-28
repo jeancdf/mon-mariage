@@ -21,6 +21,7 @@ export class WeddingStore {
 
   // ── Guests ────────────────────────────────────────────────────────
   addGuest(g: Guest) { this.guests.update(arr => [...arr, g]); }
+  replaceGuests(guests: Guest[]) { this.guests.set(guests); }
   updateGuest(g: Guest) { this.guests.update(arr => arr.map(x => x.id === g.id ? g : x)); }
   deleteGuest(id: string) {
     this.guests.update(arr => arr.filter(x => x.id !== id));

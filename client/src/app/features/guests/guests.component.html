@@ -4,10 +4,29 @@
       <h1>Liste des invités</h1>
       <p>{{ store.guests().length }} invités · {{ store.confirmedCount() }} confirmés · {{ store.guests().filter(g => g.rsvp === 'pending').length }} en attente</p>
     </div>
-    <button class="btn primary" type="button" (click)="openAdd()">
-      <app-icon name="plus" /> Ajouter
-    </button>
+    <div class="row-actions">
+      <button class="btn" type="button" [disabled]="isImporting" (click)="openImportPicker()">
+        {{ isImporting ? 'Import...' : 'Importer Excel' }}
+      </button>
+      <button class="btn primary" type="button" (click)="openAdd()">
+        <app-icon name="plus" /> Ajouter
+      </button>
+    </div>
   </header>
+
+  <input
+    #importInput
+    hidden
+    type="file"
+    accept=".xlsx,.xls"
+    (change)="onImportGuests($event)"
+  />
+  @if (importMessage) {
+    <p class="muted">{{ importMessage }}</p>
+  }
+  @if (importError) {
+    <p class="empty">{{ importError }}</p>
+  }
 
   <div class="filters">
     <input class="search-input" [(ngModel)]="search" placeholder="Rechercher un invité" />

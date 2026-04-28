@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, ElementRef, computed, inject, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Guest, GuestCategory, Rsvp } from '../../data/types';
 import { WeddingStore } from '../../data/store';
@@ -7,6 +7,7 @@ import { BadgeComponent } from '../../shared/badge.component';
 import { IconComponent } from '../../shared/icon.component';
 import { CATEGORY_OPTIONS } from '../../shared/wedding-utils';
 import { GuestModalComponent } from './guest-modal.component';
+import { parseGuestWorkbook } from './guest-import';
 
 @Component({
   selector: 'app-guests',
@@ -16,6 +17,7 @@ import { GuestModalComponent } from './guest-modal.component';
 })
 export class GuestsComponent {
   readonly store = inject(WeddingStore);
+  readonly importInput = viewChild<ElementRef<HTMLInputElement>>('importInput');
   readonly categoryOptions = CATEGORY_OPTIONS;
   readonly cats = CATS;
   readonly rsvpLabels = RSVP_LABELS;
@@ -26,6 +28,9 @@ export class GuestsComponent {
   rsvpFilter: Rsvp | 'all' = 'all';
   editingGuest: Guest | null = null;
   isAdding = false;
+  importError = '';
+  importMessage = '';
+  isImporting = false;
 
   readonly filteredGuests = computed(() => {
     const query = this.search.trim().toLowerCase();
@@ -53,5 +58,39 @@ export class GuestsComponent {
       this.store.addGuest({ ...guest, id: guest.id || gid() });
     }
     this.closeModal();
+  }
+
+  openImportPicker(): void {
+    this.importInput()?.nativeElement.click();
+  }
+
+  async onImportGuests(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    this.importError = '';
+    this.importMessage = '';
+
+    if (!file) return;
+
+    this.isImporting = true;
+
+    try {
+      const importResult = await parseGuestWorkbook(file);
+      if (!importResult.guests.length) {
+        this.importError = 'Aucun invité valide trouvé dans les 2 premières feuilles.';
+        return;
+      }
+
+      this.store.replaceGuests(importResult.guests);
+      this.importMessage = `${importResult.guests.length} invités importés`;
+      if (importResult.skippedRows) {
+        this.importMessage += ` (${importResult.skippedRows} lignes ignorées)`;
+      }
+    } catch {
+      this.importError = 'Import impossible. Vérifiez le format Excel.';
+    } finally {
+      this.isImporting = false;
+    }
   }
 }
