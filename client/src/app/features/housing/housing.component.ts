@@ -2,9 +2,9 @@ import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BedType, Guest, House, Room } from '../../data/types';
 import { WeddingStore } from '../../data/store';
-import { gid } from '../../data/seed';
 import { BadgeComponent } from '../../shared/badge.component';
 import { IconComponent } from '../../shared/icon.component';
+import { HousingApiService } from '../../data/housing-api.service';
 
 @Component({
   selector: 'app-housing',
@@ -14,6 +14,7 @@ import { IconComponent } from '../../shared/icon.component';
 })
 export class HousingComponent {
   readonly store = inject(WeddingStore);
+  private readonly housingApi = inject(HousingApiService);
   expanded: Record<string, boolean> = { h1: true, h2: true, h3: true };
   addingHouse = false;
   houseName = '';
@@ -56,25 +57,40 @@ export class HousingComponent {
     this.expanded = { ...this.expanded, [houseId]: this.expanded[houseId] === false };
   }
 
-  addHouse(): void {
+  async addHouse(): Promise<void> {
     const name = this.houseName.trim();
     if (!name) return;
-    this.store.addHouse({ id: gid(), name, rooms: [] });
+    const houses = await this.housingApi.createHouse(name);
+    this.store.replaceHouses(houses);
     this.houseName = '';
     this.addingHouse = false;
   }
 
-  addRoom(houseId: string): void {
+  async deleteHouse(id: string): Promise<void> {
+    const houses = await this.housingApi.deleteHouse(id);
+    this.store.replaceHouses(houses);
+  }
+
+  async addRoom(houseId: string): Promise<void> {
     const name = this.roomForm.name.trim();
     if (!name) return;
-    this.store.addRoom(houseId, {
-      id: gid(),
+    const houses = await this.housingApi.createRoom(houseId, {
       name,
       bedType: this.roomForm.bedType,
       beds: Number(this.roomForm.beds) || 1,
-      guestIds: [],
     });
+    this.store.replaceHouses(houses);
     this.roomForm = { name: '', bedType: 'double', beds: 1 };
     this.addingRoomFor = null;
+  }
+
+  async deleteRoom(roomId: string): Promise<void> {
+    const houses = await this.housingApi.deleteRoom(roomId);
+    this.store.replaceHouses(houses);
+  }
+
+  async assignGuestRoom(guestId: string, roomId: string | null): Promise<void> {
+    const houses = await this.housingApi.assignGuest(guestId, roomId);
+    this.store.replaceHouses(houses);
   }
 }

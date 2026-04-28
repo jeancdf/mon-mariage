@@ -8,6 +8,7 @@ import { IconComponent } from '../../shared/icon.component';
 import { CATEGORY_OPTIONS } from '../../shared/wedding-utils';
 import { GuestModalComponent } from './guest-modal.component';
 import { parseGuestWorkbook } from './guest-import';
+import { GuestApiService } from '../../data/guest-api.service';
 
 @Component({
   selector: 'app-guests',
@@ -17,6 +18,7 @@ import { parseGuestWorkbook } from './guest-import';
 })
 export class GuestsComponent {
   readonly store = inject(WeddingStore);
+  private readonly guestApi = inject(GuestApiService);
   readonly importInput = viewChild<ElementRef<HTMLInputElement>>('importInput');
   readonly categoryOptions = CATEGORY_OPTIONS;
   readonly cats = CATS;
@@ -51,13 +53,28 @@ export class GuestsComponent {
     this.editingGuest = null;
   }
 
-  saveGuest(guest: Guest): void {
-    if (this.editingGuest) {
-      this.store.updateGuest(guest);
-    } else {
-      this.store.addGuest({ ...guest, id: guest.id || gid() });
+  async saveGuest(guest: Guest): Promise<void> {
+    try {
+      if (this.editingGuest) {
+        const savedGuest = await this.guestApi.updateGuest(guest);
+        this.store.updateGuest(savedGuest);
+      } else {
+        const savedGuest = await this.guestApi.createGuest({ ...guest, id: guest.id || gid() });
+        this.store.addGuest(savedGuest);
+      }
+      this.closeModal();
+    } catch {
+      this.importError = "Impossible d'enregistrer l'invité.";
     }
-    this.closeModal();
+  }
+
+  async deleteGuest(id: string): Promise<void> {
+    try {
+      await this.guestApi.deleteGuest(id);
+      this.store.deleteGuest(id);
+    } catch {
+      this.importError = "Impossible de supprimer l'invité.";
+    }
   }
 
   openImportPicker(): void {
@@ -82,8 +99,9 @@ export class GuestsComponent {
         return;
       }
 
-      this.store.replaceGuests(importResult.guests);
-      this.importMessage = `${importResult.guests.length} invités importés`;
+      const savedGuests = await this.guestApi.replaceGuests(importResult.guests);
+      this.store.replaceGuests(savedGuests);
+      this.importMessage = `${savedGuests.length} invités importés`;
       if (importResult.skippedRows) {
         this.importMessage += ` (${importResult.skippedRows} lignes ignorées)`;
       }

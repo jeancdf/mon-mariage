@@ -16,4 +16,16 @@ export class GuestApiService {
       this.http.put<Guest[]>('/api/guests/import', { guests }),
     );
   }
+
+  async createGuest(guest: Guest): Promise<Guest> {
+    return firstValueFrom(this.http.post<Guest>('/api/guests', guest));
+  }
+
+  async updateGuest(guest: Guest): Promise<Guest> {
+    return firstValueFrom(this.http.patch<Guest>(`/api/guests/${guest.id}`, guest));
+  }
+
+  async deleteGuest(id: string): Promise<void> {
+    await firstValueFrom(this.http.delete<{ success: true }>(`/api/guests/${id}`));
+  }
 }

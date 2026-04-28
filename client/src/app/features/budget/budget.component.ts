@@ -2,8 +2,8 @@ import { Component, computed, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BudgetCategory } from '../../data/types';
+import { BudgetApiService } from '../../data/budget-api.service';
 import { WeddingStore } from '../../data/store';
-import { gid } from '../../data/seed';
 import { fmtCurrency, fmtDate } from '../../shared/wedding-utils';
 import { IconComponent } from '../../shared/icon.component';
 
@@ -15,6 +15,7 @@ import { IconComponent } from '../../shared/icon.component';
 })
 export class BudgetComponent {
   readonly store = inject(WeddingStore);
+  private readonly budgetApi = inject(BudgetApiService);
   readonly fmtCurrency = fmtCurrency;
   readonly fmtDate = fmtDate;
 
@@ -39,29 +40,41 @@ export class BudgetComponent {
     return category.estimated ? Math.min((this.spentFor(category) / category.estimated) * 100, 100) : 0;
   }
 
-  addCategory(): void {
+  async addCategory(): Promise<void> {
     const name = this.categoryForm.name.trim();
     if (!name) return;
-    this.store.addBudgetCat({ id: gid(), name, estimated: Number(this.categoryForm.estimated) || 0, items: [] });
+    const budget = await this.budgetApi.createCategory({ name, estimated: Number(this.categoryForm.estimated) || 0 });
+    this.store.replaceBudget(budget);
     this.categoryForm = { name: '', estimated: '' };
     this.addingCategory = false;
   }
 
-  updateEstimate(category: BudgetCategory, value: number | string): void {
-    this.store.updateBudgetCat({ ...category, estimated: Number(value) || 0 });
+  async updateEstimate(category: BudgetCategory, value: number | string): Promise<void> {
+    const budget = await this.budgetApi.updateCategory({ ...category, estimated: Number(value) || 0 });
+    this.store.replaceBudget(budget);
     this.editingEstimateFor = null;
   }
 
-  addItem(categoryId: string): void {
+  async deleteCategory(id: string): Promise<void> {
+    const budget = await this.budgetApi.deleteCategory(id);
+    this.store.replaceBudget(budget);
+  }
+
+  async addItem(categoryId: string): Promise<void> {
     const label = this.itemForm.label.trim();
     if (!label || !this.itemForm.amount) return;
-    this.store.addBudgetItem(categoryId, {
-      id: gid(),
+    const budget = await this.budgetApi.createItem(categoryId, {
       label,
       amount: Number(this.itemForm.amount) || 0,
       date: this.itemForm.date,
     });
+    this.store.replaceBudget(budget);
     this.itemForm = { label: '', amount: '', date: '' };
     this.addingItemFor = null;
+  }
+
+  async deleteItem(id: string): Promise<void> {
+    const budget = await this.budgetApi.deleteItem(id);
+    this.store.replaceBudget(budget);
   }
 }

@@ -53,7 +53,7 @@
           <button class="icon-button" type="button" (click)="addingItemFor = addingItemFor === category.id ? null : category.id" aria-label="Ajouter une dépense">
             <app-icon name="plus" />
           </button>
-          <button class="icon-button danger" type="button" (click)="store.deleteBudgetCat(category.id)" aria-label="Supprimer le poste">
+          <button class="icon-button danger" type="button" (click)="deleteCategory(category.id)" aria-label="Supprimer le poste">
             <app-icon name="trash" />
           </button>
         </header>
@@ -71,7 +71,7 @@
                   <time>{{ fmtDate(item.date) }}</time>
                 }
                 <strong>{{ fmtCurrency(item.amount) }}</strong>
-                <button class="icon-button danger" type="button" (click)="store.deleteBudgetItem(category.id, item.id)" aria-label="Supprimer la dépense">
+                <button class="icon-button danger" type="button" (click)="deleteItem(item.id)" aria-label="Supprimer la dépense">
                   <app-icon name="trash" />
                 </button>
               </div>

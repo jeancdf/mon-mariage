@@ -1,8 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AssigneeId, Task } from '../../data/types';
+import { TodosApiService } from '../../data/todos-api.service';
 import { WeddingStore } from '../../data/store';
-import { ASSIGNEES, gid } from '../../data/seed';
+import { ASSIGNEES } from '../../data/seed';
 import { ASSIGNEE_OPTIONS, fmtShortDate } from '../../shared/wedding-utils';
 import { IconComponent } from '../../shared/icon.component';
 
@@ -14,6 +15,7 @@ import { IconComponent } from '../../shared/icon.component';
 })
 export class TodosComponent {
   readonly store = inject(WeddingStore);
+  private readonly todosApi = inject(TodosApiService);
   readonly assignees = ASSIGNEES;
   readonly assigneeOptions = ASSIGNEE_OPTIONS;
   readonly fmtShortDate = fmtShortDate;
@@ -43,35 +45,46 @@ export class TodosComponent {
     this.expanded = { ...this.expanded, [groupId]: this.expanded[groupId] === false };
   }
 
-  addGroup(): void {
+  async addGroup(): Promise<void> {
     const title = this.groupName.trim();
     if (!title) return;
-    const id = gid();
-    this.store.addTodoGroup({ id, title, tasks: [] });
-    this.expanded = { ...this.expanded, [id]: true };
+    const todos = await this.todosApi.createGroup(title);
+    this.store.replaceTodos(todos);
     this.groupName = '';
     this.addingGroup = false;
   }
 
-  toggleDone(groupId: string, task: Task): void {
-    this.store.updateTodoTask(groupId, { ...task, done: !task.done });
+  async deleteGroup(id: string): Promise<void> {
+    const todos = await this.todosApi.deleteGroup(id);
+    this.store.replaceTodos(todos);
   }
 
-  updateAssignee(groupId: string, task: Task, assignee: AssigneeId): void {
-    this.store.updateTodoTask(groupId, { ...task, assignee });
+  async toggleDone(_groupId: string, task: Task): Promise<void> {
+    const todos = await this.todosApi.updateTask({ ...task, done: !task.done });
+    this.store.replaceTodos(todos);
   }
 
-  addTask(groupId: string): void {
+  async updateAssignee(_groupId: string, task: Task, assignee: AssigneeId): Promise<void> {
+    const todos = await this.todosApi.updateTask({ ...task, assignee });
+    this.store.replaceTodos(todos);
+  }
+
+  async addTask(groupId: string): Promise<void> {
     const label = this.taskForm.label.trim();
     if (!label) return;
-    this.store.addTodoTask(groupId, {
-      id: gid(),
+    const todos = await this.todosApi.createTask(groupId, {
       label,
       done: false,
       assignee: this.taskForm.assignee,
       dueDate: this.taskForm.dueDate,
     });
+    this.store.replaceTodos(todos);
     this.taskForm = { label: '', assignee: 'marie', dueDate: '' };
     this.addingTaskFor = null;
+  }
+
+  async deleteTask(id: string): Promise<void> {
+    const todos = await this.todosApi.deleteTask(id);
+    this.store.replaceTodos(todos);
   }
 }

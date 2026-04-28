@@ -1,7 +1,12 @@
 import { Component, computed, inject } from '@angular/core';
 import { NgStyle } from '@angular/common';
 import { ThemeKey } from '../data/types';
+import { BudgetApiService } from '../data/budget-api.service';
+import { GuestApiService } from '../data/guest-api.service';
+import { HousingApiService } from '../data/housing-api.service';
+import { SeatingApiService } from '../data/seating-api.service';
 import { WeddingStore } from '../data/store';
+import { TodosApiService } from '../data/todos-api.service';
 import { DashboardComponent } from '../features/dashboard/dashboard.component';
 import { GuestsComponent } from '../features/guests/guests.component';
 import { HousingComponent } from '../features/housing/housing.component';
@@ -28,13 +33,18 @@ import { NAV_ITEMS, PageId, THEMES, THEME_KEYS } from '../shared/wedding-utils';
 })
 export class WeddingShellComponent {
   readonly store = inject(WeddingStore);
+  private readonly guestApi = inject(GuestApiService);
+  private readonly housingApi = inject(HousingApiService);
+  private readonly seatingApi = inject(SeatingApiService);
+  private readonly budgetApi = inject(BudgetApiService);
+  private readonly todosApi = inject(TodosApiService);
   readonly navItems = NAV_ITEMS;
   readonly themeKeys = THEME_KEYS;
   readonly themes = THEMES;
   page: PageId = 'dashboard';
 
   constructor() {
-    void this.store.loadFromBackend();
+    void this.loadInitialData();
   }
 
   readonly themeVars = computed(() => {
@@ -54,5 +64,24 @@ export class WeddingShellComponent {
 
   setTheme(theme: ThemeKey): void {
     this.store.setTheme(theme);
+  }
+
+  private async loadInitialData(): Promise<void> {
+    try {
+      const [guests, houses, tables, budget, todos] = await Promise.all([
+        this.guestApi.loadGuests(),
+        this.housingApi.loadHousing(),
+        this.seatingApi.loadTables(),
+        this.budgetApi.loadBudget(),
+        this.todosApi.loadTodos(),
+      ]);
+      this.store.replaceGuests(guests);
+      this.store.replaceHouses(houses);
+      this.store.replaceTables(tables);
+      this.store.replaceBudget(budget);
+      this.store.replaceTodos(todos);
+    } catch {
+      // Keep seed data when the API is unavailable during frontend-only development.
+    }
   }
 }

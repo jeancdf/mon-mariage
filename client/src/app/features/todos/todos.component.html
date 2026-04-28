@@ -30,7 +30,7 @@
           <strong>{{ group.title }}</strong>
           <span>{{ done }}/{{ group.tasks.length }}</span>
           <div class="mini-progress"><i [style.width.%]="group.tasks.length ? (done / group.tasks.length) * 100 : 0"></i></div>
-          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); store.deleteTodoGroup(group.id)" aria-label="Supprimer le groupe">
+          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteGroup(group.id)" aria-label="Supprimer le groupe">
             <app-icon name="trash" />
           </button>
         </header>
@@ -53,7 +53,7 @@
                 @if (task.dueDate) {
                   <time>{{ fmtShortDate(task.dueDate) }}</time>
                 }
-                <button class="icon-button danger" type="button" (click)="store.deleteTodoTask(group.id, task.id)" aria-label="Supprimer la tâche">
+                <button class="icon-button danger" type="button" (click)="deleteTask(task.id)" aria-label="Supprimer la tâche">
                   <app-icon name="trash" />
                 </button>
               </div>

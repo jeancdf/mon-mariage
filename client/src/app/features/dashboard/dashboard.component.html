@@ -5,7 +5,7 @@
       <h1>Tableau de bord</h1>
     </div>
     <div class="countdown">
-      <span>{{ daysRemaining }}</span>
+      <span>{{ summary()?.daysRemaining ?? 0 }}</span>
       <div>
         <strong>jours</strong>
         <strong>restants</strong>
@@ -13,32 +13,35 @@
     </div>
   </header>
 
-  @let s = stats();
+  @let s = summary();
+  @if (!s) {
+    <article class="panel">Chargement du tableau de bord...</article>
+  } @else {
   <div class="stat-grid">
     <article class="stat-card">
       <div class="eyebrow">Invités</div>
-      <strong>{{ s.guests.length }}</strong>
-      <span>{{ s.confirmed }} confirmés · {{ s.pending }} en attente</span>
+      <strong>{{ s.guests.total }}</strong>
+      <span>{{ s.guests.confirmed }} confirmés · {{ s.guests.pending }} en attente</span>
     </article>
     <article class="stat-card">
       <div class="eyebrow">Confirmés</div>
-      <strong>{{ s.confirmed }}</strong>
-      <span>{{ percent(s.confirmed, s.guests.length) }}% du total</span>
+      <strong>{{ s.guests.confirmed }}</strong>
+      <span>{{ percent(s.guests.confirmed, s.guests.total) }}% du total</span>
     </article>
     <article class="stat-card">
       <div class="eyebrow">Hébergement</div>
-      <strong>{{ s.occupiedBeds }}/{{ s.totalBeds }}</strong>
+      <strong>{{ s.housing.occupiedBeds }}/{{ s.housing.totalBeds }}</strong>
       <span>places occupées</span>
     </article>
     <article class="stat-card">
       <div class="eyebrow">Plan de table</div>
-      <strong>{{ s.seated }}/{{ s.totalSeats }}</strong>
+      <strong>{{ s.seating.seated }}/{{ s.seating.totalSeats }}</strong>
       <span>invités placés</span>
     </article>
     <article class="stat-card">
       <div class="eyebrow">Budget engagé</div>
-      <strong>{{ fmtCurrency(s.totalSpent) }}</strong>
-      <span>sur {{ fmtCurrency(s.totalEstimated) }}</span>
+      <strong>{{ fmtCurrency(s.budget.totalSpent) }}</strong>
+      <span>sur {{ fmtCurrency(s.budget.totalEstimated) }}</span>
     </article>
   </div>
 
@@ -46,14 +49,14 @@
     <article class="panel">
       <div class="eyebrow panel-title">Répartition RSVP</div>
       @for (row of [
-        { label: 'Confirmés', count: s.confirmed, color: '#22c55e' },
-        { label: 'En attente', count: s.pending, color: '#f59e0b' },
-        { label: 'Déclinés', count: s.declined, color: '#ef4444' }
+        { label: 'Confirmés', count: s.guests.confirmed, color: '#22c55e' },
+        { label: 'En attente', count: s.guests.pending, color: '#f59e0b' },
+        { label: 'Déclinés', count: s.guests.declined, color: '#ef4444' }
       ]; track row.label) {
         <div class="progress-row">
           <span>{{ row.label }}</span>
           <div class="progress-track">
-            <i [style.width.%]="percent(row.count, s.guests.length)" [style.background]="row.color"></i>
+            <i [style.width.%]="percent(row.count, s.guests.total)" [style.background]="row.color"></i>
           </div>
           <strong>{{ row.count }}</strong>
         </div>
@@ -63,17 +66,17 @@
     <article class="panel">
       <div class="eyebrow panel-title">Budget par poste</div>
       @for (category of s.budget.categories.slice(0, 5); track category.id) {
-        @let spent = spentForCategory(category.id);
         <div class="budget-row">
           <div>
             <span>{{ category.name }}</span>
-            <span>{{ fmtCurrency(spent) }} / {{ fmtCurrency(category.estimated) }}</span>
+            <span>{{ fmtCurrency(category.spent) }} / {{ fmtCurrency(category.estimated) }}</span>
           </div>
           <div class="progress-track slim">
-            <i [style.width.%]="category.estimated ? (spent / category.estimated) * 100 : 0"></i>
+            <i [style.width.%]="category.estimated ? (category.spent / category.estimated) * 100 : 0"></i>
           </div>
         </div>
       }
     </article>
   </div>
+  }
 </section>
