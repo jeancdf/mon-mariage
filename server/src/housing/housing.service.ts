@@ -6,6 +6,49 @@ import { HouseEntity } from './house.entity';
 import { RoomGuestEntity } from './room-guest.entity';
 import { RoomEntity } from './room.entity';
 
+interface DefaultRoom {
+  name: string;
+  bedType: BedType;
+  beds: number;
+}
+
+interface DefaultHouse {
+  name: string;
+  rooms: DefaultRoom[];
+}
+
+const DEFAULT_HOUSES: DefaultHouse[] = [
+  {
+    name: 'Maison principale',
+    rooms: [],
+  },
+  {
+    name: 'maison des chêne',
+    rooms: [
+      { name: '1', bedType: 'double', beds: 1 },
+      { name: '2', bedType: 'double', beds: 1 },
+      { name: '3', bedType: 'single', beds: 2 },
+      { name: '4', bedType: 'single', beds: 2 },
+      { name: '5', bedType: 'single', beds: 4 },
+      { name: '6', bedType: 'single', beds: 1 },
+    ],
+  },
+  {
+    name: 'Poterne',
+    rooms: [
+      { name: 'bas', bedType: 'double', beds: 1 },
+      { name: 'haut', bedType: 'single', beds: 2 },
+    ],
+  },
+  {
+    name: 'Grange',
+    rooms: [
+      { name: 'bergerie', bedType: 'double', beds: 1 },
+      { name: 'grange', bedType: 'single', beds: 5 },
+    ],
+  },
+];
+
 @Injectable()
 export class HousingService {
   constructor(
@@ -18,11 +61,31 @@ export class HousingService {
   ) {}
 
   async findAll(): Promise<House[]> {
+    await this.seedDefaultsIfEmpty();
     const houses = await this.housesRepository.find({
       relations: { rooms: { assignments: true } },
       order: { name: 'ASC', rooms: { name: 'ASC' } },
     });
     return houses.map(house => this.mapHouse(house));
+  }
+
+  private async seedDefaultsIfEmpty(): Promise<void> {
+    const count = await this.housesRepository.count();
+    if (count > 0) return;
+
+    for (const house of DEFAULT_HOUSES) {
+      const saved = await this.housesRepository.save(this.housesRepository.create({
+        name: house.name,
+      }));
+      for (const room of house.rooms) {
+        await this.roomsRepository.save(this.roomsRepository.create({
+          houseId: saved.id,
+          name: room.name,
+          bedType: room.bedType,
+          beds: room.beds,
+        }));
+      }
+    }
   }
 
   async createHouse(input: { name: string }): Promise<House[]> {
