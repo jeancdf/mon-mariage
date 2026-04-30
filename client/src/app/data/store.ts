@@ -10,7 +10,7 @@ export class WeddingStore {
   readonly tables = signal<Table[]>([]);
   readonly budget = signal<Budget>({ categories: [] });
   readonly todos = signal<TodoGroup[]>([]);
-  readonly theme = signal<ThemeKey>('blanc');
+  readonly theme = signal<ThemeKey>('nuit');
 
   readonly confirmedCount = computed(() =>
     this.guests().filter(g => g.rsvp === 'confirmed').length,
