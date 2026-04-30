@@ -2,17 +2,14 @@ import { Injectable, computed, signal } from '@angular/core';
 import {
   Budget, BudgetCategory, BudgetItem, Guest, House, Room, Table, TodoGroup, Task, ThemeKey,
 } from './types';
-import {
-  INITIAL_BUDGET, INITIAL_GUESTS, INITIAL_HOUSES, INITIAL_TABLES, INITIAL_TODOS,
-} from './seed';
 
 @Injectable({ providedIn: 'root' })
 export class WeddingStore {
-  readonly guests = signal<Guest[]>(INITIAL_GUESTS);
-  readonly houses = signal<House[]>(INITIAL_HOUSES);
-  readonly tables = signal<Table[]>(INITIAL_TABLES);
-  readonly budget = signal<Budget>(INITIAL_BUDGET);
-  readonly todos = signal<TodoGroup[]>(INITIAL_TODOS);
+  readonly guests = signal<Guest[]>([]);
+  readonly houses = signal<House[]>([]);
+  readonly tables = signal<Table[]>([]);
+  readonly budget = signal<Budget>({ categories: [] });
+  readonly todos = signal<TodoGroup[]>([]);
   readonly theme = signal<ThemeKey>('blanc');
 
   readonly confirmedCount = computed(() =>
