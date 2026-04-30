@@ -15,6 +15,13 @@ export class SeatingApiService {
     return firstValueFrom(this.http.post<Table[]>('/api/seating/tables', table));
   }
 
+  async updateTable(table: Pick<Table, 'id' | 'name' | 'seats'>): Promise<Table[]> {
+    return firstValueFrom(this.http.patch<Table[]>(`/api/seating/tables/${table.id}`, {
+      name: table.name,
+      seats: table.seats,
+    }));
+  }
+
   async deleteTable(id: string): Promise<Table[]> {
     return firstValueFrom(this.http.delete<Table[]>(`/api/seating/tables/${id}`));
   }

@@ -15,7 +15,7 @@ Depuis la racine du repo :
 docker compose up -d postgres
 ```
 
-La base est exposée sur `localhost:5433` pour éviter les conflits avec une installation Postgres locale.
+La base est exposée sur `localhost:5432` par défaut. Pour utiliser un autre port hôte, définissez `POSTGRES_HOST_PORT` avant de lancer Docker Compose.
 
 ## Configuration
 

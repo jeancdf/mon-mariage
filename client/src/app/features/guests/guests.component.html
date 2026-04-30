@@ -29,18 +29,18 @@
   }
 
   <div class="filters">
-    <input class="search-input" [(ngModel)]="search" placeholder="Rechercher un invité" />
+    <input class="search-input" [ngModel]="search()" (ngModelChange)="search.set($event)" placeholder="Rechercher un invité" />
     <div class="chip-row">
-      <button class="chip" type="button" [class.active]="categoryFilter === 'all'" (click)="categoryFilter = 'all'">Tous</button>
+      <button class="chip" type="button" [class.active]="categoryFilter() === 'all'" (click)="categoryFilter.set('all')">Tous</button>
       @for (category of categoryOptions; track category.value) {
-        <button class="chip" type="button" [class.active]="categoryFilter === category.value" (click)="categoryFilter = category.value">{{ category.short }}</button>
+        <button class="chip" type="button" [class.active]="categoryFilter() === category.value" (click)="categoryFilter.set(category.value)">{{ category.short }}</button>
       }
     </div>
     <div class="chip-row push">
-      <button class="chip" type="button" [class.active]="rsvpFilter === 'all'" (click)="rsvpFilter = 'all'">Tous RSVP</button>
-      <button class="chip" type="button" [class.active]="rsvpFilter === 'confirmed'" (click)="rsvpFilter = 'confirmed'">Confirmés</button>
-      <button class="chip" type="button" [class.active]="rsvpFilter === 'pending'" (click)="rsvpFilter = 'pending'">En attente</button>
-      <button class="chip" type="button" [class.active]="rsvpFilter === 'declined'" (click)="rsvpFilter = 'declined'">Déclinés</button>
+      <button class="chip" type="button" [class.active]="rsvpFilter() === 'all'" (click)="rsvpFilter.set('all')">Tous RSVP</button>
+      <button class="chip" type="button" [class.active]="rsvpFilter() === 'confirmed'" (click)="rsvpFilter.set('confirmed')">Confirmés</button>
+      <button class="chip" type="button" [class.active]="rsvpFilter() === 'pending'" (click)="rsvpFilter.set('pending')">En attente</button>
+      <button class="chip" type="button" [class.active]="rsvpFilter() === 'declined'" (click)="rsvpFilter.set('declined')">Déclinés</button>
     </div>
   </div>
 

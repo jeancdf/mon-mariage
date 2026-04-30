@@ -1,75 +1,99 @@
-<section class="page page-wide">
-  <header class="page-header split">
-    <div>
-      <h1>Plan de table</h1>
-      <p>{{ totals().placed }} / {{ totals().totalSeats }} places · {{ unplacedGuests().length }} confirmés non placés</p>
-    </div>
-    <button class="btn primary" type="button" (click)="addingTable = true">
-      <app-icon name="plus" /> Ajouter une table
-    </button>
-  </header>
+<section class="split-pane">
+  <app-guest-sidebar
+    label="Non placés"
+    [guests]="unplacedGuests()"
+    [(selectedId)]="selectedGuestId" />
 
-  @if (unplacedGuests().length) {
-    <div class="notice">
-      <div class="eyebrow">Non placés · confirmés ({{ unplacedGuests().length }})</div>
-      <div class="mini-list">
-        @for (guest of unplacedGuests(); track guest.id) {
-          <button class="mini-pill selectable" type="button" [class.active]="selectedGuestId === guest.id" (click)="selectedGuestId = selectedGuestId === guest.id ? null : guest.id">
-            {{ guest.firstName }} {{ guest.lastName }}
-          </button>
-        }
+  <div class="split-pane-main">
+    <header class="page-header split">
+      <div>
+        <h1>Plan de table</h1>
+        <p>{{ totals().placed }} / {{ totals().totalSeats }} places · {{ unplacedGuests().length }} non placés</p>
       </div>
-    </div>
-  }
+      <button class="btn primary" type="button" (click)="addingTable = true">
+        <app-icon name="plus" /> Ajouter une table
+      </button>
+    </header>
 
-  @if (addingTable) {
-    <div class="inline-panel">
-      <input autofocus [(ngModel)]="tableForm.name" placeholder="Nom de la table" />
-      <input class="number-input" type="number" min="2" max="40" [(ngModel)]="tableForm.seats" placeholder="Places" />
-      <button class="btn primary" type="button" (click)="addTable()">Ajouter</button>
-      <button class="btn secondary" type="button" (click)="addingTable = false">Annuler</button>
-    </div>
-  }
-
-  <div class="table-grid">
-    @for (table of store.tables(); track table.id) {
-      @let full = table.guestIds.length >= table.seats;
-      @let canPlace = selectedGuestId && !full && !table.guestIds.includes(selectedGuestId);
-      <article class="seating-card" [class.can-place]="canPlace" (click)="placeGuest(table.id, full)">
-        <header>
-          <strong>{{ table.name }}</strong>
-          <span [class.full]="full">{{ table.guestIds.length }}/{{ table.seats }}</span>
-          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteTable(table.id)" aria-label="Supprimer la table">
-            <app-icon name="trash" />
-          </button>
-        </header>
-
-        <div class="seat-dots">
-          @for (_ of [].constructor(table.seats); track $index) {
-            @let guestId = table.guestIds[$index];
-            @let guest = guestId ? guestById(guestId) : undefined;
-            <button
-              type="button"
-              class="seat-dot"
-              [class.occupied]="guest"
-              [attr.title]="guest ? guest.firstName + ' ' + guest.lastName : 'Place libre'"
-              (click)="$event.stopPropagation(); guest ? removeGuest(guest.id) : null">
-              {{ initials(guest) }}
-            </button>
-          }
-        </div>
-
-        @if (table.guestIds.length) {
-          <p class="seated-names">
-            @for (guestId of table.guestIds; track guestId) {
-              @let guest = guestById(guestId);
-              @if (guest) {
-                <span>{{ guest.firstName }} {{ guest.lastName }}</span>
-              }
-            }
-          </p>
-        }
-      </article>
+    @if (selectedGuest(); as guest) {
+      <div class="select-banner">
+        <strong>{{ guest.firstName }} {{ guest.lastName }}</strong>
+        <span>sélectionné · cliquez sur une table pour placer</span>
+        <button type="button" class="select-banner-close" (click)="clearSelection()" aria-label="Annuler la sélection">
+          <app-icon name="x" />
+        </button>
+      </div>
     }
+
+    @if (addingTable) {
+      <div class="inline-panel">
+        <input autofocus [(ngModel)]="tableForm.name" placeholder="Nom de la table…" />
+        <input class="number-input" type="number" min="2" max="40" [(ngModel)]="tableForm.seats" placeholder="Places" />
+        <button class="btn primary" type="button" (click)="addTable()">Ajouter</button>
+        <button class="btn secondary" type="button" (click)="addingTable = false">Annuler</button>
+      </div>
+    }
+
+    <div class="table-grid">
+      @for (table of store.tables(); track table.id) {
+        @let full = table.guestIds.length >= table.seats;
+        @let canPlaceHere = canPlace(table);
+        <article
+          class="seating-card"
+          [class.can-place]="canPlaceHere"
+          (click)="placeSelected(table)">
+          <header>
+            <strong>{{ table.name }}</strong>
+            <span [class.full]="full">{{ table.guestIds.length }}/{{ table.seats }}</span>
+            <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditing(table)" aria-label="Modifier la table">
+              <app-icon name="edit" />
+            </button>
+            <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteTable(table.id)" aria-label="Supprimer la table">
+              <app-icon name="trash" />
+            </button>
+          </header>
+
+          @if (editingTableId === table.id) {
+            <div class="inline-form table-edit-form" (click)="$event.stopPropagation()">
+              <input [(ngModel)]="editTableForm.name" placeholder="Nom de la table" />
+              <input class="number-input" type="number" min="2" max="40" [(ngModel)]="editTableForm.seats" placeholder="Places" />
+              <button class="btn primary small" type="button" (click)="saveTable(table)">OK</button>
+              <button class="btn secondary small" type="button" (click)="cancelEditing()">Annuler</button>
+            </div>
+          }
+
+          <div class="seat-dots">
+            @for (_ of [].constructor(table.seats); track $index) {
+              @let guestId = table.guestIds[$index];
+              @let guest = guestId ? guestById(guestId) : undefined;
+              <button
+                type="button"
+                class="seat-dot"
+                [class.occupied]="guest"
+                [class.can-place]="!guest && canPlaceHere"
+                [attr.title]="guest ? guest.firstName + ' ' + guest.lastName + ' — cliquer pour retirer' : 'Place libre'"
+                (click)="handleSeatClick(table, guest, $event)">
+                {{ initials(guest) }}
+              </button>
+            }
+          </div>
+
+          @if (table.guestIds.length) {
+            <p class="seated-names">
+              @for (id of table.guestIds; track id; let last = $last) {
+                @let guest = guestById(id);
+                @if (guest) {
+                  <span>{{ guest.firstName }} {{ guest.lastName }}{{ !last ? ' · ' : '' }}</span>
+                }
+              }
+            </p>
+          }
+
+          @if (canPlaceHere) {
+            <div class="card-cta">Cliquer pour placer</div>
+          }
+        </article>
+      }
+    </div>
   </div>
 </section>

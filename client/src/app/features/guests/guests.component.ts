@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, inject, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Guest, GuestCategory, Rsvp } from '../../data/types';
 import { WeddingStore } from '../../data/store';
@@ -25,9 +25,9 @@ export class GuestsComponent {
   readonly rsvpLabels = RSVP_LABELS;
   readonly eventLabels = EVENT_LABELS;
 
-  search = '';
-  categoryFilter: GuestCategory | 'all' = 'all';
-  rsvpFilter: Rsvp | 'all' = 'all';
+  readonly search = signal('');
+  readonly categoryFilter = signal<GuestCategory | 'all'>('all');
+  readonly rsvpFilter = signal<Rsvp | 'all'>('all');
   editingGuest: Guest | null = null;
   isAdding = false;
   importError = '';
@@ -35,10 +35,12 @@ export class GuestsComponent {
   isImporting = false;
 
   readonly filteredGuests = computed(() => {
-    const query = this.search.trim().toLowerCase();
+    const query = this.search().trim().toLowerCase();
+    const cat = this.categoryFilter();
+    const rsvp = this.rsvpFilter();
     return this.store.guests().filter(guest => {
-      if (this.categoryFilter !== 'all' && guest.category !== this.categoryFilter) return false;
-      if (this.rsvpFilter !== 'all' && guest.rsvp !== this.rsvpFilter) return false;
+      if (cat !== 'all' && guest.category !== cat) return false;
+      if (rsvp !== 'all' && guest.rsvp !== rsvp) return false;
       return !query || `${guest.firstName} ${guest.lastName}`.toLowerCase().includes(query);
     });
   });

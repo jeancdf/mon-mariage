@@ -1,107 +1,139 @@
-<section class="page">
-  <header class="page-header split">
-    <div>
-      <h1>Hébergement</h1>
-      <p>{{ totals().occupied }} / {{ totals().totalBeds }} places occupées · {{ unassignedGuests().length }} invités sans logement</p>
-    </div>
-    <button class="btn primary" type="button" (click)="addingHouse = true">
-      <app-icon name="plus" /> Ajouter une maison
-    </button>
-  </header>
+<section class="split-pane">
+  <app-guest-sidebar
+    label="Sans logement"
+    [guests]="unassignedGuests()"
+    [(selectedId)]="selectedGuestId" />
 
-  @if (unassignedGuests().length) {
-    <div class="notice">
-      <div class="eyebrow">Sans logement ({{ unassignedGuests().length }})</div>
-      <div class="mini-list">
-        @for (guest of unassignedGuests(); track guest.id) {
-          <app-badge [variant]="guest.rsvp">{{ guest.firstName }} {{ guest.lastName }}</app-badge>
-        }
+  <div class="split-pane-main">
+    <header class="page-header split">
+      <div>
+        <h1>Hébergement</h1>
+        <p>{{ totals().occupied }} / {{ totals().totalBeds }} places · {{ unassignedGuests().length }} sans logement</p>
       </div>
-    </div>
-  }
+      <button class="btn primary" type="button" (click)="addingHouse = true">
+        <app-icon name="plus" /> Ajouter une maison
+      </button>
+    </header>
 
-  @if (addingHouse) {
-    <div class="inline-panel">
-      <input autofocus [(ngModel)]="houseName" placeholder="Nom de la maison" (keydown.enter)="addHouse()" />
-      <button class="btn primary" type="button" (click)="addHouse()">Ajouter</button>
-      <button class="btn secondary" type="button" (click)="addingHouse = false">Annuler</button>
-    </div>
-  }
+    @if (selectedGuest(); as guest) {
+      <div class="select-banner">
+        <strong>{{ guest.firstName }} {{ guest.lastName }}</strong>
+        <span>sélectionné · cliquez sur une chambre pour assigner</span>
+        <button type="button" class="select-banner-close" (click)="clearSelection()" aria-label="Annuler la sélection">
+          <app-icon name="x" />
+        </button>
+      </div>
+    }
 
-  <div class="stack">
-    @for (house of store.houses(); track house.id) {
-      @let open = expanded[house.id] !== false;
-      <article class="collapsible">
-        <header class="collapsible-header" (click)="toggleHouse(house.id)">
-          <app-icon class="chevron" [class.closed]="!open" name="chevron" />
-          <strong>{{ house.name }}</strong>
-          <span>{{ house.rooms.length }} chambres · {{ houseOccupied(house) }}/{{ houseCapacity(house) }} places</span>
-          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteHouse(house.id)" aria-label="Supprimer la maison">
-            <app-icon name="trash" />
-          </button>
-        </header>
+    @if (addingHouse) {
+      <div class="inline-panel">
+        <input autofocus [(ngModel)]="houseName" placeholder="Nom de la maison…" (keydown.enter)="addHouse()" />
+        <button class="btn primary" type="button" (click)="addHouse()">Ajouter</button>
+        <button class="btn secondary" type="button" (click)="addingHouse = false">Annuler</button>
+      </div>
+    }
 
-        @if (open) {
-          <div class="collapsible-body">
-            <div class="card-grid">
-              @for (room of house.rooms; track room.id) {
-                <article class="room-card">
-                  <header>
-                    <app-icon name="bed" />
-                    <strong>{{ room.name }}</strong>
-                    <span>{{ bedLabel(room) }}</span>
-                    <button class="icon-button danger" type="button" (click)="deleteRoom(room.id)" aria-label="Supprimer la chambre">
-                      <app-icon name="trash" />
-                    </button>
-                  </header>
+    <div class="stack">
+      @for (house of store.houses(); track house.id) {
+        @let open = expanded[house.id] !== false;
+        @let houseFull = isHouseFull(house);
+        <article class="collapsible" [class.complete]="houseFull">
+          <header class="collapsible-header" (click)="toggleHouse(house.id)">
+            <app-icon class="chevron" [class.closed]="!open" name="chevron" />
+            <strong>{{ house.name }}</strong>
+            @if (houseFull) {
+              <span class="status-badge complete">Complète</span>
+            }
+            <span class="house-count" [class.full]="houseFull">{{ house.rooms.length }} chambre{{ house.rooms.length !== 1 ? 's' : '' }} · {{ houseOccupied(house) }}/{{ houseCapacity(house) }} places</span>
+            <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteHouse(house.id)" aria-label="Supprimer la maison">
+              <app-icon name="trash" />
+            </button>
+          </header>
 
-                  @if (room.guestIds.length) {
-                    <div class="mini-list">
-                      @for (guestId of room.guestIds; track guestId) {
-                        @let guest = guestById(guestId);
-                        @if (guest) {
-                          <span class="mini-pill">
-                            {{ guest.firstName }} {{ guest.lastName }}
-                            <button type="button" (click)="assignGuestRoom(guestId, null)" aria-label="Retirer">
-                              <app-icon name="x" [size]="11" />
-                            </button>
-                          </span>
+          @if (open) {
+            <div class="collapsible-body">
+              <div class="card-grid">
+                @for (room of house.rooms; track room.id) {
+                  @let canAssign = canAssignRoom(room);
+                  @let editing = editingRoomId === room.id;
+                  @let full = isRoomFull(room);
+                  <article
+                    class="room-card"
+                    [class.can-assign]="canAssign"
+                    [class.full]="full && !editing"
+                    (click)="assignSelectedToRoom(room)">
+                    <header>
+                      <app-icon name="bed" />
+                      <strong>{{ room.name }}</strong>
+                      <span class="room-count" [class.full]="full">{{ room.guestIds.length }}/{{ roomCapacity(room) }} · {{ bedLabel(room) }}</span>
+                      <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditingRoom(room)" aria-label="Modifier la chambre">
+                        <app-icon name="edit" />
+                      </button>
+                      <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteRoom(room.id)" aria-label="Supprimer la chambre">
+                        <app-icon name="trash" />
+                      </button>
+                    </header>
+
+                    @if (editing) {
+                      <div class="inline-form room-form" (click)="$event.stopPropagation()">
+                        <input autofocus [(ngModel)]="editRoomForm.name" placeholder="Nom de la chambre" />
+                        <select [(ngModel)]="editRoomForm.bedType">
+                          <option value="double">Lit double</option>
+                          <option value="single">Lit(s) simple(s)</option>
+                        </select>
+                        <input class="number-input" type="number" min="1" max="8" [(ngModel)]="editRoomForm.beds" />
+                        <button class="btn primary small" type="button" (click)="saveRoom(room)">OK</button>
+                        <button class="btn secondary small" type="button" (click)="cancelEditingRoom()">Annuler</button>
+                      </div>
+                    }
+
+                    @if (room.guestIds.length) {
+                      <div class="room-guests">
+                        @for (guestId of room.guestIds; track guestId) {
+                          @let guest = guestById(guestId);
+                          @if (guest) {
+                            <div class="room-guest">
+                              <span>{{ guest.firstName }} {{ guest.lastName }}</span>
+                              <button type="button" (click)="$event.stopPropagation(); assignGuestRoom(guestId, null)" aria-label="Retirer">
+                                <app-icon name="x" [size]="11" />
+                              </button>
+                            </div>
+                          }
                         }
-                      }
-                    </div>
-                  }
+                      </div>
+                    } @else if (!canAssign && !editing) {
+                      <div class="room-empty">Chambre vide</div>
+                    }
 
-                  @if (unassignedGuests().length) {
-                    <select class="dashed-select" (change)="assignGuestRoom($any($event.target).value, room.id); $any($event.target).value = ''">
-                      <option value="">+ Assigner un invité</option>
-                      @for (guest of unassignedGuests(); track guest.id) {
-                        <option [value]="guest.id">{{ guest.firstName }} {{ guest.lastName }}</option>
-                      }
-                    </select>
-                  }
-                </article>
+                    @if (canAssign) {
+                      <div class="room-cta">Cliquer pour assigner</div>
+                    } @else if (full && selectedGuestId && !editing && !room.guestIds.includes(selectedGuestId)) {
+                      <div class="room-cta room-cta-muted">Chambre complète</div>
+                    }
+                  </article>
+                }
+              </div>
+
+              @if (addingRoomFor === house.id) {
+                <div class="inline-form room-form" (click)="$event.stopPropagation()">
+                  <input autofocus [(ngModel)]="roomForm.name" placeholder="Nom de la chambre" />
+                  <select [(ngModel)]="roomForm.bedType">
+                    <option value="double">Lit double</option>
+                    <option value="single">Lit(s) simple(s)</option>
+                  </select>
+                  <input class="number-input" type="number" min="1" max="8" [(ngModel)]="roomForm.beds" />
+                  <button class="btn primary small" type="button" (click)="addRoom(house.id)">OK</button>
+                  <button class="btn secondary small" type="button" (click)="addingRoomFor = null">✕</button>
+                </div>
+              } @else {
+                <button class="btn ghost small" type="button" (click)="addingRoomFor = house.id">
+                  <app-icon name="plus" /> Ajouter une chambre
+                </button>
               }
             </div>
-
-            @if (addingRoomFor === house.id) {
-              <div class="inline-form room-form">
-                <input autofocus [(ngModel)]="roomForm.name" placeholder="Nom de la chambre" />
-                <select [(ngModel)]="roomForm.bedType">
-                  <option value="double">Lit double</option>
-                  <option value="single">Lit simple</option>
-                </select>
-                <input class="number-input" type="number" min="1" max="8" [(ngModel)]="roomForm.beds" />
-                <button class="btn primary small" type="button" (click)="addRoom(house.id)">OK</button>
-                <button class="btn secondary small" type="button" (click)="addingRoomFor = null">Annuler</button>
-              </div>
-            } @else {
-              <button class="btn ghost small" type="button" (click)="addingRoomFor = house.id">
-                <app-icon name="plus" /> Ajouter une chambre
-              </button>
-            }
-          </div>
-        }
-      </article>
-    }
+          }
+        </article>
+      }
+    </div>
   </div>
 </section>

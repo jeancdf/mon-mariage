@@ -4,7 +4,10 @@
       "WebFetch(domain:api.anthropic.com)",
       "Bash(mkdir -p /tmp/design-extract)",
       "Bash(tar -xf /tmp/design1.out -C /tmp/design-extract)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(mkdir -p /tmp/design-fetch)",
+      "Bash(gunzip -c /home/jeanc/.claude/projects/-mnt-c-Users-jeanc-Documents-Side-Project-mon-mariage/906f4f1a-d60a-4497-a562-8603022bd6e7/tool-results/webfetch-1777587687529-oud42m.bin)",
+      "Bash(npx ng *)"
     ]
   }
 }
