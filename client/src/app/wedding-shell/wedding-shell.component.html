@@ -34,6 +34,13 @@
       <div class="sidebar-count">{{ store.confirmedCount() }}</div>
       <div>invités confirmés</div>
     </div>
+
+    @if (deploymentMetadata(); as deployment) {
+      <div class="deploy-meta">
+        <strong>Version {{ deployment.version }}</strong>
+        <time [attr.datetime]="deployment.deployedAt">{{ deployedAtLabel() }}</time>
+      </div>
+    }
   </aside>
 
   <main class="main-panel">

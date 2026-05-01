@@ -49,6 +49,10 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        DEPLOY_SHA: ${DEPLOY_SHA:-local}
+        DEPLOY_VERSION: ${DEPLOY_VERSION:-0}
+        DEPLOYED_AT: ${DEPLOYED_AT:-local}
     restart: unless-stopped
     depends_on:
       backend:

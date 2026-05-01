@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { NgStyle } from '@angular/common';
 import { ThemeKey } from '../data/types';
 import { BudgetApiService } from '../data/budget-api.service';
@@ -17,6 +17,12 @@ import { TodosComponent } from '../features/todos/todos.component';
 import { VendorsComponent } from '../features/vendors/vendors.component';
 import { IconComponent } from '../shared/icon.component';
 import { NAV_ITEMS, PageId, THEMES, THEME_KEYS } from '../shared/wedding-utils';
+
+interface DeploymentMetadata {
+  readonly deployedAt: string;
+  readonly revision: string;
+  readonly version: number;
+}
 
 @Component({
   selector: 'app-wedding-shell',
@@ -45,10 +51,12 @@ export class WeddingShellComponent {
   readonly navItems = NAV_ITEMS;
   readonly themeKeys = THEME_KEYS;
   readonly themes = THEMES;
+  readonly deploymentMetadata = signal<DeploymentMetadata | null>(null);
   page: PageId = 'dashboard';
 
   constructor() {
     void this.loadInitialData();
+    void this.loadDeploymentMetadata();
   }
 
   readonly themeVars = computed(() => {
@@ -68,6 +76,37 @@ export class WeddingShellComponent {
 
   setTheme(theme: ThemeKey): void {
     this.store.setTheme(theme);
+  }
+
+  readonly deployedAtLabel = computed(() => {
+    const deployedAt = this.deploymentMetadata()?.deployedAt;
+    if (!deployedAt) {
+      return '';
+    }
+
+    const date = new Date(deployedAt);
+    if (Number.isNaN(date.getTime())) {
+      return deployedAt;
+    }
+
+    return new Intl.DateTimeFormat('fr-FR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(date);
+  });
+
+  private async loadDeploymentMetadata(): Promise<void> {
+    try {
+      const response = await fetch('/deploy-version.json', { cache: 'no-store' });
+      if (!response.ok) {
+        return;
+      }
+
+      const metadata = (await response.json()) as DeploymentMetadata;
+      this.deploymentMetadata.set(metadata);
+    } catch {
+      // The metadata file only exists in the production Docker image.
+    }
   }
 
   private async loadInitialData(): Promise<void> {
