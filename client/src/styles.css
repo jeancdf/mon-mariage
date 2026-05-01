@@ -613,6 +613,60 @@ input::placeholder {
   color: #b91c1c;
 }
 
+/* Guest category colors — applied via [data-cat] on .badge, .guest-row-cat, .guest-avatar */
+.badge[data-cat='famille-moi'],
+.guest-row-cat[data-cat='famille-moi'] {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.18);
+  color: #1d4ed8;
+}
+.badge[data-cat='famille-elle'],
+.guest-row-cat[data-cat='famille-elle'] {
+  background: rgba(236, 72, 153, 0.14);
+  border-color: rgba(236, 72, 153, 0.18);
+  color: #be185d;
+}
+.badge[data-cat='amis'],
+.guest-row-cat[data-cat='amis'] {
+  background: rgba(13, 148, 136, 0.14);
+  border-color: rgba(13, 148, 136, 0.18);
+  color: #0f766e;
+}
+.badge[data-cat='temoins'],
+.guest-row-cat[data-cat='temoins'] {
+  background: rgba(139, 92, 246, 0.16);
+  border-color: rgba(139, 92, 246, 0.2);
+  color: #6d28d9;
+}
+.badge[data-cat='enfants'],
+.guest-row-cat[data-cat='enfants'] {
+  background: rgba(249, 115, 22, 0.14);
+  border-color: rgba(249, 115, 22, 0.18);
+  color: #c2410c;
+}
+
+.guest-row-cat {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.guest-avatar[data-cat='famille-moi'] { background: rgba(37, 99, 235, 0.2); color: #1d4ed8; }
+.guest-avatar[data-cat='famille-elle'] { background: rgba(236, 72, 153, 0.2); color: #be185d; }
+.guest-avatar[data-cat='amis'] { background: rgba(13, 148, 136, 0.2); color: #0f766e; }
+.guest-avatar[data-cat='temoins'] { background: rgba(139, 92, 246, 0.22); color: #6d28d9; }
+.guest-avatar[data-cat='enfants'] { background: rgba(249, 115, 22, 0.2); color: #c2410c; }
+
+.guest-row.active .guest-row-cat,
+.guest-row.active .guest-avatar {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: transparent;
+  color: var(--accent-fg);
+}
+
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

@@ -45,11 +45,12 @@ interface CategoryOption {
             type="button"
             class="guest-row"
             [class.active]="selectedId() === guest.id"
+            [attr.data-cat]="guest.category"
             (click)="toggle(guest.id)">
-            <span class="guest-avatar">{{ initials(guest) }}</span>
+            <span class="guest-avatar" [attr.data-cat]="guest.category">{{ initials(guest) }}</span>
             <span class="guest-row-text">
               <span class="guest-row-name">{{ guest.firstName }} {{ guest.lastName }}</span>
-              <span class="guest-row-cat">{{ guest.isPlusOne ? '+1 · ' : '' }}{{ catShort(guest.category) }}</span>
+              <span class="guest-row-cat" [attr.data-cat]="guest.category">{{ guest.isPlusOne ? '+1 · ' : '' }}{{ catShort(guest.category) }}</span>
             </span>
           </button>
         }

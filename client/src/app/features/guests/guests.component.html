@@ -69,7 +69,7 @@
                 <small>{{ guest.dietary }}</small>
               }
             </td>
-            <td><app-badge>{{ cats[guest.category].short }}</app-badge></td>
+            <td><app-badge [category]="guest.category">{{ cats[guest.category].short }}</app-badge></td>
             <td><app-badge [variant]="guest.rsvp">{{ rsvpLabels[guest.rsvp] }}</app-badge></td>
             <td>
               @if (guest.kids.length) {
