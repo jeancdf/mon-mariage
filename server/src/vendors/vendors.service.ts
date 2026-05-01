@@ -40,7 +40,6 @@ export class VendorsService {
 
   private normalize(input: Partial<Vendor>): Partial<VendorEntity> {
     return {
-      ...(input.id ? { id: input.id } : {}),
       category: input.category!,
       name: String(input.name ?? '').trim(),
       contactName: String(input.contactName ?? '').trim(),
