@@ -9,11 +9,12 @@ import { CATEGORY_OPTIONS } from '../../shared/wedding-utils';
 import { GuestModalComponent } from './guest-modal.component';
 import { parseGuestWorkbook } from './guest-import';
 import { GuestApiService } from '../../data/guest-api.service';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 
 @Component({
   selector: 'app-guests',
   standalone: true,
-  imports: [FormsModule, BadgeComponent, IconComponent, GuestModalComponent],
+  imports: [FormsModule, BadgeComponent, IconComponent, GuestModalComponent, ConfirmDialogComponent],
   templateUrl: './guests.component.html',
 })
 export class GuestsComponent {
@@ -33,6 +34,7 @@ export class GuestsComponent {
   importError = '';
   importMessage = '';
   isImporting = false;
+  guestPendingDeletion: Guest | null = null;
 
   readonly filteredGuests = computed(() => {
     const query = this.search().trim().toLowerCase();
@@ -41,7 +43,8 @@ export class GuestsComponent {
     return this.store.guests().filter(guest => {
       if (cat !== 'all' && guest.category !== cat) return false;
       if (rsvp !== 'all' && guest.rsvp !== rsvp) return false;
-      return !query || `${guest.firstName} ${guest.lastName}`.toLowerCase().includes(query);
+      const searchableName = `${guest.firstName} ${guest.lastName} ${guest.plusOneName}`.toLowerCase();
+      return !query || searchableName.includes(query);
     });
   });
 
@@ -70,7 +73,22 @@ export class GuestsComponent {
     }
   }
 
-  async deleteGuest(id: string): Promise<void> {
+  requestDeleteGuest(guest: Guest): void {
+    this.guestPendingDeletion = guest;
+  }
+
+  cancelDeleteGuest(): void {
+    this.guestPendingDeletion = null;
+  }
+
+  async confirmDeleteGuest(): Promise<void> {
+    const guest = this.guestPendingDeletion;
+    if (!guest) return;
+    this.guestPendingDeletion = null;
+    await this.deleteGuest(guest.id);
+  }
+
+  private async deleteGuest(id: string): Promise<void> {
     try {
       await this.guestApi.deleteGuest(id);
       this.store.deleteGuest(id);

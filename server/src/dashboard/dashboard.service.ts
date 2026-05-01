@@ -51,9 +51,14 @@ export class DashboardService {
       this.todosService.findAll(),
     ]);
 
-    const confirmed = guests.filter(guest => guest.rsvp === 'confirmed').length;
-    const pending = guests.filter(guest => guest.rsvp === 'pending').length;
-    const declined = guests.filter(guest => guest.rsvp === 'declined').length;
+    const guestPartySize = (guest: { hasPlusOne: boolean }) => guest.hasPlusOne ? 2 : 1;
+    const countGuestsByRsvp = (rsvp: 'confirmed' | 'pending' | 'declined') =>
+      guests
+        .filter(guest => guest.rsvp === rsvp)
+        .reduce((sum, guest) => sum + guestPartySize(guest), 0);
+    const confirmed = countGuestsByRsvp('confirmed');
+    const pending = countGuestsByRsvp('pending');
+    const declined = countGuestsByRsvp('declined');
     const totalBeds = houses.reduce((sum, house) =>
       sum + house.rooms.reduce((roomSum, room) => roomSum + room.beds * (room.bedType === 'double' ? 2 : 1), 0), 0);
     const occupiedBeds = houses.reduce((sum, house) =>
@@ -73,7 +78,7 @@ export class DashboardService {
 
     return {
       guests: {
-        total: guests.length,
+        total: guests.reduce((sum, guest) => sum + guestPartySize(guest), 0),
         confirmed,
         pending,
         declined,

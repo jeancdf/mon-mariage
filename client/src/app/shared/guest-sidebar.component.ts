@@ -1,7 +1,8 @@
 import { Component, computed, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Guest, GuestCategory } from '../data/types';
+import { GuestCategory } from '../data/types';
 import { CATS } from '../data/seed';
+import { GuestPerson } from './wedding-utils';
 
 interface CategoryOption {
   value: 'all' | GuestCategory;
@@ -48,7 +49,7 @@ interface CategoryOption {
             <span class="guest-avatar">{{ initials(guest) }}</span>
             <span class="guest-row-text">
               <span class="guest-row-name">{{ guest.firstName }} {{ guest.lastName }}</span>
-              <span class="guest-row-cat">{{ catShort(guest.category) }}</span>
+              <span class="guest-row-cat">{{ guest.isPlusOne ? '+1 · ' : '' }}{{ catShort(guest.category) }}</span>
             </span>
           </button>
         }
@@ -57,7 +58,7 @@ interface CategoryOption {
   `,
 })
 export class GuestSidebarComponent {
-  readonly guests = input.required<Guest[]>();
+  readonly guests = input.required<GuestPerson[]>();
   readonly label = input('');
   readonly selectedId = model<string | null>(null);
 
@@ -79,7 +80,7 @@ export class GuestSidebarComponent {
     });
   });
 
-  initials(guest: Guest): string {
+  initials(guest: GuestPerson): string {
     return `${guest.firstName[0] ?? ''}${guest.lastName[0] ?? ''}`;
   }
 

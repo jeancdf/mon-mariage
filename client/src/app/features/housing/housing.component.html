@@ -45,7 +45,7 @@
               <span class="status-badge complete">Complète</span>
             }
             <span class="house-count" [class.full]="houseFull">{{ house.rooms.length }} chambre{{ house.rooms.length !== 1 ? 's' : '' }} · {{ houseOccupied(house) }}/{{ houseCapacity(house) }} places</span>
-            <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteHouse(house.id)" aria-label="Supprimer la maison">
+            <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteHouse(house)" aria-label="Supprimer la maison">
               <app-icon name="trash" />
             </button>
           </header>
@@ -93,7 +93,7 @@
                           @let guest = guestById(guestId);
                           @if (guest) {
                             <div class="room-guest">
-                              <span>{{ guest.firstName }} {{ guest.lastName }}</span>
+                              <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isPlusOne ? ' (+1)' : '' }}</span>
                               <button type="button" (click)="$event.stopPropagation(); assignGuestRoom(guestId, null)" aria-label="Retirer">
                                 <app-icon name="x" [size]="11" />
                               </button>
@@ -136,4 +136,14 @@
       }
     </div>
   </div>
+
+  @if (housePendingDeletion; as house) {
+    <app-confirm-dialog
+      title="Supprimer cette maison ?"
+      [message]="'Supprimer la maison ' + house.name + ' ?'"
+      details="Toutes ses chambres seront supprimées et les invités hébergés redeviendront sans logement."
+      titleId="confirm-delete-house-title"
+      (cancel)="cancelDeleteHouse()"
+      (confirm)="confirmDeleteHouse()" />
+  }
 </section>

@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
+import { RoomGuestEntity } from '../housing/room-guest.entity';
+import { TableGuestEntity } from '../seating/table-guest.entity';
 import { GuestEntity } from './guest.entity';
 
 type GuestInput = Omit<GuestEntity, 'id'> & { id?: string };
@@ -10,6 +12,10 @@ export class GuestsService {
   constructor(
     @InjectRepository(GuestEntity)
     private readonly guestsRepository: Repository<GuestEntity>,
+    @InjectRepository(RoomGuestEntity)
+    private readonly roomAssignmentsRepository: Repository<RoomGuestEntity>,
+    @InjectRepository(TableGuestEntity)
+    private readonly tableAssignmentsRepository: Repository<TableGuestEntity>,
   ) {}
 
   findAll(): Promise<GuestEntity[]> {
@@ -33,7 +39,11 @@ export class GuestsService {
       ...existing,
       ...rawGuest,
     }));
-    return this.guestsRepository.save(merged);
+    const savedGuest = await this.guestsRepository.save(merged);
+    if (existing.hasPlusOne && !savedGuest.hasPlusOne) {
+      await this.deleteAssignmentsForGuestIds([this.plusOneGuestId(savedGuest.id)]);
+    }
+    return savedGuest;
   }
 
   async delete(id: string): Promise<void> {
@@ -41,6 +51,7 @@ export class GuestsService {
     if (!result.affected) {
       throw new NotFoundException('Guest not found');
     }
+    await this.deleteAssignmentsForGuestIds([id, this.plusOneGuestId(id)]);
   }
 
   async replaceAll(rawGuests: GuestInput[]): Promise<GuestEntity[]> {
@@ -50,11 +61,43 @@ export class GuestsService {
 
     await this.guestsRepository.clear();
     if (!guests.length) {
+      await this.deleteAssignmentsExcept([]);
       return [];
     }
 
     await this.guestsRepository.insert(guests);
-    return this.findAll();
+    const savedGuests = await this.findAll();
+    await this.deleteAssignmentsExcept(savedGuests.flatMap(guest => [
+      guest.id,
+      ...(guest.hasPlusOne ? [this.plusOneGuestId(guest.id)] : []),
+    ]));
+    return savedGuests;
+  }
+
+  private plusOneGuestId(guestId: string): string {
+    return `${guestId}__plus_one`;
+  }
+
+  private async deleteAssignmentsForGuestIds(guestIds: string[]): Promise<void> {
+    await Promise.all([
+      this.roomAssignmentsRepository.delete({ guestId: In(guestIds) }),
+      this.tableAssignmentsRepository.delete({ guestId: In(guestIds) }),
+    ]);
+  }
+
+  private async deleteAssignmentsExcept(validGuestIds: string[]): Promise<void> {
+    if (!validGuestIds.length) {
+      await Promise.all([
+        this.roomAssignmentsRepository.clear(),
+        this.tableAssignmentsRepository.clear(),
+      ]);
+      return;
+    }
+
+    await Promise.all([
+      this.roomAssignmentsRepository.delete({ guestId: Not(In(validGuestIds)) }),
+      this.tableAssignmentsRepository.delete({ guestId: Not(In(validGuestIds)) }),
+    ]);
   }
 
   private normalizeGuest(guest: GuestInput): Omit<GuestEntity, 'id'> {

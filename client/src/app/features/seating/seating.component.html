@@ -48,7 +48,7 @@
             <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditing(table)" aria-label="Modifier la table">
               <app-icon name="edit" />
             </button>
-            <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteTable(table.id)" aria-label="Supprimer la table">
+            <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteTable(table)" aria-label="Supprimer la table">
               <app-icon name="trash" />
             </button>
           </header>
@@ -83,7 +83,7 @@
               @for (id of table.guestIds; track id; let last = $last) {
                 @let guest = guestById(id);
                 @if (guest) {
-                  <span>{{ guest.firstName }} {{ guest.lastName }}{{ !last ? ' · ' : '' }}</span>
+                  <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isPlusOne ? ' (+1)' : '' }}{{ !last ? ' · ' : '' }}</span>
                 }
               }
             </p>
@@ -96,4 +96,14 @@
       }
     </div>
   </div>
+
+  @if (tablePendingDeletion; as table) {
+    <app-confirm-dialog
+      title="Supprimer cette table ?"
+      [message]="'Supprimer la table ' + table.name + ' ?'"
+      details="Les invités placés sur cette table redeviendront non placés."
+      titleId="confirm-delete-table-title"
+      (cancel)="cancelDeleteTable()"
+      (confirm)="confirmDeleteTable()" />
+  }
 </section>

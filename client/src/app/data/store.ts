@@ -2,6 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import {
   Budget, BudgetCategory, BudgetItem, Guest, House, Room, Table, TodoGroup, Task, ThemeKey, Vendor,
 } from './types';
+import { allGuestPeople, plusOneGuestId } from '../shared/wedding-utils';
 
 @Injectable({ providedIn: 'root' })
 export class WeddingStore {
@@ -13,16 +14,38 @@ export class WeddingStore {
   readonly vendors = signal<Vendor[]>([]);
   readonly theme = signal<ThemeKey>('nuit');
 
-  readonly confirmedCount = computed(() =>
-    this.guests().filter(g => g.rsvp === 'confirmed').length,
+  readonly guestCount = computed(() =>
+    this.guests().reduce((count, guest) => count + this.guestPartySize(guest), 0),
   );
+
+  readonly confirmedCount = computed(() =>
+    this.countGuestsByRsvp('confirmed'),
+  );
+
+  readonly pendingCount = computed(() =>
+    this.countGuestsByRsvp('pending'),
+  );
+
+  guestPartySize(guest: Guest): number {
+    return guest.hasPlusOne ? 2 : 1;
+  }
+
+  countGuestList(guests: Guest[]): number {
+    return guests.reduce((count, guest) => count + this.guestPartySize(guest), 0);
+  }
+
+  private countGuestsByRsvp(rsvp: Guest['rsvp']): number {
+    return this.guests()
+      .filter(guest => guest.rsvp === rsvp)
+      .reduce((count, guest) => count + this.guestPartySize(guest), 0);
+  }
 
   // ── Guests ────────────────────────────────────────────────────────
   addGuest(g: Guest) {
     this.guests.update(arr => [...arr, g]);
   }
   replaceGuests(guests: Guest[]) {
-    const validGuestIds = new Set(guests.map(guest => guest.id));
+    const validGuestIds = new Set(allGuestPeople(guests).map(person => person.id));
     this.guests.set(guests);
     this.houses.update(houses => houses.map(house => ({
       ...house,
@@ -38,9 +61,17 @@ export class WeddingStore {
   }
   updateGuest(g: Guest) {
     this.guests.update(arr => arr.map(x => x.id === g.id ? g : x));
+    if (!g.hasPlusOne) {
+      this.removeGuestAssignments(plusOneGuestId(g.id));
+    }
   }
   deleteGuest(id: string) {
     this.guests.update(arr => arr.filter(x => x.id !== id));
+    this.removeGuestAssignments(plusOneGuestId(id));
+    this.removeGuestAssignments(id);
+  }
+
+  private removeGuestAssignments(id: string) {
     this.houses.update(hs => hs.map(h => ({
       ...h,
       rooms: h.rooms.map(r => ({ ...r, guestIds: r.guestIds.filter(x => x !== id) })),
@@ -53,7 +84,7 @@ export class WeddingStore {
     this.houses.update(arr => [...arr, h]);
   }
   replaceHouses(houses: House[]) {
-    this.houses.set(houses);
+    this.houses.set(this.filterHouseAssignments(houses));
   }
   deleteHouse(id: string) {
     this.houses.update(arr => arr.filter(x => x.id !== id));
@@ -85,7 +116,7 @@ export class WeddingStore {
     this.tables.update(arr => [...arr, t]);
   }
   replaceTables(tables: Table[]) {
-    this.tables.set(tables);
+    this.tables.set(this.filterTableAssignments(tables));
   }
   deleteTable(id: string) {
     this.tables.update(arr => arr.filter(x => x.id !== id));
@@ -174,5 +205,28 @@ export class WeddingStore {
   // ── Theme ─────────────────────────────────────────────────────────
   setTheme(theme: ThemeKey) {
     this.theme.set(theme);
+  }
+
+  private validGuestIds(): Set<string> {
+    return new Set(allGuestPeople(this.guests()).map(person => person.id));
+  }
+
+  private filterHouseAssignments(houses: House[]): House[] {
+    const validGuestIds = this.validGuestIds();
+    return houses.map(house => ({
+      ...house,
+      rooms: house.rooms.map(room => ({
+        ...room,
+        guestIds: room.guestIds.filter(id => validGuestIds.has(id)),
+      })),
+    }));
+  }
+
+  private filterTableAssignments(tables: Table[]): Table[] {
+    const validGuestIds = this.validGuestIds();
+    return tables.map(table => ({
+      ...table,
+      guestIds: table.guestIds.filter(id => validGuestIds.has(id)),
+    }));
   }
 }

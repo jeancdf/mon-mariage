@@ -2,7 +2,7 @@
   <header class="page-header split">
     <div>
       <h1>Liste des invités</h1>
-      <p>{{ store.guests().length }} invités · {{ store.confirmedCount() }} confirmés · {{ store.guests().filter(g => g.rsvp === 'pending').length }} en attente</p>
+      <p>{{ store.guestCount() }} invités · {{ store.confirmedCount() }} confirmés · {{ store.pendingCount() }} en attente</p>
     </div>
     <div class="row-actions">
       <button class="btn" type="button" [disabled]="isImporting" (click)="openImportPicker()">
@@ -95,7 +95,7 @@
                 <button class="icon-button" type="button" (click)="editingGuest = guest" aria-label="Modifier">
                   <app-icon name="edit" />
                 </button>
-                <button class="icon-button danger" type="button" (click)="deleteGuest(guest.id)" aria-label="Supprimer">
+                <button class="icon-button danger" type="button" (click)="requestDeleteGuest(guest)" aria-label="Supprimer">
                   <app-icon name="trash" />
                 </button>
               </div>
@@ -112,5 +112,15 @@
 
   @if (editingGuest || isAdding) {
     <app-guest-modal [guest]="editingGuest" (closeModal)="closeModal()" (saveGuest)="saveGuest($event)" />
+  }
+
+  @if (guestPendingDeletion; as guest) {
+    <app-confirm-dialog
+      title="Supprimer cet invité ?"
+      [message]="'Supprimer ' + guest.firstName + ' ' + guest.lastName + ' de la liste ?'"
+      details="Ses affectations logement et plan de table seront aussi retirées."
+      titleId="confirm-delete-guest-title"
+      (cancel)="cancelDeleteGuest()"
+      (confirm)="confirmDeleteGuest()" />
   }
 </section>

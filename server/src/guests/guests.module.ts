@@ -3,9 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { GuestEntity } from './guest.entity';
 import { GuestsController } from './guests.controller';
 import { GuestsService } from './guests.service';
+import { RoomGuestEntity } from '../housing/room-guest.entity';
+import { TableGuestEntity } from '../seating/table-guest.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([GuestEntity])],
+  imports: [TypeOrmModule.forFeature([GuestEntity, RoomGuestEntity, TableGuestEntity])],
   controllers: [GuestsController],
   providers: [GuestsService],
   exports: [GuestsService],

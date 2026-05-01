@@ -91,6 +91,48 @@ export const ASSIGNEE_OPTIONS: { value: AssigneeId; label: string }[] = [
   { value: 'prestataire', label: 'Prestataire' },
 ];
 
+export interface GuestPerson {
+  id: string;
+  firstName: string;
+  lastName: string;
+  category: GuestCategory;
+  rsvp: Rsvp;
+  isPlusOne: boolean;
+  parentGuestId: string;
+}
+
+export const plusOneGuestId = (guestId: string): string => `${guestId}__plus_one`;
+
+export const guestPeople = (guest: Guest): GuestPerson[] => {
+  const people: GuestPerson[] = [{
+    id: guest.id,
+    firstName: guest.firstName,
+    lastName: guest.lastName,
+    category: guest.category,
+    rsvp: guest.rsvp,
+    isPlusOne: false,
+    parentGuestId: guest.id,
+  }];
+
+  if (guest.hasPlusOne) {
+    const [firstName, ...lastNameParts] = (guest.plusOneName.trim() || `+1 ${guest.firstName}`).split(/\s+/);
+    people.push({
+      id: plusOneGuestId(guest.id),
+      firstName,
+      lastName: lastNameParts.join(' '),
+      category: guest.category,
+      rsvp: guest.rsvp,
+      isPlusOne: true,
+      parentGuestId: guest.id,
+    });
+  }
+
+  return people;
+};
+
+export const allGuestPeople = (guests: Guest[]): GuestPerson[] =>
+  guests.flatMap(guest => guestPeople(guest));
+
 export const fmtCurrency = (amount: number): string =>
   new Intl.NumberFormat('fr-FR', {
     style: 'currency',

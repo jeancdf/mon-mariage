@@ -1,10 +1,12 @@
 import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { BedType, Guest, House, Room } from '../../data/types';
+import { BedType, House, Room } from '../../data/types';
 import { WeddingStore } from '../../data/store';
 import { IconComponent } from '../../shared/icon.component';
 import { GuestSidebarComponent } from '../../shared/guest-sidebar.component';
 import { HousingApiService } from '../../data/housing-api.service';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { GuestPerson, allGuestPeople } from '../../shared/wedding-utils';
 
 interface RoomFormState {
   name: string;
@@ -15,7 +17,7 @@ interface RoomFormState {
 @Component({
   selector: 'app-housing',
   standalone: true,
-  imports: [FormsModule, IconComponent, GuestSidebarComponent],
+  imports: [FormsModule, IconComponent, GuestSidebarComponent, ConfirmDialogComponent],
   templateUrl: './housing.component.html',
   host: { class: 'split-pane-host' },
 })
@@ -30,11 +32,13 @@ export class HousingComponent {
   editingRoomId: string | null = null;
   editRoomForm: RoomFormState = { name: '', bedType: 'double', beds: 1 };
   selectedGuestId: string | null = null;
+  housePendingDeletion: House | null = null;
 
-  readonly guestMap = computed(() => new Map(this.store.guests().map(guest => [guest.id, guest])));
+  readonly guests = computed(() => allGuestPeople(this.store.guests()));
+  readonly guestMap = computed(() => new Map(this.guests().map(guest => [guest.id, guest])));
   readonly assignedGuestIds = computed(() => new Set(this.store.houses().flatMap(house => house.rooms.flatMap(room => room.guestIds))));
   readonly unassignedGuests = computed(() =>
-    this.store.guests().filter(guest => guest.rsvp !== 'declined' && !this.assignedGuestIds().has(guest.id)));
+    this.guests().filter(guest => guest.rsvp !== 'declined' && !this.assignedGuestIds().has(guest.id)));
   readonly totals = computed(() => {
     const houses = this.store.houses();
     const totalBeds = houses.reduce((sum, house) => sum + house.rooms.reduce((roomSum, room) => roomSum + this.roomCapacity(room), 0), 0);
@@ -59,11 +63,11 @@ export class HousingComponent {
     return house.rooms.reduce((sum, room) => sum + room.guestIds.length, 0);
   }
 
-  guestById(id: string): Guest | undefined {
+  guestById(id: string): GuestPerson | undefined {
     return this.guestMap().get(id);
   }
 
-  selectedGuest(): Guest | undefined {
+  selectedGuest(): GuestPerson | undefined {
     return this.selectedGuestId ? this.guestById(this.selectedGuestId) : undefined;
   }
 
@@ -95,7 +99,22 @@ export class HousingComponent {
     this.addingHouse = false;
   }
 
-  async deleteHouse(id: string): Promise<void> {
+  requestDeleteHouse(house: House): void {
+    this.housePendingDeletion = house;
+  }
+
+  cancelDeleteHouse(): void {
+    this.housePendingDeletion = null;
+  }
+
+  async confirmDeleteHouse(): Promise<void> {
+    const house = this.housePendingDeletion;
+    if (!house) return;
+    this.housePendingDeletion = null;
+    await this.deleteHouse(house.id);
+  }
+
+  private async deleteHouse(id: string): Promise<void> {
     const houses = await this.housingApi.deleteHouse(id);
     this.store.replaceHouses(houses);
   }

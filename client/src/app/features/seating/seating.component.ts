@@ -1,16 +1,18 @@
 import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Guest, Table } from '../../data/types';
+import { Table } from '../../data/types';
 import { SeatingApiService } from '../../data/seating-api.service';
 import { WeddingStore } from '../../data/store';
 import { IconComponent } from '../../shared/icon.component';
 import { GuestSidebarComponent } from '../../shared/guest-sidebar.component';
 import { gid } from '../../data/seed';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { GuestPerson, allGuestPeople } from '../../shared/wedding-utils';
 
 @Component({
   selector: 'app-seating',
   standalone: true,
-  imports: [FormsModule, IconComponent, GuestSidebarComponent],
+  imports: [FormsModule, IconComponent, GuestSidebarComponent, ConfirmDialogComponent],
   templateUrl: './seating.component.html',
   host: { class: 'split-pane-host' },
 })
@@ -22,10 +24,12 @@ export class SeatingComponent {
   editingTableId: string | null = null;
   editTableForm: { name: string; seats: number | string } = { name: '', seats: 12 };
   selectedGuestId: string | null = null;
+  tablePendingDeletion: Table | null = null;
 
-  readonly guestMap = computed(() => new Map(this.store.guests().map(guest => [guest.id, guest])));
+  readonly guests = computed(() => allGuestPeople(this.store.guests()));
+  readonly guestMap = computed(() => new Map(this.guests().map(guest => [guest.id, guest])));
   readonly assignedIds = computed(() => new Set(this.store.tables().flatMap(table => table.guestIds)));
-  readonly unplacedGuests = computed(() => this.store.guests().filter(guest => guest.rsvp !== 'declined' && !this.assignedIds().has(guest.id)));
+  readonly unplacedGuests = computed(() => this.guests().filter(guest => guest.rsvp !== 'declined' && !this.assignedIds().has(guest.id)));
   readonly totals = computed(() => {
     const tables = this.store.tables();
     return {
@@ -34,15 +38,15 @@ export class SeatingComponent {
     };
   });
 
-  guestById(id: string): Guest | undefined {
+  guestById(id: string): GuestPerson | undefined {
     return this.guestMap().get(id);
   }
 
-  initials(guest: Guest | undefined): string {
+  initials(guest: GuestPerson | undefined): string {
     return guest ? `${guest.firstName[0] ?? ''}${guest.lastName[0] ?? ''}` : '';
   }
 
-  selectedGuest(): Guest | undefined {
+  selectedGuest(): GuestPerson | undefined {
     return this.selectedGuestId ? this.guestById(this.selectedGuestId) : undefined;
   }
 
@@ -94,7 +98,22 @@ export class SeatingComponent {
     this.cancelEditing();
   }
 
-  async deleteTable(id: string): Promise<void> {
+  requestDeleteTable(table: Table): void {
+    this.tablePendingDeletion = table;
+  }
+
+  cancelDeleteTable(): void {
+    this.tablePendingDeletion = null;
+  }
+
+  async confirmDeleteTable(): Promise<void> {
+    const table = this.tablePendingDeletion;
+    if (!table) return;
+    this.tablePendingDeletion = null;
+    await this.deleteTable(table.id);
+  }
+
+  private async deleteTable(id: string): Promise<void> {
     try {
       const tables = await this.seatingApi.deleteTable(id);
       this.store.replaceTables(tables);
@@ -128,7 +147,7 @@ export class SeatingComponent {
     }
   }
 
-  async handleSeatClick(table: Table, guest: Guest | undefined, event: Event): Promise<void> {
+  async handleSeatClick(table: Table, guest: GuestPerson | undefined, event: Event): Promise<void> {
     event.stopPropagation();
     if (guest) {
       await this.removeGuest(guest.id);

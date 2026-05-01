@@ -440,6 +440,11 @@ th {
   color: var(--accent-fg);
 }
 
+.btn.danger-solid {
+  background: #dc2626;
+  color: #fff;
+}
+
 .btn.secondary {
   border: 1px solid var(--border);
   background: transparent;
@@ -805,6 +810,22 @@ td small {
 
 .modal.wide {
   width: min(620px, 100%);
+}
+
+.confirm-modal {
+  width: min(390px, 100%);
+}
+
+.confirm-modal p {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.confirm-modal .confirm-detail {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .modal-header,
