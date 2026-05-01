@@ -7,12 +7,14 @@ import { HousingApiService } from '../data/housing-api.service';
 import { SeatingApiService } from '../data/seating-api.service';
 import { WeddingStore } from '../data/store';
 import { TodosApiService } from '../data/todos-api.service';
+import { VendorsApiService } from '../data/vendors-api.service';
 import { DashboardComponent } from '../features/dashboard/dashboard.component';
 import { GuestsComponent } from '../features/guests/guests.component';
 import { HousingComponent } from '../features/housing/housing.component';
 import { SeatingComponent } from '../features/seating/seating.component';
 import { BudgetComponent } from '../features/budget/budget.component';
 import { TodosComponent } from '../features/todos/todos.component';
+import { VendorsComponent } from '../features/vendors/vendors.component';
 import { IconComponent } from '../shared/icon.component';
 import { NAV_ITEMS, PageId, THEMES, THEME_KEYS } from '../shared/wedding-utils';
 
@@ -28,6 +30,7 @@ import { NAV_ITEMS, PageId, THEMES, THEME_KEYS } from '../shared/wedding-utils';
     SeatingComponent,
     BudgetComponent,
     TodosComponent,
+    VendorsComponent,
   ],
   templateUrl: './wedding-shell.component.html',
 })
@@ -38,6 +41,7 @@ export class WeddingShellComponent {
   private readonly seatingApi = inject(SeatingApiService);
   private readonly budgetApi = inject(BudgetApiService);
   private readonly todosApi = inject(TodosApiService);
+  private readonly vendorsApi = inject(VendorsApiService);
   readonly navItems = NAV_ITEMS;
   readonly themeKeys = THEME_KEYS;
   readonly themes = THEMES;
@@ -68,18 +72,20 @@ export class WeddingShellComponent {
 
   private async loadInitialData(): Promise<void> {
     try {
-      const [guests, houses, tables, budget, todos] = await Promise.all([
+      const [guests, houses, tables, budget, todos, vendors] = await Promise.all([
         this.guestApi.loadGuests(),
         this.housingApi.loadHousing(),
         this.seatingApi.loadTables(),
         this.budgetApi.loadBudget(),
         this.todosApi.loadTodos(),
+        this.vendorsApi.loadVendors(),
       ]);
       this.store.replaceGuests(guests);
       this.store.replaceHouses(houses);
       this.store.replaceTables(tables);
       this.store.replaceBudget(budget);
       this.store.replaceTodos(todos);
+      this.store.replaceVendors(vendors);
     } catch {
       // Keep seed data when the API is unavailable during frontend-only development.
     }

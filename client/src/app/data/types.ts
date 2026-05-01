@@ -83,3 +83,52 @@ export interface Assignee {
   label: string;
   color: string;
 }
+
+export type VendorCategoryKey =
+  | 'traiteur'
+  | 'photographe'
+  | 'videaste'
+  | 'dj'
+  | 'musique'
+  | 'fleuriste'
+  | 'location-vaisselle'
+  | 'decoration'
+  | 'coiffure-maquillage'
+  | 'voiture'
+  | 'officiant';
+
+export type VendorStatus =
+  | 'a-contacter'
+  | 'contacte'
+  | 'devis-demande'
+  | 'devis-recu'
+  | 'reserve'
+  | 'acompte-paye'
+  | 'solde-paye'
+  | 'ecarte';
+
+export type VendorDetails = Record<string, string | number | boolean>;
+
+export interface Vendor {
+  id: string;
+  category: VendorCategoryKey;
+  name: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  website: string;
+  instagram: string;
+  address: string;
+  priceEstimate: number;
+  priceFinal: number;
+  depositAmount: number;
+  depositPaid: boolean;
+  balanceDueDate: string;
+  status: VendorStatus;
+  meetingDate: string;
+  contractSigned: boolean;
+  contractUrl: string;
+  rating: number;
+  notes: string;
+  details: VendorDetails;
+}

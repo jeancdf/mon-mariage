@@ -1,0 +1,253 @@
+<section class="page">
+  <header class="page-header split">
+    <div>
+      <h1>Prestataires</h1>
+      <p>
+        {{ totals().reserved }} / {{ totals().count }} réservés ·
+        {{ fmtCurrency(totals().totalSpent) }} engagés
+      </p>
+    </div>
+  </header>
+
+  <div class="vendors-toolbar">
+    <input
+      class="vendors-search"
+      type="search"
+      placeholder="Rechercher un prestataire…"
+      [ngModel]="search()"
+      (ngModelChange)="search.set($event)" />
+    <div class="filter-pills">
+      <button
+        class="filter-pill"
+        type="button"
+        [class.active]="statusFilter() === 'all'"
+        (click)="statusFilter.set('all')">Tous statuts</button>
+      @for (option of statusOptions; track option.value) {
+        <button
+          class="filter-pill"
+          type="button"
+          [class.active]="statusFilter() === option.value"
+          (click)="statusFilter.set(option.value)">{{ option.label }}</button>
+      }
+    </div>
+  </div>
+
+  <div class="stack">
+    @for (cat of categories; track cat.key) {
+      @let vendors = vendorsFor(cat.key);
+      @let open = isExpanded(cat.key);
+      <article class="collapsible">
+        <header class="collapsible-header" (click)="toggleCategory(cat.key)">
+          <app-icon class="chevron" [class.closed]="!open" name="chevron" />
+          <strong>{{ cat.label }}</strong>
+          <span>{{ vendors.length }}</span>
+          <button
+            class="icon-button"
+            type="button"
+            (click)="$event.stopPropagation(); startAdding(cat.key)"
+            aria-label="Ajouter un prestataire">
+            <app-icon name="plus" />
+          </button>
+        </header>
+
+        @if (open) {
+          <div class="collapsible-body vendors-list">
+            @if (!vendors.length && !isAddingFor(cat.key)) {
+              <p class="vendors-empty">Aucun prestataire dans cette catégorie.</p>
+            }
+
+            @for (v of vendors; track v.id) {
+              <div class="vendor-card" [class.editing]="isEditing(v)">
+                @if (!isEditing(v)) {
+                  <div class="vendor-summary" (click)="startEditing(v)">
+                    <div class="vendor-summary-main">
+                      <strong>{{ v.name || 'Sans nom' }}</strong>
+                      @if (v.contactName) {
+                        <span class="vendor-contact">{{ v.contactName }}</span>
+                      }
+                    </div>
+                    <div class="vendor-summary-meta">
+                      <span class="status-badge" [attr.data-tone]="statusTone(v.status)">{{ statusLabel(v.status) }}</span>
+                      <span class="vendor-price">{{ vendorPriceLabel(v) }}</span>
+                      @if (v.meetingDate) {
+                        <time>{{ fmtShortDate(v.meetingDate) }}</time>
+                      }
+                    </div>
+                  </div>
+                } @else {
+                  <ng-container *ngTemplateOutlet="editForm; context: { $implicit: cat }" />
+                }
+              </div>
+            }
+
+            @if (isAddingFor(cat.key)) {
+              <div class="vendor-card editing">
+                <ng-container *ngTemplateOutlet="editForm; context: { $implicit: cat }" />
+              </div>
+            } @else {
+              <button class="btn ghost small vendors-add" type="button" (click)="startAdding(cat.key)">
+                <app-icon name="plus" /> Ajouter un prestataire
+              </button>
+            }
+          </div>
+        }
+      </article>
+    }
+  </div>
+
+  <ng-template #editForm let-cat>
+    @let v = editing();
+    @if (v) {
+      <div class="vendor-form">
+        <div class="vendor-form-grid">
+          <label class="field">
+            <span>Nom</span>
+            <input
+              autofocus
+              [ngModel]="v.name"
+              (ngModelChange)="updateField('name', $event)"
+              placeholder="Nom de l'entreprise" />
+          </label>
+          <label class="field">
+            <span>Contact</span>
+            <input [ngModel]="v.contactName" (ngModelChange)="updateField('contactName', $event)" />
+          </label>
+          <label class="field">
+            <span>Téléphone</span>
+            <input type="tel" [ngModel]="v.phone" (ngModelChange)="updateField('phone', $event)" />
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input type="email" [ngModel]="v.email" (ngModelChange)="updateField('email', $event)" />
+          </label>
+          <label class="field">
+            <span>Site web</span>
+            <input type="url" [ngModel]="v.website" (ngModelChange)="updateField('website', $event)" />
+          </label>
+          <label class="field">
+            <span>Instagram</span>
+            <input [ngModel]="v.instagram" (ngModelChange)="updateField('instagram', $event)" placeholder="@compte" />
+          </label>
+          <label class="field span-2">
+            <span>Adresse</span>
+            <input [ngModel]="v.address" (ngModelChange)="updateField('address', $event)" />
+          </label>
+          <label class="field">
+            <span>Statut</span>
+            <select [ngModel]="v.status" (ngModelChange)="updateField('status', $event)">
+              @for (option of statusOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            <span>Note (0–5)</span>
+            <input type="number" min="0" max="5" [ngModel]="v.rating" (ngModelChange)="updateField('rating', +$event)" />
+          </label>
+          <label class="field">
+            <span>Prochain RDV</span>
+            <input type="datetime-local" [ngModel]="v.meetingDate" (ngModelChange)="updateField('meetingDate', $event)" />
+          </label>
+          <label class="field">
+            <span>Devis estimé (€)</span>
+            <input type="number" [ngModel]="v.priceEstimate" (ngModelChange)="updateField('priceEstimate', +$event)" />
+          </label>
+          <label class="field">
+            <span>Prix final (€)</span>
+            <input type="number" [ngModel]="v.priceFinal" (ngModelChange)="updateField('priceFinal', +$event)" />
+          </label>
+          <label class="field">
+            <span>Acompte (€)</span>
+            <input type="number" [ngModel]="v.depositAmount" (ngModelChange)="updateField('depositAmount', +$event)" />
+          </label>
+          <label class="field checkbox">
+            <input type="checkbox" [checked]="v.depositPaid" (change)="updateField('depositPaid', $any($event.target).checked)" />
+            <span>Acompte payé</span>
+          </label>
+          <label class="field">
+            <span>Solde dû le</span>
+            <input type="date" [ngModel]="v.balanceDueDate" (ngModelChange)="updateField('balanceDueDate', $event)" />
+          </label>
+          <label class="field checkbox">
+            <input type="checkbox" [checked]="v.contractSigned" (change)="updateField('contractSigned', $any($event.target).checked)" />
+            <span>Contrat signé</span>
+          </label>
+          <label class="field span-2">
+            <span>Lien contrat</span>
+            <input type="url" [ngModel]="v.contractUrl" (ngModelChange)="updateField('contractUrl', $event)" />
+          </label>
+          <label class="field span-full">
+            <span>Notes</span>
+            <textarea rows="2" [ngModel]="v.notes" (ngModelChange)="updateField('notes', $event)"></textarea>
+          </label>
+        </div>
+
+        <div class="vendor-form-section">
+          <h3>{{ cat.label }} — détails</h3>
+          <div class="vendor-form-grid">
+            @for (field of fieldsFor(v.category); track field.key) {
+              @switch (field.type) {
+                @case ('boolean') {
+                  <label class="field checkbox">
+                    <input type="checkbox" [checked]="detailBool(field.key)" (change)="updateDetail(field.key, $any($event.target).checked)" />
+                    <span>{{ field.label }}</span>
+                  </label>
+                }
+                @case ('textarea') {
+                  <label class="field span-full">
+                    <span>{{ field.label }}</span>
+                    <textarea rows="2" [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)"></textarea>
+                  </label>
+                }
+                @case ('number') {
+                  <label class="field">
+                    <span>{{ field.label }}</span>
+                    <input type="number" [ngModel]="detailNumber(field.key)" (ngModelChange)="updateDetail(field.key, +$event)" />
+                    @if (field.hint) { <small>{{ field.hint }}</small> }
+                  </label>
+                }
+                @case ('date') {
+                  <label class="field">
+                    <span>{{ field.label }}</span>
+                    <input type="date" [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)" />
+                  </label>
+                }
+                @case ('datetime') {
+                  <label class="field">
+                    <span>{{ field.label }}</span>
+                    <input type="datetime-local" [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)" />
+                  </label>
+                }
+                @case ('select') {
+                  <label class="field">
+                    <span>{{ field.label }}</span>
+                    <select [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)">
+                      @for (option of field.options ?? []; track option.value) {
+                        <option [value]="option.value">{{ option.label }}</option>
+                      }
+                    </select>
+                  </label>
+                }
+                @default {
+                  <label class="field">
+                    <span>{{ field.label }}</span>
+                    <input [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)" />
+                    @if (field.hint) { <small>{{ field.hint }}</small> }
+                  </label>
+                }
+              }
+            }
+          </div>
+        </div>
+
+        <div class="vendor-form-actions">
+          <button class="btn primary" type="button" (click)="save()">Enregistrer</button>
+          <button class="btn secondary" type="button" (click)="cancelEdit()">Annuler</button>
+          @if (!isAddingFor(v.category)) {
+            <button class="btn danger" type="button" (click)="deleteVendor(v)">Supprimer</button>
+          }
+        </div>
+      </div>
+    }
+  </ng-template>
+</section>

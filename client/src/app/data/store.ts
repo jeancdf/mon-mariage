@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import {
-  Budget, BudgetCategory, BudgetItem, Guest, House, Room, Table, TodoGroup, Task, ThemeKey,
+  Budget, BudgetCategory, BudgetItem, Guest, House, Room, Table, TodoGroup, Task, ThemeKey, Vendor,
 } from './types';
 
 @Injectable({ providedIn: 'root' })
@@ -10,6 +10,7 @@ export class WeddingStore {
   readonly tables = signal<Table[]>([]);
   readonly budget = signal<Budget>({ categories: [] });
   readonly todos = signal<TodoGroup[]>([]);
+  readonly vendors = signal<Vendor[]>([]);
   readonly theme = signal<ThemeKey>('nuit');
 
   readonly confirmedCount = computed(() =>
@@ -154,6 +155,20 @@ export class WeddingStore {
       categories: b.categories.map(c => c.id === catId
         ? { ...c, items: c.items.filter(i => i.id !== itemId) } : c),
     }));
+  }
+
+  // ── Vendors ───────────────────────────────────────────────────────
+  replaceVendors(vendors: Vendor[]) {
+    this.vendors.set(vendors);
+  }
+  addVendor(v: Vendor) {
+    this.vendors.update(arr => [...arr, v]);
+  }
+  updateVendor(v: Vendor) {
+    this.vendors.update(arr => arr.map(x => x.id === v.id ? v : x));
+  }
+  deleteVendor(id: string) {
+    this.vendors.update(arr => arr.filter(x => x.id !== id));
   }
 
   // ── Theme ─────────────────────────────────────────────────────────

@@ -7,7 +7,11 @@
       "Read(//tmp/**)",
       "Bash(mkdir -p /tmp/design-fetch)",
       "Bash(gunzip -c /home/jeanc/.claude/projects/-mnt-c-Users-jeanc-Documents-Side-Project-mon-mariage/906f4f1a-d60a-4497-a562-8603022bd6e7/tool-results/webfetch-1777587687529-oud42m.bin)",
-      "Bash(npx ng *)"
+      "Bash(npx ng *)",
+      "Bash(curl -s http://localhost:3000/api/housing)",
+      "Bash(curl -s http://localhost:3001/api/housing)",
+      "Bash(npx tsc *)",
+      "Bash(docker exec *)"
     ]
   }
 }

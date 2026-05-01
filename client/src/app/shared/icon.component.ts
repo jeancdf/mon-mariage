@@ -35,6 +35,11 @@ import { IconName } from './wedding-utils';
           <rect x="1" y="1" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.2" />
           <path d="M4 7.5l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
         }
+        @case ('vendors') {
+          <rect x="1.5" y="4.5" width="12" height="9" rx="1" stroke="currentColor" stroke-width="1.2" />
+          <path d="M5.5 4.5V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5" stroke="currentColor" stroke-width="1.2" />
+          <path d="M1.5 8.5h12" stroke="currentColor" stroke-width="1.2" />
+        }
         @case ('plus') {
           <path d="M7.5 2.5v10M2.5 7.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
         }

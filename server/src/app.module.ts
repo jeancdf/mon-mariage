@@ -10,6 +10,7 @@ import { HousingModule } from './housing/housing.module';
 import { PlannerModule } from './planner/planner.module';
 import { SeatingModule } from './seating/seating.module';
 import { TodosModule } from './todos/todos.module';
+import { VendorsModule } from './vendors/vendors.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { TodosModule } from './todos/todos.module';
     SeatingModule,
     BudgetModule,
     TodosModule,
+    VendorsModule,
     DashboardModule,
     PlannerModule,
   ],

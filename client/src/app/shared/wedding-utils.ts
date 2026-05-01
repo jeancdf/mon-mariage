@@ -53,12 +53,13 @@ export const THEMES: Record<ThemeKey, ThemeDef> = {
   },
 };
 
-export type PageId = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todos';
-export type IconName = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todo' | 'plus' | 'x' | 'edit' | 'trash' | 'bed' | 'chevron' | 'check';
+export type PageId = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todos' | 'vendors';
+export type IconName = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todo' | 'vendors' | 'plus' | 'x' | 'edit' | 'trash' | 'bed' | 'chevron' | 'check';
 
 export const NAV_ITEMS: { id: PageId; label: string; icon: IconName }[] = [
   { id: 'dashboard', label: "Vue d'ensemble", icon: 'dashboard' },
   { id: 'guests', label: 'Invités', icon: 'guests' },
+  { id: 'vendors', label: 'Prestataires', icon: 'vendors' },
   { id: 'housing', label: 'Hébergement', icon: 'housing' },
   { id: 'seating', label: 'Plan de table', icon: 'seating' },
   { id: 'budget', label: 'Budget', icon: 'budget' },
