@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EventKey, Guest, Kid } from '../../data/types';
 import { gid } from '../../data/seed';
@@ -47,5 +47,10 @@ export class GuestModalComponent {
   submit(): void {
     if (!this.form.firstName.trim() || !this.form.lastName.trim()) return;
     this.saveGuest.emit(cloneGuest(this.form));
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeModal.emit();
   }
 }

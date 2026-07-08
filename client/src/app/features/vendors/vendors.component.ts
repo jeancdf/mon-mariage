@@ -17,6 +17,7 @@ import { fmtCurrency, fmtShortDate } from '../../shared/wedding-utils';
 import { IconComponent } from '../../shared/icon.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
+import { AutofocusDirective } from '../../shared/autofocus.directive';
 
 type StatusFilter = 'all' | VendorStatus;
 type ContactLinkKind = 'phone' | 'email' | 'website' | 'instagram';
@@ -29,7 +30,7 @@ interface UpcomingPayment {
 @Component({
   selector: 'app-vendors',
   standalone: true,
-  imports: [FormsModule, NgTemplateOutlet, IconComponent, ConfirmDialogComponent],
+  imports: [FormsModule, NgTemplateOutlet, IconComponent, ConfirmDialogComponent, AutofocusDirective],
   templateUrl: './vendors.component.html',
 })
 export class VendorsComponent {

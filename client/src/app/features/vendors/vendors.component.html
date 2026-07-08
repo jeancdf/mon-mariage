@@ -68,7 +68,7 @@
         @if (open) {
           <div class="collapsible-body vendors-list">
             @if (!vendors.length && !isAddingFor(cat.key)) {
-              <p class="vendors-empty">Aucun prestataire dans cette catégorie.</p>
+              <p class="vendors-empty">{{ store.loaded() ? 'Aucun prestataire dans cette catégorie.' : 'Chargement…' }}</p>
             }
 
             @for (v of vendors; track v.id) {
@@ -140,7 +140,7 @@
           <label class="field">
             <span>Nom</span>
             <input
-              autofocus
+              appAutofocus
               [ngModel]="v.name"
               (ngModelChange)="updateField('name', $event)"
               placeholder="Nom de l'entreprise" />

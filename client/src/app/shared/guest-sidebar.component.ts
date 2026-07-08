@@ -45,7 +45,7 @@ interface CategoryOption {
         (cdkDropListDropped)="onDrop($event)">
         <div class="guest-sidebar-dropzone">Déposer ici pour retirer</div>
         @if (filtered().length === 0) {
-          <div class="guest-sidebar-empty">Aucun résultat</div>
+          <div class="guest-sidebar-empty">{{ loading() ? 'Chargement…' : 'Aucun résultat' }}</div>
         }
         @for (guest of filtered(); track guest.id) {
           <div
@@ -70,6 +70,7 @@ interface CategoryOption {
 export class GuestSidebarComponent {
   readonly guests = input.required<GuestPerson[]>();
   readonly label = input('');
+  readonly loading = input(false);
   readonly guestDropped = output<string>();
   readonly dragStarted = output<void>();
   readonly dragEnded = output<void>();

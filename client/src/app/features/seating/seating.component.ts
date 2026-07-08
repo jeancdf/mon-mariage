@@ -9,6 +9,7 @@ import { GuestSidebarComponent } from '../../shared/guest-sidebar.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
 import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
+import { AutofocusDirective } from '../../shared/autofocus.directive';
 
 interface PairSuggestion {
   partnerId: string;
@@ -19,7 +20,7 @@ interface PairSuggestion {
 @Component({
   selector: 'app-seating',
   standalone: true,
-  imports: [FormsModule, CdkDrag, CdkDropList, CdkDropListGroup, IconComponent, GuestSidebarComponent, ConfirmDialogComponent],
+  imports: [FormsModule, CdkDrag, CdkDropList, CdkDropListGroup, IconComponent, GuestSidebarComponent, ConfirmDialogComponent, AutofocusDirective],
   templateUrl: './seating.component.html',
   host: { class: 'split-pane-host' },
 })

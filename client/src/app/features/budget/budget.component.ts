@@ -8,11 +8,12 @@ import { fmtCurrency, fmtDate } from '../../shared/wedding-utils';
 import { IconComponent } from '../../shared/icon.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
+import { AutofocusDirective } from '../../shared/autofocus.directive';
 
 @Component({
   selector: 'app-budget',
   standalone: true,
-  imports: [DecimalPipe, FormsModule, IconComponent, ConfirmDialogComponent],
+  imports: [DecimalPipe, FormsModule, IconComponent, ConfirmDialogComponent, AutofocusDirective],
   templateUrl: './budget.component.html',
 })
 export class BudgetComponent {

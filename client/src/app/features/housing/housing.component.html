@@ -2,6 +2,7 @@
   <app-guest-sidebar
     label="Sans logement"
     [guests]="unassignedGuests()"
+    [loading]="!store.loaded()"
     (guestDropped)="unassignGuest($event)"
     (dragStarted)="onDragStarted()"
     (dragEnded)="onDragEnded()" />
@@ -19,7 +20,7 @@
 
     @if (addingHouse) {
       <div class="inline-panel">
-        <input autofocus [(ngModel)]="houseName" placeholder="Nom de la maison…" (keydown.enter)="addHouse()" />
+        <input appAutofocus [(ngModel)]="houseName" placeholder="Nom de la maison…" (keydown.enter)="addHouse()" />
         <button class="btn primary" type="button" (click)="addHouse()">Ajouter</button>
         <button class="btn secondary" type="button" (click)="addingHouse = false">Annuler</button>
       </div>
@@ -70,7 +71,7 @@
 
                     @if (editing) {
                       <div class="inline-form room-form" (click)="$event.stopPropagation()">
-                        <input autofocus [(ngModel)]="editRoomForm.name" placeholder="Nom de la chambre" />
+                        <input appAutofocus [(ngModel)]="editRoomForm.name" placeholder="Nom de la chambre" />
                         <select [(ngModel)]="editRoomForm.bedType">
                           <option value="double">Lit double</option>
                           <option value="single">Lit(s) simple(s)</option>
@@ -101,7 +102,7 @@
                         }
                       </div>
                     } @else if (!editing && !dragging()) {
-                      <div class="room-empty">Chambre vide</div>
+                      <div class="room-empty">{{ store.loaded() ? 'Chambre vide' : 'Chargement…' }}</div>
                     }
 
                     @if (pairSuggestion(); as suggestion) {
@@ -125,7 +126,7 @@
 
               @if (addingRoomFor === house.id) {
                 <div class="inline-form room-form" (click)="$event.stopPropagation()">
-                  <input autofocus [(ngModel)]="roomForm.name" placeholder="Nom de la chambre" />
+                  <input appAutofocus [(ngModel)]="roomForm.name" placeholder="Nom de la chambre" />
                   <select [(ngModel)]="roomForm.bedType">
                     <option value="double">Lit double</option>
                     <option value="single">Lit(s) simple(s)</option>

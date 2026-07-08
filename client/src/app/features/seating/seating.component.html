@@ -2,6 +2,7 @@
   <app-guest-sidebar
     label="Non placés"
     [guests]="unplacedGuests()"
+    [loading]="!store.loaded()"
     (guestDropped)="removeGuest($event)"
     (dragStarted)="onDragStarted()"
     (dragEnded)="onDragEnded()" />
@@ -19,7 +20,7 @@
 
     @if (addingTable) {
       <div class="inline-panel">
-        <input autofocus [(ngModel)]="tableForm.name" placeholder="Nom de la table…" />
+        <input appAutofocus [(ngModel)]="tableForm.name" placeholder="Nom de la table…" />
         <input class="number-input" type="number" min="2" max="40" [(ngModel)]="tableForm.seats" placeholder="Places" />
         <button class="btn primary" type="button" (click)="addTable()">Ajouter</button>
         <button class="btn secondary" type="button" (click)="addingTable = false">Annuler</button>

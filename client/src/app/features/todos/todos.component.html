@@ -14,7 +14,7 @@
 
   @if (addingGroup) {
     <div class="inline-panel">
-      <input autofocus [(ngModel)]="groupName" placeholder="Nom du groupe de tâches" (keydown.enter)="addGroup()" />
+      <input appAutofocus [(ngModel)]="groupName" placeholder="Nom du groupe de tâches" (keydown.enter)="addGroup()" />
       <button class="btn primary" type="button" (click)="addGroup()">Ajouter</button>
       <button class="btn secondary" type="button" (click)="addingGroup = false">Annuler</button>
     </div>
@@ -46,7 +46,7 @@
                 </button>
                 @if (editingTaskId === task.id) {
                   <div class="inline-form todo-label-edit">
-                    <input autofocus [(ngModel)]="taskLabelDraft" (keydown.enter)="saveTaskLabel(task)" />
+                    <input appAutofocus [(ngModel)]="taskLabelDraft" (keydown.enter)="saveTaskLabel(task)" />
                     <button class="btn primary small" type="button" (click)="saveTaskLabel(task)">OK</button>
                     <button class="btn secondary small" type="button" (click)="cancelEditingTask()">Annuler</button>
                   </div>
@@ -72,7 +72,7 @@
 
             @if (addingTaskFor === group.id) {
               <div class="inline-form add-task-form">
-                <input autofocus [(ngModel)]="taskForm.label" placeholder="Description de la tâche" (keydown.enter)="addTask(group.id)" />
+                <input appAutofocus [(ngModel)]="taskForm.label" placeholder="Description de la tâche" (keydown.enter)="addTask(group.id)" />
                 <select [(ngModel)]="taskForm.assignee">
                   @for (assignee of assigneeOptions; track assignee.value) {
                     <option [value]="assignee.value">{{ assignee.label }}</option>

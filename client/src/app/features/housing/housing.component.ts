@@ -9,6 +9,7 @@ import { HousingApiService } from '../../data/housing-api.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
 import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
+import { AutofocusDirective } from '../../shared/autofocus.directive';
 
 interface RoomFormState {
   name: string;
@@ -25,7 +26,7 @@ interface PairSuggestion {
 @Component({
   selector: 'app-housing',
   standalone: true,
-  imports: [FormsModule, CdkDrag, CdkDropList, CdkDropListGroup, IconComponent, GuestSidebarComponent, ConfirmDialogComponent],
+  imports: [FormsModule, CdkDrag, CdkDropList, CdkDropListGroup, IconComponent, GuestSidebarComponent, ConfirmDialogComponent, AutofocusDirective],
   templateUrl: './housing.component.html',
   host: { class: 'split-pane-host' },
 })

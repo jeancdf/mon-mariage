@@ -70,8 +70,8 @@
             </button>
           </th>
           <th>Enfants</th>
-          <th>Événements</th>
-          <th>Transport</th>
+          <th class="guest-col-events">Événements</th>
+          <th class="guest-col-transport">Transport</th>
           <th></th>
         </tr>
       </thead>
@@ -112,14 +112,14 @@
                 <span class="empty">-</span>
               }
             </td>
-            <td>
+            <td class="guest-col-events">
               <div class="mini-list">
                 @for (eventKey of guest.events; track eventKey) {
                   <app-badge>{{ eventLabels[eventKey] }}</app-badge>
                 }
               </div>
             </td>
-            <td class="muted">{{ guest.transport || '-' }}</td>
+            <td class="muted guest-col-transport">{{ guest.transport || '-' }}</td>
             <td>
               <div class="row-actions">
                 <button class="icon-button" type="button" (click)="editingGuest = guest" aria-label="Modifier">
@@ -133,7 +133,7 @@
           </tr>
         } @empty {
           <tr>
-            <td class="empty-state" colspan="7">Aucun invité trouvé</td>
+            <td class="empty-state" colspan="7">{{ store.loaded() ? 'Aucun invité trouvé' : 'Chargement…' }}</td>
           </tr>
         }
       </tbody>

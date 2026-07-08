@@ -107,24 +107,28 @@ export class WeddingShellComponent {
   }
 
   private async loadInitialData(): Promise<void> {
-    // allSettled, not all: one failed request must not blank the five others.
-    // A failed section keeps its seed data (frontend-only development included).
-    const [guests, houses, tables, budget, todos, vendors] = await Promise.allSettled([
-      this.guestApi.loadGuests(),
-      this.housingApi.loadHousing(),
-      this.seatingApi.loadTables(),
-      this.budgetApi.loadBudget(),
-      this.todosApi.loadTodos(),
-      this.vendorsApi.loadVendors(),
-    ]);
-    if (guests.status === 'fulfilled') this.store.replaceGuests(guests.value);
-    if (houses.status === 'fulfilled') this.store.replaceHouses(houses.value);
-    if (tables.status === 'fulfilled') this.store.replaceTables(tables.value);
-    if (budget.status === 'fulfilled') this.store.replaceBudget(budget.value);
-    if (todos.status === 'fulfilled') this.store.replaceTodos(todos.value);
-    if (vendors.status === 'fulfilled') this.store.replaceVendors(vendors.value);
-    if ([guests, houses, tables, budget, todos, vendors].some(result => result.status === 'rejected')) {
-      this.toast.error("Certaines données n'ont pas pu être chargées. Rechargez la page pour réessayer.");
+    try {
+      // allSettled, not all: one failed request must not blank the five others.
+      // A failed section keeps its seed data (frontend-only development included).
+      const [guests, houses, tables, budget, todos, vendors] = await Promise.allSettled([
+        this.guestApi.loadGuests(),
+        this.housingApi.loadHousing(),
+        this.seatingApi.loadTables(),
+        this.budgetApi.loadBudget(),
+        this.todosApi.loadTodos(),
+        this.vendorsApi.loadVendors(),
+      ]);
+      if (guests.status === 'fulfilled') this.store.replaceGuests(guests.value);
+      if (houses.status === 'fulfilled') this.store.replaceHouses(houses.value);
+      if (tables.status === 'fulfilled') this.store.replaceTables(tables.value);
+      if (budget.status === 'fulfilled') this.store.replaceBudget(budget.value);
+      if (todos.status === 'fulfilled') this.store.replaceTodos(todos.value);
+      if (vendors.status === 'fulfilled') this.store.replaceVendors(vendors.value);
+      if ([guests, houses, tables, budget, todos, vendors].some(result => result.status === 'rejected')) {
+        this.toast.error("Certaines données n'ont pas pu être chargées. Rechargez la page pour réessayer.");
+      }
+    } finally {
+      this.store.markLoaded();
     }
   }
 }

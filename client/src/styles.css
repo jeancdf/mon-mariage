@@ -1819,4 +1819,74 @@ td small {
   .countdown {
     width: max-content;
   }
+
+  .split-pane {
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .split-pane-main {
+    overflow: visible;
+    padding: 24px 18px 28px;
+  }
+
+  .guest-sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 128px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+    transition: max-height 0.18s ease;
+  }
+
+  .guest-sidebar:hover,
+  .guest-sidebar:focus-within {
+    max-height: 280px;
+  }
+
+  .guest-sidebar-head {
+    padding: 10px 14px 8px;
+  }
+
+  .guest-sidebar-head .eyebrow {
+    margin-bottom: 6px;
+  }
+
+  .guest-sidebar-search {
+    min-height: 28px;
+  }
+
+  .guest-sidebar-list {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 10px 10px;
+  }
+
+  .guest-sidebar-dropzone,
+  .guest-sidebar-empty {
+    flex: 0 0 auto;
+  }
+
+  .guest-row {
+    flex: 0 0 190px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+  }
+}
+
+@media (max-width: 700px) {
+  .guest-col-events,
+  .guest-col-transport {
+    display: none;
+  }
+
+  th,
+  td {
+    padding: 9px 10px;
+  }
 }

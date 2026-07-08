@@ -24,7 +24,7 @@
 
   @if (addingCategory) {
     <div class="inline-panel">
-      <input autofocus [(ngModel)]="categoryForm.name" placeholder="Nom du poste" />
+      <input appAutofocus [(ngModel)]="categoryForm.name" placeholder="Nom du poste" />
       <input class="money-input" type="number" [(ngModel)]="categoryForm.estimated" placeholder="Budget estimé (€)" />
       <button class="btn primary" type="button" (click)="addCategory()">Ajouter</button>
       <button class="btn secondary" type="button" (click)="addingCategory = false">Annuler</button>
@@ -40,7 +40,7 @@
           @if (editingCategoryNameFor === category.id) {
             <input
               class="small-input budget-name-input"
-              autofocus
+              appAutofocus
               [(ngModel)]="categoryNameDraft"
               (keydown.enter)="renameCategory(category)" />
             <button class="btn primary small" type="button" (click)="renameCategory(category)">OK</button>
@@ -82,7 +82,7 @@
               <div>
                 @if (editingItemId === item.id) {
                   <div class="inline-form budget-item-edit">
-                    <input autofocus [(ngModel)]="itemEditForm.label" placeholder="Description" />
+                    <input appAutofocus [(ngModel)]="itemEditForm.label" placeholder="Description" />
                     <input class="money-input small-input" type="number" [(ngModel)]="itemEditForm.amount" placeholder="Montant (€)" />
                     <input type="date" [(ngModel)]="itemEditForm.date" />
                     <button class="btn primary small" type="button" (click)="saveItem(item)">OK</button>
@@ -108,7 +108,7 @@
 
         @if (addingItemFor === category.id) {
           <div class="inline-form add-item-form">
-            <input autofocus [(ngModel)]="itemForm.label" placeholder="Description de la dépense" />
+            <input appAutofocus [(ngModel)]="itemForm.label" placeholder="Description de la dépense" />
             <input class="money-input" type="number" [(ngModel)]="itemForm.amount" placeholder="Montant (€)" />
             <input type="date" [(ngModel)]="itemForm.date" />
             <button class="btn primary small" type="button" (click)="addItem(category.id)">Ajouter</button>

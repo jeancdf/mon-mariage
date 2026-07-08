@@ -25,6 +25,7 @@ export class WeddingStore {
   readonly todos = signal<TodoGroup[]>([]);
   readonly vendors = signal<Vendor[]>([]);
   readonly theme = signal<ThemeKey>(readStoredTheme());
+  readonly loaded = signal(false);
 
   readonly guestCount = computed(() =>
     this.guests().reduce((count, guest) => count + this.guestPartySize(guest), 0),
@@ -227,6 +228,10 @@ export class WeddingStore {
   }
 
   // ── Theme ─────────────────────────────────────────────────────────
+  markLoaded() {
+    this.loaded.set(true);
+  }
+
   setTheme(theme: ThemeKey) {
     this.theme.set(theme);
     if (typeof localStorage !== 'undefined') {
