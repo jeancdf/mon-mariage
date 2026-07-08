@@ -1,3 +1,9 @@
+# The project name and the postgres volume name are pinned on purpose:
+# compose derives volume names from the project name, so changing either
+# (flag, env var, or deploy directory) would silently attach postgres to a
+# fresh empty volume. Keep these stable across workflow rewrites.
+name: mon-mariage
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -68,3 +74,4 @@ services:
 
 volumes:
   postgres_data:
+    name: mon-mariage_postgres_data

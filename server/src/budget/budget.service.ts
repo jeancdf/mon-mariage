@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Budget, BudgetCategory, BudgetItem } from '../planner/planner-state.entity';
 import { BudgetCategoryEntity } from './budget-category.entity';
 import { BudgetItemEntity } from './budget-item.entity';
@@ -17,17 +17,40 @@ const DEFAULT_BUDGET: Budget = {
   ],
 };
 
+// Arbitrary constant identifying the "seed budget defaults" critical section.
+const SEED_LOCK_KEY = 728_431_002;
+
 @Injectable()
-export class BudgetService {
+export class BudgetService implements OnApplicationBootstrap {
   constructor(
     @InjectRepository(BudgetCategoryEntity)
     private readonly categoriesRepository: Repository<BudgetCategoryEntity>,
     @InjectRepository(BudgetItemEntity)
     private readonly itemsRepository: Repository<BudgetItemEntity>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
+  // Seeding runs once here, before the HTTP listener opens, instead of on
+  // every find(): the old check-then-insert inside find() raced when the
+  // first two requests hit an empty database simultaneously and inserted
+  // the defaults twice. The advisory lock also covers multiple backend
+  // instances starting against the same database.
+  async onApplicationBootstrap(): Promise<void> {
+    await this.dataSource.transaction(async manager => {
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [SEED_LOCK_KEY]);
+      const count = await manager.count(BudgetCategoryEntity);
+      if (count > 0) return;
+      for (const category of DEFAULT_BUDGET.categories) {
+        await manager.save(manager.create(BudgetCategoryEntity, {
+          name: category.name,
+          estimated: 0,
+        }));
+      }
+    });
+  }
+
   async find(): Promise<Budget> {
-    await this.seedDefaultsIfEmpty();
     const categories = await this.categoriesRepository.find({
       relations: { items: true },
       order: { name: 'ASC', items: { date: 'ASC' } },
@@ -84,18 +107,6 @@ export class BudgetService {
     const result = await this.itemsRepository.delete(id);
     if (!result.affected) throw new NotFoundException('Budget item not found');
     return this.find();
-  }
-
-  private async seedDefaultsIfEmpty(): Promise<void> {
-    const count = await this.categoriesRepository.count();
-    if (count > 0) return;
-
-    for (const category of DEFAULT_BUDGET.categories) {
-      await this.categoriesRepository.save(this.categoriesRepository.create({
-        name: category.name,
-        estimated: 0,
-      }));
-    }
   }
 
   private mapCategory(category: BudgetCategoryEntity): BudgetCategory {
