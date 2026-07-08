@@ -19,49 +19,25 @@ jobs:
       - name: Validate required secrets
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           FULLSTACK_ENV_PRODUCTION: ${{ secrets.FULLSTACK_ENV_PRODUCTION }}
         run: |
-          set -euo pipefail
           test -n "$VPS_HOST"
-          test -n "$VPS_PORT"
           test -n "$VPS_USER"
           test -n "$VPS_SSH_KEY"
           test -n "$FULLSTACK_ENV_PRODUCTION"
-          if [[ "$VPS_HOST" == *"://"* || "$VPS_HOST" == *"@"* ]]; then
-            echo "::error::VPS_HOST must be only the hostname or IP, for example vps-a33d7e65.vps.ovh.net. Put the login in VPS_USER."
-            exit 1
-          fi
-          if ! [[ "$VPS_PORT" =~ ^[0-9]+$ ]]; then
-            echo "::error::VPS_PORT must be a number, for example 22."
-            exit 1
-          fi
 
       - name: Prepare SSH key
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
-          set -euo pipefail
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -T 15 -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts
-          ssh -o BatchMode=yes -o ConnectTimeout=15 -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "echo ssh ok"
+          ssh-keyscan -p "${{ secrets.VPS_PORT || '22' }}" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Write .env.production from secret
         run: |
-          {
-            printf '%s\n' "${{ secrets.FULLSTACK_ENV_PRODUCTION }}"
-            printf '%s\n' "COMPOSE_PROJECT_NAME=mon_mariage"
-            printf '%s\n' "FRONTEND_HOST_PORT=9003"
-            printf '%s\n' "BACKEND_HOST_PORT=3006"
-            printf '%s\n' "CLIENT_ORIGIN=http://${{ secrets.VPS_HOST }}:9003"
-          } > .env.production
+          printf '%s' "${{ secrets.FULLSTACK_ENV_PRODUCTION }}" > .env.production
 
       - name: Set deployment metadata
         run: |
@@ -69,53 +45,30 @@ jobs:
           echo "DEPLOY_VERSION=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
           echo "DEPLOYED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
 
-      - name: Package application
-        run: |
-          tar \
-            --exclude=.git \
-            --exclude=node_modules \
-            --exclude=dist \
-            --exclude=.angular \
-            --exclude=mon-mariage-release.tgz \
-            -czf mon-mariage-release.tgz .
-
-      - name: Upload application over SSH
+      - name: Create Docker SSH context
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
           VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
         run: |
-          set -euo pipefail
-          REMOTE_PATH="${VPS_DEPLOY_PATH:-/home/${VPS_USER}/mon-mariage}"
-          REMOTE_ARCHIVE="/tmp/mon-mariage-${GITHUB_RUN_ID}.tgz"
-          REMOTE_PATH_Q="$(printf '%q' "$REMOTE_PATH")"
-          REMOTE_ARCHIVE_Q="$(printf '%q' "$REMOTE_ARCHIVE")"
+          unset DOCKER_HOST DOCKER_CONTEXT
+          if [ "$VPS_PORT" = "22" ]; then
+            VPS_DOCKER_ENDPOINT="ssh://${VPS_USER}@${VPS_HOST}"
+          else
+            VPS_DOCKER_ENDPOINT="ssh://${VPS_USER}@${VPS_HOST}:${VPS_PORT}"
+          fi
+          docker context create vps --docker "host=${VPS_DOCKER_ENDPOINT}"
+          docker --context vps version
 
-          scp -P "$VPS_PORT" mon-mariage-release.tgz "${VPS_USER}@${VPS_HOST}:${REMOTE_ARCHIVE}"
-          ssh -p "$VPS_PORT" "${VPS_USER}@${VPS_HOST}" \
-            "mkdir -p ${REMOTE_PATH_Q} && tar -xzf ${REMOTE_ARCHIVE_Q} -C ${REMOTE_PATH_Q} && rm -f ${REMOTE_ARCHIVE_Q}"
-
-      - name: Deploy stack with remote Docker Compose
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+      - name: Deploy stack over Docker SSH
         run: |
-          set -euo pipefail
-          REMOTE_PATH="${VPS_DEPLOY_PATH:-/home/${VPS_USER}/mon-mariage}"
-          REMOTE_PATH_Q="$(printf '%q' "$REMOTE_PATH")"
-          DEPLOY_SHA_Q="$(printf '%q' "$DEPLOY_SHA")"
-          DEPLOY_VERSION_Q="$(printf '%q' "$DEPLOY_VERSION")"
-          DEPLOYED_AT_Q="$(printf '%q' "$DEPLOYED_AT")"
-
-          ssh -p "$VPS_PORT" "${VPS_USER}@${VPS_HOST}" \
-            "cd ${REMOTE_PATH_Q} && DEPLOY_SHA=${DEPLOY_SHA_Q} DEPLOY_VERSION=${DEPLOY_VERSION_Q} DEPLOYED_AT=${DEPLOYED_AT_Q} docker compose -f docker-compose.prod.yml --env-file .env.production build frontend backend && DEPLOY_SHA=${DEPLOY_SHA_Q} DEPLOY_VERSION=${DEPLOY_VERSION_Q} DEPLOYED_AT=${DEPLOYED_AT_Q} docker compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans && DEPLOY_SHA=${DEPLOY_SHA_Q} DEPLOY_VERSION=${DEPLOY_VERSION_Q} DEPLOYED_AT=${DEPLOYED_AT_Q} docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps --force-recreate frontend && docker compose -f docker-compose.prod.yml --env-file .env.production ps"
+          unset DOCKER_HOST DOCKER_CONTEXT
+          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production build frontend backend
+          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans
+          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps --force-recreate frontend
+          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production ps
 
       - name: Healthchecks
-        env:
-          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
         run: |
           set -a
           . ./.env.production
