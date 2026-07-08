@@ -8,6 +8,9 @@
       <button class="btn" type="button" [disabled]="isImporting" (click)="openImportPicker()">
         {{ isImporting ? 'Import...' : 'Importer Excel' }}
       </button>
+      <button class="btn" type="button" [disabled]="isExporting" (click)="exportGuests()">
+        {{ isExporting ? 'Export...' : 'Exporter Excel' }}
+      </button>
       <button class="btn primary" type="button" (click)="openAdd()">
         <app-icon name="plus" /> Ajouter
       </button>
@@ -42,15 +45,30 @@
       <button class="chip" type="button" [class.active]="rsvpFilter() === 'pending'" (click)="rsvpFilter.set('pending')">En attente</button>
       <button class="chip" type="button" [class.active]="rsvpFilter() === 'declined'" (click)="rsvpFilter.set('declined')">Déclinés</button>
     </div>
+    @if (filtersActive()) {
+      <span class="filter-results">{{ filteredGuests().length }} résultat{{ filteredGuests().length > 1 ? 's' : '' }}</span>
+    }
   </div>
 
   <div class="table-card">
     <table>
       <thead>
         <tr>
-          <th>Invité</th>
-          <th>Catégorie</th>
-          <th>RSVP</th>
+          <th>
+            <button class="sort-header" type="button" (click)="setSort('name')">
+              Invité <span>{{ sortLabel('name') }}</span>
+            </button>
+          </th>
+          <th>
+            <button class="sort-header" type="button" (click)="setSort('category')">
+              Catégorie <span>{{ sortLabel('category') }}</span>
+            </button>
+          </th>
+          <th>
+            <button class="sort-header" type="button" (click)="setSort('rsvp')">
+              RSVP <span>{{ sortLabel('rsvp') }}</span>
+            </button>
+          </th>
           <th>Enfants</th>
           <th>Événements</th>
           <th>Transport</th>
@@ -70,7 +88,19 @@
               }
             </td>
             <td><app-badge [category]="guest.category">{{ cats[guest.category].short }}</app-badge></td>
-            <td><app-badge [variant]="guest.rsvp">{{ rsvpLabels[guest.rsvp] }}</app-badge></td>
+            <td>
+              <select
+                class="rsvp-select"
+                [class.confirmed]="guest.rsvp === 'confirmed'"
+                [class.pending]="guest.rsvp === 'pending'"
+                [class.declined]="guest.rsvp === 'declined'"
+                [ngModel]="guest.rsvp"
+                (ngModelChange)="updateRsvp(guest, $event)">
+                @for (option of rsvpOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </td>
             <td>
               @if (guest.kids.length) {
                 <div class="mini-list">

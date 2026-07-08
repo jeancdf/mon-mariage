@@ -1,5 +1,5 @@
-import { Guest, GuestCategory } from '../../data/types';
-import { gid } from '../../data/seed';
+import { EventKey, Guest, GuestCategory, Kid, Rsvp } from '../../data/types';
+import { EVENT_LABELS, RSVP_LABELS, gid } from '../../data/seed';
 
 export interface GuestImportResult {
   guests: Guest[];
@@ -59,17 +59,26 @@ const parseSheetRows = (
   }
 
   const [header, ...bodyRows] = rows;
+  const firstNameCol = findColumnIndex(header, ['prénom', 'prenom']);
+  const lastNameCol = findColumnIndex(header, ['nom']);
   const nameCol = findColumnIndex(header, [
     'prénom nom',
     'prenom nom',
     'nom',
   ]);
-  const plusOneCol = findColumnIndex(header, ['plus 1']);
+  const plusOneCol = findColumnIndex(header, ['+1 (nom)', 'plus 1']);
   const linkCol = findColumnIndex(header, ['liens', 'invite par', 'invité par']);
   const categoryCol = findColumnIndex(header, ['catégorie', 'categorie']);
+  const rsvpCol = findColumnIndex(header, ['rsvp']);
+  const kidsCol = findColumnIndex(header, ['enfants']);
+  const dietaryCol = findColumnIndex(header, ['régime', 'regime']);
+  const eventsCol = findColumnIndex(header, ['événements', 'evenements']);
+  const transportCol = findColumnIndex(header, ['transport']);
+  const notesCol = findColumnIndex(header, ['notes']);
   const ownerCategory = getOwnerCategory(sheetName);
+  const hasSeparateNameColumns = firstNameCol >= 0 && lastNameCol >= 0 && firstNameCol !== lastNameCol;
 
-  if (nameCol < 0) {
+  if (nameCol < 0 && !hasSeparateNameColumns) {
     return { guests: [], skippedRows: bodyRows.length };
   }
 
@@ -77,7 +86,9 @@ const parseSheetRows = (
   let skippedRows = 0;
 
   for (const row of bodyRows) {
-    const fullName = getCellText(row[nameCol]);
+    const fullName = hasSeparateNameColumns
+      ? `${getCellText(row[firstNameCol])} ${getCellText(row[lastNameCol])}`.trim()
+      : getCellText(row[nameCol]);
     if (!isValidGuestName(fullName)) {
       skippedRows += 1;
       continue;
@@ -97,14 +108,14 @@ const parseSheetRows = (
       firstName: name.firstName,
       lastName: name.lastName,
       category,
-      rsvp: 'pending',
+      rsvp: parseRsvp(getCellText(row[rsvpCol])),
       hasPlusOne: Boolean(plusOneName),
       plusOneName,
-      kids: [],
-      dietary: '',
-      events: [...DEFAULT_EVENTS],
-      transport: '',
-      notes: `Importé depuis ${sheetName}`,
+      kids: parseKids(getCellText(row[kidsCol])),
+      dietary: getCellText(row[dietaryCol]),
+      events: parseEvents(getCellText(row[eventsCol])),
+      transport: getCellText(row[transportCol]),
+      notes: getCellText(row[notesCol]) || `Importé depuis ${sheetName}`,
     });
   }
 
@@ -150,6 +161,8 @@ const mapToGuestCategory = (
   const normalized = normalize(source);
 
   if (!normalized) return fallback;
+  if (normalized.includes('moi')) return 'famille-moi';
+  if (normalized.includes('elle')) return 'famille-elle';
   if (normalized.includes('temoin')) return 'temoins';
   if (normalized.includes('enfant')) return 'enfants';
   if (normalized.includes('pote')) return 'amis';
@@ -160,6 +173,36 @@ const mapToGuestCategory = (
   if (normalized.includes('tante')) return fallback;
   return fallback;
 };
+
+const parseRsvp = (source: string): Rsvp => {
+  const normalized = normalize(source);
+  for (const [value, label] of Object.entries(RSVP_LABELS)) {
+    if (normalized === normalize(label) || normalized === value) return value as Rsvp;
+  }
+  return 'pending';
+};
+
+const parseEvents = (source: string): EventKey[] => {
+  const normalized = normalize(source);
+  if (!normalized) return [...DEFAULT_EVENTS];
+  const events = Object.entries(EVENT_LABELS)
+    .filter(([, label]) => normalized.includes(normalize(label)))
+    .map(([value]) => value as EventKey);
+  return events.length ? events : [...DEFAULT_EVENTS];
+};
+
+const parseKids = (source: string): Kid[] =>
+  source
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+    .map(value => {
+      const match = value.match(/^(.*?)\s*(?:\((\d+)|,\s*(\d+)|\s+(\d+)\s*a?)/i);
+      return {
+        name: (match?.[1] ?? value).trim(),
+        age: match?.[2] ?? match?.[3] ?? match?.[4] ?? '',
+      };
+    });
 
 const splitName = (raw: string): { firstName: string; lastName: string } => {
   const cleaned = raw.trim().replace(/\s+/g, ' ');
