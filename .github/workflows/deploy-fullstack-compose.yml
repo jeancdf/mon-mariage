@@ -62,28 +62,73 @@ jobs:
           echo "DEPLOY_VERSION=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
           echo "DEPLOYED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
 
-      - name: Create Docker SSH context
+      - name: Append deployment metadata to env file
+        run: |
+          {
+            printf '\n'
+            printf 'DEPLOY_SHA=%s\n' "${DEPLOY_SHA}"
+            printf 'DEPLOY_VERSION=%s\n' "${DEPLOY_VERSION}"
+            printf 'DEPLOYED_AT=%s\n' "${DEPLOYED_AT}"
+          } >> .env.production
+
+      - name: Package deployment files
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude='.git' \
+            --exclude='client/node_modules' \
+            --exclude='client/dist' \
+            --exclude='server/node_modules' \
+            --exclude='server/dist' \
+            -czf /tmp/mon-mariage-deploy.tgz \
+            docker-compose.prod.yml .env.production client server
+
+      - name: Upload release over SSH
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
           VPS_USER: ${{ secrets.VPS_USER }}
+          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
         run: |
-          unset DOCKER_HOST DOCKER_CONTEXT
-          if [ "$VPS_PORT" = "22" ]; then
-            VPS_DOCKER_ENDPOINT="ssh://${VPS_USER}@${VPS_HOST}"
-          else
-            VPS_DOCKER_ENDPOINT="ssh://${VPS_USER}@${VPS_HOST}:${VPS_PORT}"
-          fi
-          docker context create vps --docker "host=${VPS_DOCKER_ENDPOINT}"
-          docker --context vps version
+          set -euo pipefail
+          REMOTE_APP_DIR="${REMOTE_APP_DIR:-~/mon-mariage}"
+          REMOTE_TMP="/tmp/mon-mariage-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
 
-      - name: Deploy stack over Docker SSH
+          scp -P "${VPS_PORT}" /tmp/mon-mariage-deploy.tgz "${VPS_USER}@${VPS_HOST}:${REMOTE_TMP}"
+          ssh -p "${VPS_PORT}" "${VPS_USER}@${VPS_HOST}" \
+            "REMOTE_APP_DIR='${REMOTE_APP_DIR}' REMOTE_TMP='${REMOTE_TMP}' bash -s" << 'EOF'
+          set -euo pipefail
+          APP_DIR="${REMOTE_APP_DIR/#\~/$HOME}"
+          RELEASE_DIR="${APP_DIR}/release"
+
+          mkdir -p "${APP_DIR}"
+          rm -rf "${RELEASE_DIR}"
+          mkdir -p "${RELEASE_DIR}"
+          tar -xzf "${REMOTE_TMP}" -C "${RELEASE_DIR}"
+          rm -f "${REMOTE_TMP}"
+          EOF
+
+      - name: Deploy stack on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
         run: |
-          unset DOCKER_HOST DOCKER_CONTEXT
-          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production build frontend backend
-          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans
-          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps --force-recreate frontend
-          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production ps
+          set -euo pipefail
+          REMOTE_APP_DIR="${REMOTE_APP_DIR:-~/mon-mariage}"
+
+          ssh -p "${VPS_PORT}" "${VPS_USER}@${VPS_HOST}" \
+            "REMOTE_APP_DIR='${REMOTE_APP_DIR}' bash -s" << 'EOF'
+          set -euo pipefail
+          APP_DIR="${REMOTE_APP_DIR/#\~/$HOME}"
+          cd "${APP_DIR}/release"
+
+          docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml build frontend backend
+          docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml up -d --remove-orphans
+          docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml up -d --no-deps --force-recreate frontend
+          docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml ps
+          EOF
 
       - name: Healthchecks
         run: |
