@@ -61,7 +61,12 @@ export class DashboardService {
       this.vendorsService.findAll(),
     ]);
 
-    const guestPartySize = (guest: { hasPlusOne: boolean }) => guest.hasPlusOne ? 2 : 1;
+    const guestPartySize = (guest: { hasPlusOne: boolean; kids?: unknown[] }) =>
+      1 + (guest.hasPlusOne ? 1 : 0) + (
+        Array.isArray(guest.kids)
+          ? guest.kids.filter(kid => typeof kid === 'object' && kid !== null && 'name' in kid && String(kid.name).trim()).length
+          : 0
+      );
     const countGuestsByRsvp = (rsvp: 'confirmed' | 'pending' | 'declined') =>
       guests
         .filter(guest => guest.rsvp === rsvp)

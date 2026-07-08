@@ -1,11 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'crypto';
 import { In, Not, Repository } from 'typeorm';
 import { RoomGuestEntity } from '../housing/room-guest.entity';
 import { TableGuestEntity } from '../seating/table-guest.entity';
-import { GuestEntity } from './guest.entity';
+import { GuestEntity, Kid } from './guest.entity';
 
-type GuestInput = Omit<GuestEntity, 'id'> & { id?: string };
+type GuestInput = Omit<GuestEntity, 'id' | 'kids'> & { id?: string; kids?: Partial<Kid>[] };
 
 @Injectable()
 export class GuestsService {
@@ -18,10 +19,11 @@ export class GuestsService {
     private readonly tableAssignmentsRepository: Repository<TableGuestEntity>,
   ) {}
 
-  findAll(): Promise<GuestEntity[]> {
-    return this.guestsRepository.find({
+  async findAll(): Promise<GuestEntity[]> {
+    const guests = await this.guestsRepository.find({
       order: { firstName: 'ASC', lastName: 'ASC' },
     });
+    return Promise.all(guests.map(guest => this.ensureKidIds(guest)));
   }
 
   async create(rawGuest: GuestInput): Promise<GuestEntity> {
@@ -40,18 +42,25 @@ export class GuestsService {
       ...rawGuest,
     }));
     const savedGuest = await this.guestsRepository.save(merged);
-    if (existing.hasPlusOne && !savedGuest.hasPlusOne) {
-      await this.deleteAssignmentsForGuestIds([this.plusOneGuestId(savedGuest.id)]);
+    const validPersonIds = new Set(this.guestPersonIds(savedGuest));
+    const removedPersonIds = this.guestPersonIds(existing).filter(personId => !validPersonIds.has(personId));
+    if (removedPersonIds.length) {
+      await this.deleteAssignmentsForGuestIds(removedPersonIds);
     }
     return savedGuest;
   }
 
   async delete(id: string): Promise<void> {
+    const existing = await this.guestsRepository.findOne({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Guest not found');
+    }
+
     const result = await this.guestsRepository.delete(id);
     if (!result.affected) {
       throw new NotFoundException('Guest not found');
     }
-    await this.deleteAssignmentsForGuestIds([id, this.plusOneGuestId(id)]);
+    await this.deleteAssignmentsForGuestIds(this.guestPersonIds(existing));
   }
 
   async replaceAll(rawGuests: GuestInput[]): Promise<GuestEntity[]> {
@@ -67,15 +76,20 @@ export class GuestsService {
 
     await this.guestsRepository.insert(guests);
     const savedGuests = await this.findAll();
-    await this.deleteAssignmentsExcept(savedGuests.flatMap(guest => [
-      guest.id,
-      ...(guest.hasPlusOne ? [this.plusOneGuestId(guest.id)] : []),
-    ]));
+    await this.deleteAssignmentsExcept(savedGuests.flatMap(guest => this.guestPersonIds(guest)));
     return savedGuests;
   }
 
   private plusOneGuestId(guestId: string): string {
     return `${guestId}__plus_one`;
+  }
+
+  private guestPersonIds(guest: Pick<GuestEntity, 'id' | 'hasPlusOne' | 'kids'>): string[] {
+    return [
+      guest.id,
+      ...(guest.hasPlusOne ? [this.plusOneGuestId(guest.id)] : []),
+      ...this.normalizeKids(guest.kids).map(kid => kid.id),
+    ];
   }
 
   private async deleteAssignmentsForGuestIds(guestIds: string[]): Promise<void> {
@@ -108,11 +122,35 @@ export class GuestsService {
       rsvp: guest.rsvp ?? 'pending',
       hasPlusOne: Boolean(guest.hasPlusOne),
       plusOneName: String(guest.plusOneName ?? '').trim(),
-      kids: Array.isArray(guest.kids) ? guest.kids : [],
+      kids: this.normalizeKids(guest.kids),
       dietary: String(guest.dietary ?? '').trim(),
       events: Array.isArray(guest.events) ? guest.events : [],
       transport: String(guest.transport ?? '').trim(),
       notes: String(guest.notes ?? '').trim(),
     };
+  }
+
+  private async ensureKidIds(guest: GuestEntity): Promise<GuestEntity> {
+    const kids = this.normalizeKids(guest.kids);
+    if (JSON.stringify(kids) === JSON.stringify(guest.kids ?? [])) {
+      return guest;
+    }
+    guest.kids = kids;
+    return this.guestsRepository.save(guest);
+  }
+
+  private normalizeKids(kids: unknown): Kid[] {
+    if (!Array.isArray(kids)) return [];
+    return kids.map(kid => {
+      const value = kid as Partial<Kid> | null;
+      const id = typeof value?.id === 'string' && value.id.trim()
+        ? value.id.trim()
+        : randomUUID();
+      return {
+        id,
+        name: String(value?.name ?? '').trim(),
+        age: typeof value?.age === 'number' ? value.age : String(value?.age ?? '').trim(),
+      };
+    });
   }
 }

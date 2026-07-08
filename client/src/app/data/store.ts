@@ -39,7 +39,8 @@ export class WeddingStore {
   );
 
   guestPartySize(guest: Guest): number {
-    return 1 + (guest.hasPlusOne ? 1 : 0) + guest.kids.length;
+    const namedKids = guest.kids.filter(kid => kid.name.trim()).length;
+    return 1 + (guest.hasPlusOne ? 1 : 0) + namedKids;
   }
 
   countGuestList(guests: Guest[]): number {
