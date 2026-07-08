@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Tile -->
+  <rect width="64" height="64" rx="14" fill="#14130F"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="none" stroke="#EEE9E1" stroke-opacity="0.09" stroke-width="2"/>
+  <!-- Interlocked wedding rings -->
+  <circle cx="25.5" cy="34.5" r="12.5" fill="none" stroke="#D8B98C" stroke-width="4.5"/>
+  <circle cx="38.5" cy="29.5" r="12.5" fill="none" stroke="#EADCC0" stroke-width="4.5"/>
+  <!-- Re-draw a short arc of the first ring over the second at the upper crossing so the rings interlock -->
+  <path d="M 24.41 22.05 A 12.5 12.5 0 0 1 31.75 23.68" fill="none" stroke="#D8B98C" stroke-width="4.5"/>
+  <!-- Sparkle -->
+  <path d="M 50 9 L 51.4 12.1 L 54.5 13.5 L 51.4 14.9 L 50 18 L 48.6 14.9 L 45.5 13.5 L 48.6 12.1 Z" fill="#EEE9E1" fill-opacity="0.85"/>
+</svg>
