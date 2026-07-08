@@ -103,6 +103,7 @@ export interface GuestPerson {
   category: GuestCategory;
   rsvp: Rsvp;
   isPlusOne: boolean;
+  isKid: boolean;
   parentGuestId: string;
 }
 
@@ -116,6 +117,7 @@ export const guestPeople = (guest: Guest): GuestPerson[] => {
     category: guest.category,
     rsvp: guest.rsvp,
     isPlusOne: false,
+    isKid: false,
     parentGuestId: guest.id,
   }];
 
@@ -128,6 +130,22 @@ export const guestPeople = (guest: Guest): GuestPerson[] => {
       category: guest.category,
       rsvp: guest.rsvp,
       isPlusOne: true,
+      isKid: false,
+      parentGuestId: guest.id,
+    });
+  }
+
+  for (const kid of guest.kids) {
+    const firstName = kid.name.trim();
+    if (!firstName) continue;
+    people.push({
+      id: kid.id,
+      firstName,
+      lastName: guest.lastName,
+      category: 'enfants',
+      rsvp: guest.rsvp,
+      isPlusOne: false,
+      isKid: true,
       parentGuestId: guest.id,
     });
   }

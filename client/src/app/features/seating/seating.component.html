@@ -80,7 +80,7 @@
                     [cdkDragData]="guestId"
                     (cdkDragStarted)="onDragStarted()"
                     (cdkDragEnded)="onDragEnded()">
-                    <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isPlusOne ? ' (+1)' : '' }}</span>
+                    <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isKid ? ' (enfant)' : guest.isPlusOne ? ' (+1)' : '' }}</span>
                     <button type="button" (click)="$event.stopPropagation(); removeGuest(guestId)" aria-label="Retirer">
                       <app-icon name="x" [size]="11" />
                     </button>

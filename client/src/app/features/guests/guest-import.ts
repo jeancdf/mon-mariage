@@ -199,6 +199,7 @@ const parseKids = (source: string): Kid[] =>
     .map(value => {
       const match = value.match(/^(.*?)\s*(?:\((\d+)|,\s*(\d+)|\s+(\d+)\s*a?)/i);
       return {
+        id: gid(),
         name: (match?.[1] ?? value).trim(),
         age: match?.[2] ?? match?.[3] ?? match?.[4] ?? '',
       };

@@ -58,7 +58,7 @@ interface CategoryOption {
             <span class="guest-avatar" [attr.data-cat]="guest.category">{{ initials(guest) }}</span>
             <span class="guest-row-text">
               <span class="guest-row-name">{{ guest.firstName }} {{ guest.lastName }}</span>
-              <span class="guest-row-cat" [attr.data-cat]="guest.category">{{ guest.isPlusOne ? '+1 · ' : '' }}{{ catShort(guest.category) }}</span>
+              <span class="guest-row-cat" [attr.data-cat]="guest.category">{{ guest.isKid ? 'Enfant · ' : guest.isPlusOne ? '+1 · ' : '' }}{{ catShort(guest.category) }}</span>
             </span>
             <span class="guest-row-grip" aria-hidden="true">⠿</span>
           </div>

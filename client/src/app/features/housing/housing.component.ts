@@ -141,6 +141,7 @@ export class HousingComponent {
   private suggestPartner(personId: string, roomId: string): void {
     const person = this.guestMap().get(personId);
     if (!person) return;
+    if (person.isKid) return;
     const partnerId = person.isPlusOne ? person.parentGuestId : plusOneGuestId(person.id);
     const partner = this.guestMap().get(partnerId);
     if (!partner || partner.rsvp === 'declined') return;

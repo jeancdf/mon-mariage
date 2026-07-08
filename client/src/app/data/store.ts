@@ -2,7 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import {
   Budget, BudgetCategory, BudgetItem, Guest, House, Room, Table, TodoGroup, Task, ThemeKey, Vendor,
 } from './types';
-import { allGuestPeople, plusOneGuestId, THEME_KEYS } from '../shared/wedding-utils';
+import { allGuestPeople, guestPeople, THEME_KEYS } from '../shared/wedding-utils';
 
 const THEME_STORAGE_KEY = 'wedding-theme';
 
@@ -39,7 +39,7 @@ export class WeddingStore {
   );
 
   guestPartySize(guest: Guest): number {
-    return guest.hasPlusOne ? 2 : 1;
+    return 1 + (guest.hasPlusOne ? 1 : 0) + guest.kids.length;
   }
 
   countGuestList(guests: Guest[]): number {
@@ -72,15 +72,26 @@ export class WeddingStore {
     })));
   }
   updateGuest(g: Guest) {
+    const previous = this.guests().find(guest => guest.id === g.id);
     this.guests.update(arr => arr.map(x => x.id === g.id ? g : x));
-    if (!g.hasPlusOne) {
-      this.removeGuestAssignments(plusOneGuestId(g.id));
+    if (previous) {
+      const validPersonIds = new Set(guestPeople(g).map(person => person.id));
+      for (const person of guestPeople(previous)) {
+        if (!validPersonIds.has(person.id)) {
+          this.removeGuestAssignments(person.id);
+        }
+      }
     }
   }
   deleteGuest(id: string) {
+    const removedGuest = this.guests().find(guest => guest.id === id);
+    const removedPersonIds = removedGuest
+      ? guestPeople(removedGuest).map(person => person.id)
+      : [id];
     this.guests.update(arr => arr.filter(x => x.id !== id));
-    this.removeGuestAssignments(plusOneGuestId(id));
-    this.removeGuestAssignments(id);
+    for (const personId of removedPersonIds) {
+      this.removeGuestAssignments(personId);
+    }
   }
 
   private removeGuestAssignments(id: string) {

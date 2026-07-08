@@ -13,6 +13,7 @@ export type AssigneeId = 'marie' | 'elle' | 'famille' | 'prestataire';
 export type ThemeKey = 'blanc' | 'nuit' | 'ivoire';
 
 export interface Kid {
+  id: string;
   name: string;
   age: number | string;
 }

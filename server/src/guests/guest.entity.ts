@@ -10,6 +10,7 @@ export type GuestCategory =
 export type EventKey = 'rehearsal' | 'ceremony' | 'dinner';
 
 export interface Kid {
+  id: string;
   name: string;
   age: number | string;
 }

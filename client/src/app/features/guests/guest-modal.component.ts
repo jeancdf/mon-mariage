@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EventKey, Guest, Kid } from '../../data/types';
+import { gid } from '../../data/seed';
 import { CATEGORY_OPTIONS, cloneGuest, emptyGuest, EVENT_OPTIONS, RSVP_OPTIONS } from '../../shared/wedding-utils';
 import { IconComponent } from '../../shared/icon.component';
 
@@ -32,15 +33,15 @@ export class GuestModalComponent {
   }
 
   addKid(): void {
-    this.form.kids = [...this.form.kids, { name: '', age: '' }];
+    this.form.kids = [...this.form.kids, { id: gid(), name: '', age: '' }];
   }
 
   removeKid(index: number): void {
     this.form.kids = this.form.kids.filter((_, kidIndex) => kidIndex !== index);
   }
 
-  trackKid(index: number, kid: Kid): string {
-    return `${index}-${kid.name}`;
+  trackKid(_index: number, kid: Kid): string {
+    return kid.id;
   }
 
   submit(): void {
