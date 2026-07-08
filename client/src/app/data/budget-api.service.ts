@@ -27,6 +27,10 @@ export class BudgetApiService {
     return firstValueFrom(this.http.post<Budget>(`/api/budget/categories/${categoryId}/items`, item));
   }
 
+  async updateItem(item: BudgetItem): Promise<Budget> {
+    return firstValueFrom(this.http.patch<Budget>(`/api/budget/items/${item.id}`, item));
+  }
+
   async deleteItem(id: string): Promise<Budget> {
     return firstValueFrom(this.http.delete<Budget>(`/api/budget/items/${id}`));
   }

@@ -1447,6 +1447,11 @@ td small {
   font-weight: 500;
 }
 
+.budget-name-input {
+  flex: 1;
+  min-width: 140px;
+}
+
 .room-card header span,
 .seating-card header span,
 .budget-card header span {
@@ -1634,6 +1639,15 @@ td small {
 .budget-items span {
   flex: 1;
   font-size: 13px;
+}
+
+.budget-item-edit {
+  flex: 1;
+}
+
+.budget-item-edit input:first-child {
+  flex: 1;
+  min-width: 150px;
 }
 
 .budget-items time {
