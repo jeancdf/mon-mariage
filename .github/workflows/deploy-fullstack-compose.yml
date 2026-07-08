@@ -62,14 +62,22 @@ jobs:
           echo "DEPLOY_VERSION=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
           echo "DEPLOYED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
 
-      - name: Append deployment metadata to env file
+      - name: Set deployment env overrides
         run: |
-          {
-            printf '\n'
-            printf 'DEPLOY_SHA=%s\n' "${DEPLOY_SHA}"
-            printf 'DEPLOY_VERSION=%s\n' "${DEPLOY_VERSION}"
-            printf 'DEPLOYED_AT=%s\n' "${DEPLOYED_AT}"
-          } >> .env.production
+          set_env_value() {
+            key="$1"
+            value="$2"
+            if grep -q "^${key}=" .env.production; then
+              sed -i "s|^${key}=.*|${key}=${value}|" .env.production
+            else
+              printf '%s=%s\n' "${key}" "${value}" >> .env.production
+            fi
+          }
+
+          set_env_value BACKEND_HOST_PORT 3007
+          set_env_value DEPLOY_SHA "${DEPLOY_SHA}"
+          set_env_value DEPLOY_VERSION "${DEPLOY_VERSION}"
+          set_env_value DEPLOYED_AT "${DEPLOYED_AT}"
 
       - name: Package deployment files
         run: |
@@ -136,7 +144,7 @@ jobs:
           . ./.env.production
           set +a
           FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-9003}"
-          BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-3006}"
+          BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-3007}"
           ssh -p "${{ secrets.VPS_PORT || '22' }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             "FRONTEND_HOST_PORT='${FRONTEND_HOST_PORT}' BACKEND_HOST_PORT='${BACKEND_HOST_PORT}' DEPLOY_SHA='${DEPLOY_SHA}' DEPLOY_VERSION='${DEPLOY_VERSION}' DEPLOYED_AT='${DEPLOYED_AT}' bash -s" << 'EOF'
           set -euo pipefail
