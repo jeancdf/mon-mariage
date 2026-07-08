@@ -244,10 +244,20 @@
           <button class="btn primary" type="button" (click)="save()">Enregistrer</button>
           <button class="btn secondary" type="button" (click)="cancelEdit()">Annuler</button>
           @if (!isAddingFor(v.category)) {
-            <button class="btn danger" type="button" (click)="deleteVendor(v)">Supprimer</button>
+            <button class="btn danger" type="button" (click)="requestDeleteVendor(v)">Supprimer</button>
           }
         </div>
       </div>
     }
   </ng-template>
+
+  @if (vendorPendingDeletion(); as vendor) {
+    <app-confirm-dialog
+      title="Supprimer ce prestataire ?"
+      [message]="'Supprimer le prestataire ' + vendor.name + ' ?'"
+      details="Cette action est définitive."
+      titleId="confirm-delete-vendor-title"
+      (cancel)="cancelDeleteVendor()"
+      (confirm)="confirmDeleteVendor()" />
+  }
 </section>

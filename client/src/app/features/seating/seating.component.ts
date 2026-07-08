@@ -7,6 +7,7 @@ import { WeddingStore } from '../../data/store';
 import { IconComponent } from '../../shared/icon.component';
 import { GuestSidebarComponent } from '../../shared/guest-sidebar.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { ToastService } from '../../shared/toast.service';
 import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
 
 interface PairSuggestion {
@@ -25,13 +26,13 @@ interface PairSuggestion {
 export class SeatingComponent {
   readonly store = inject(WeddingStore);
   private readonly seatingApi = inject(SeatingApiService);
+  private readonly toast = inject(ToastService);
   addingTable = false;
   tableForm: { name: string; seats: number | string } = { name: '', seats: 12 };
   editingTableId: string | null = null;
   editTableForm: { name: string; seats: number | string } = { name: '', seats: 12 };
   tablePendingDeletion: Table | null = null;
   readonly dragging = signal(false);
-  readonly assignError = signal('');
   readonly pairSuggestion = signal<PairSuggestion | null>(null);
 
   readonly guests = computed(() => allGuestPeople(this.store.guests()));
@@ -98,7 +99,6 @@ export class SeatingComponent {
 
   private async moveGuest(guestId: string, table: Table | null): Promise<void> {
     const snapshot = this.store.tables();
-    this.assignError.set('');
     this.store.assignGuestTable(guestId, table?.id ?? null);
     try {
       const tables = await this.seatingApi.assignGuest(guestId, table?.id ?? null);
@@ -106,7 +106,7 @@ export class SeatingComponent {
       if (table) this.suggestPartner(guestId, table.id);
     } catch {
       this.store.tables.set(snapshot);
-      this.assignError.set("Impossible d'enregistrer le placement. Vérifiez la connexion et réessayez.");
+      this.toast.error("Impossible d'enregistrer le placement. Vérifiez la connexion et réessayez.");
     }
   }
 
@@ -136,7 +136,7 @@ export class SeatingComponent {
       this.tableForm = { name: '', seats: 12 };
       this.addingTable = false;
     } catch {
-      this.assignError.set("Impossible de créer la table. Vérifiez la connexion et réessayez.");
+      this.toast.error('Impossible de créer la table.');
     }
   }
 
@@ -159,7 +159,7 @@ export class SeatingComponent {
       this.store.replaceTables(tables);
       this.cancelEditing();
     } catch {
-      this.assignError.set("Impossible de modifier la table. Vérifiez la connexion et réessayez.");
+      this.toast.error('Impossible de modifier la table.');
     }
   }
 
@@ -186,7 +186,7 @@ export class SeatingComponent {
         this.cancelEditing();
       }
     } catch {
-      this.assignError.set("Impossible de supprimer la table. Vérifiez la connexion et réessayez.");
+      this.toast.error('Impossible de supprimer la table.');
     }
   }
 

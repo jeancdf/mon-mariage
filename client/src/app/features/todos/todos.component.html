@@ -30,7 +30,7 @@
           <strong>{{ group.title }}</strong>
           <span>{{ done }}/{{ group.tasks.length }}</span>
           <div class="mini-progress"><i [style.width.%]="group.tasks.length ? (done / group.tasks.length) * 100 : 0"></i></div>
-          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteGroup(group.id)" aria-label="Supprimer le groupe">
+          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteGroup(group)" aria-label="Supprimer le groupe">
             <app-icon name="trash" />
           </button>
         </header>
@@ -83,4 +83,14 @@
       </article>
     }
   </div>
+
+  @if (groupPendingDeletion; as group) {
+    <app-confirm-dialog
+      title="Supprimer ce groupe ?"
+      [message]="'Supprimer le groupe ' + group.title + ' et ses ' + group.tasks.length + ' tâche' + (group.tasks.length > 1 ? 's' : '') + ' ?'"
+      details="Cette action est définitive."
+      titleId="confirm-delete-todo-group-title"
+      (cancel)="cancelDeleteGroup()"
+      (confirm)="confirmDeleteGroup()" />
+  }
 </section>

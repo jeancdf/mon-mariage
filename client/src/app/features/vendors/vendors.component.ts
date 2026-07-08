@@ -15,18 +15,21 @@ import { VendorsApiService } from '../../data/vendors-api.service';
 import { WeddingStore } from '../../data/store';
 import { fmtCurrency, fmtShortDate } from '../../shared/wedding-utils';
 import { IconComponent } from '../../shared/icon.component';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { ToastService } from '../../shared/toast.service';
 
 type StatusFilter = 'all' | VendorStatus;
 
 @Component({
   selector: 'app-vendors',
   standalone: true,
-  imports: [FormsModule, NgTemplateOutlet, IconComponent],
+  imports: [FormsModule, NgTemplateOutlet, IconComponent, ConfirmDialogComponent],
   templateUrl: './vendors.component.html',
 })
 export class VendorsComponent {
   readonly store = inject(WeddingStore);
   private readonly api = inject(VendorsApiService);
+  private readonly toast = inject(ToastService);
 
   readonly categories = VENDOR_CATEGORIES;
   readonly statusOptions = VENDOR_STATUS_OPTIONS;
@@ -41,6 +44,7 @@ export class VendorsComponent {
 
   readonly editing = signal<Vendor | null>(null);
   readonly addingFor = signal<VendorCategoryKey | null>(null);
+  readonly vendorPendingDeletion = signal<Vendor | null>(null);
 
   readonly vendorsByCategory = computed(() => {
     const all = this.store.vendors();
@@ -163,23 +167,50 @@ export class VendorsComponent {
       name: vendor.name.trim(),
       details: { ...defaultDetailsFor(vendor.category), ...vendor.details },
     };
-    const list = this.addingFor()
-      ? await this.api.createVendor(payload)
-      : await this.api.updateVendor(payload);
-    this.store.replaceVendors(list);
-    this.cancelEdit();
+    try {
+      const list = this.addingFor()
+        ? await this.api.createVendor(payload)
+        : await this.api.updateVendor(payload);
+      this.store.replaceVendors(list);
+      this.cancelEdit();
+    } catch {
+      this.toast.error("Impossible d'enregistrer le prestataire.");
+    }
   }
 
-  async deleteVendor(vendor: Vendor): Promise<void> {
-    const list = await this.api.deleteVendor(vendor.id);
-    this.store.replaceVendors(list);
-    if (this.editing()?.id === vendor.id) this.cancelEdit();
+  requestDeleteVendor(vendor: Vendor): void {
+    this.vendorPendingDeletion.set(vendor);
+  }
+
+  cancelDeleteVendor(): void {
+    this.vendorPendingDeletion.set(null);
+  }
+
+  async confirmDeleteVendor(): Promise<void> {
+    const vendor = this.vendorPendingDeletion();
+    if (!vendor) return;
+    this.vendorPendingDeletion.set(null);
+    await this.deleteVendor(vendor);
+  }
+
+  private async deleteVendor(vendor: Vendor): Promise<void> {
+    try {
+      const list = await this.api.deleteVendor(vendor.id);
+      this.store.replaceVendors(list);
+      if (this.editing()?.id === vendor.id) this.cancelEdit();
+    } catch {
+      this.toast.error('Impossible de supprimer le prestataire.');
+    }
   }
 
   async quickStatus(vendor: Vendor, status: VendorStatus): Promise<void> {
     if (vendor.status === status) return;
-    const list = await this.api.updateVendor({ ...vendor, status });
-    this.store.replaceVendors(list);
+    try {
+      const list = await this.api.updateVendor({ ...vendor, status });
+      this.store.replaceVendors(list);
+    } catch {
+      this.toast.error('Impossible de mettre à jour le statut.');
+    }
   }
 
   vendorPriceLabel(vendor: Vendor): string {

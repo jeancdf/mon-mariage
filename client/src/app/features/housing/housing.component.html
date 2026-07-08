@@ -17,15 +17,6 @@
       </button>
     </header>
 
-    @if (assignError()) {
-      <div class="assign-error" role="alert">
-        <span>{{ assignError() }}</span>
-        <button type="button" class="select-banner-close" (click)="assignError.set('')" aria-label="Fermer">
-          <app-icon name="x" />
-        </button>
-      </div>
-    }
-
     @if (addingHouse) {
       <div class="inline-panel">
         <input autofocus [(ngModel)]="houseName" placeholder="Nom de la maison…" (keydown.enter)="addHouse()" />
@@ -72,7 +63,7 @@
                       <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditingRoom(room)" aria-label="Modifier la chambre">
                         <app-icon name="edit" />
                       </button>
-                      <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); deleteRoom(room.id)" aria-label="Supprimer la chambre">
+                      <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteRoom(room)" aria-label="Supprimer la chambre">
                         <app-icon name="trash" />
                       </button>
                     </header>
@@ -163,5 +154,15 @@
       titleId="confirm-delete-house-title"
       (cancel)="cancelDeleteHouse()"
       (confirm)="confirmDeleteHouse()" />
+  }
+
+  @if (roomPendingDeletion; as room) {
+    <app-confirm-dialog
+      title="Supprimer cette chambre ?"
+      [message]="'Supprimer la chambre ' + room.name + ' ?'"
+      [details]="'Ses ' + room.guestIds.length + ' occupant' + (room.guestIds.length > 1 ? 's' : '') + ' redeviendront sans logement.'"
+      titleId="confirm-delete-room-title"
+      (cancel)="cancelDeleteRoom()"
+      (confirm)="confirmDeleteRoom()" />
   }
 </section>

@@ -10,6 +10,7 @@ import { GuestModalComponent } from './guest-modal.component';
 import { parseGuestWorkbook } from './guest-import';
 import { GuestApiService } from '../../data/guest-api.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-guests',
@@ -20,6 +21,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 export class GuestsComponent {
   readonly store = inject(WeddingStore);
   private readonly guestApi = inject(GuestApiService);
+  private readonly toast = inject(ToastService);
   readonly importInput = viewChild<ElementRef<HTMLInputElement>>('importInput');
   readonly categoryOptions = CATEGORY_OPTIONS;
   readonly cats = CATS;
@@ -69,7 +71,7 @@ export class GuestsComponent {
       }
       this.closeModal();
     } catch {
-      this.importError = "Impossible d'enregistrer l'invité.";
+      this.toast.error("Impossible d'enregistrer l'invité.");
     }
   }
 
@@ -93,7 +95,7 @@ export class GuestsComponent {
       await this.guestApi.deleteGuest(id);
       this.store.deleteGuest(id);
     } catch {
-      this.importError = "Impossible de supprimer l'invité.";
+      this.toast.error("Impossible de supprimer l'invité.");
     }
   }
 

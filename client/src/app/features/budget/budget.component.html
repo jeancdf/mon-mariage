@@ -53,7 +53,7 @@
           <button class="icon-button" type="button" (click)="addingItemFor = addingItemFor === category.id ? null : category.id" aria-label="Ajouter une dépense">
             <app-icon name="plus" />
           </button>
-          <button class="icon-button danger" type="button" (click)="deleteCategory(category.id)" aria-label="Supprimer le poste">
+          <button class="icon-button danger" type="button" (click)="requestDeleteCategory(category)" aria-label="Supprimer le poste">
             <app-icon name="trash" />
           </button>
         </header>
@@ -91,4 +91,14 @@
       </article>
     }
   </div>
+
+  @if (categoryPendingDeletion; as category) {
+    <app-confirm-dialog
+      title="Supprimer ce poste ?"
+      [message]="'Supprimer le poste ' + category.name + ' et ses ' + category.items.length + ' dépense' + (category.items.length > 1 ? 's' : '') + ' ?'"
+      details="Cette action est définitive."
+      titleId="confirm-delete-budget-category-title"
+      (cancel)="cancelDeleteCategory()"
+      (confirm)="confirmDeleteCategory()" />
+  }
 </section>

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BudgetService } from '../budget/budget.service';
 import { GuestsService } from '../guests/guests.service';
 import { HousingService } from '../housing/housing.service';
@@ -40,6 +41,7 @@ export class DashboardService {
     private readonly seatingService: SeatingService,
     private readonly budgetService: BudgetService,
     private readonly todosService: TodosService,
+    private readonly configService: ConfigService,
   ) {}
 
   async getSummary(): Promise<DashboardSummary> {
@@ -76,6 +78,8 @@ export class DashboardService {
     const totalTasks = todos.reduce((sum, group) => sum + group.tasks.length, 0);
     const doneTasks = todos.reduce((sum, group) => sum + group.tasks.filter(task => task.done).length, 0);
 
+    const weddingDate = this.configService.get<string>('WEDDING_DATE', '2027-07-16');
+
     return {
       guests: {
         total: guests.reduce((sum, guest) => sum + guestPartySize(guest), 0),
@@ -100,7 +104,7 @@ export class DashboardService {
         total: totalTasks,
         done: doneTasks,
       },
-      daysRemaining: Math.ceil((new Date('2027-07-16').getTime() - Date.now()) / 86_400_000),
+      daysRemaining: Math.ceil((new Date(weddingDate).getTime() - Date.now()) / 86_400_000),
     };
   }
 }

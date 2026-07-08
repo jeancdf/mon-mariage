@@ -7,6 +7,7 @@ import { IconComponent } from '../../shared/icon.component';
 import { GuestSidebarComponent } from '../../shared/guest-sidebar.component';
 import { HousingApiService } from '../../data/housing-api.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { ToastService } from '../../shared/toast.service';
 import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
 
 interface RoomFormState {
@@ -31,6 +32,7 @@ interface PairSuggestion {
 export class HousingComponent {
   readonly store = inject(WeddingStore);
   private readonly housingApi = inject(HousingApiService);
+  private readonly toast = inject(ToastService);
   expanded: Record<string, boolean> = { h1: true, h2: true, h3: true };
   addingHouse = false;
   houseName = '';
@@ -39,8 +41,8 @@ export class HousingComponent {
   editingRoomId: string | null = null;
   editRoomForm: RoomFormState = { name: '', bedType: 'double', beds: 1 };
   housePendingDeletion: House | null = null;
+  roomPendingDeletion: Room | null = null;
   readonly dragging = signal(false);
-  readonly assignError = signal('');
   readonly pairSuggestion = signal<PairSuggestion | null>(null);
 
   readonly guests = computed(() => allGuestPeople(this.store.guests()));
@@ -125,7 +127,6 @@ export class HousingComponent {
 
   private async moveGuest(guestId: string, room: Room | null): Promise<void> {
     const snapshot = this.store.houses();
-    this.assignError.set('');
     this.store.assignGuestRoom(guestId, room ? this.houseIdOf(room.id) : null, room?.id ?? null);
     try {
       const houses = await this.housingApi.assignGuest(guestId, room?.id ?? null);
@@ -133,7 +134,7 @@ export class HousingComponent {
       if (room) this.suggestPartner(guestId, room.id);
     } catch {
       this.store.houses.set(snapshot);
-      this.assignError.set("Impossible d'enregistrer l'affectation. Vérifiez la connexion et réessayez.");
+      this.toast.error("Impossible d'enregistrer l'affectation. Vérifiez la connexion et réessayez.");
     }
   }
 
@@ -172,10 +173,14 @@ export class HousingComponent {
   async addHouse(): Promise<void> {
     const name = this.houseName.trim();
     if (!name) return;
-    const houses = await this.housingApi.createHouse(name);
-    this.store.replaceHouses(houses);
-    this.houseName = '';
-    this.addingHouse = false;
+    try {
+      const houses = await this.housingApi.createHouse(name);
+      this.store.replaceHouses(houses);
+      this.houseName = '';
+      this.addingHouse = false;
+    } catch {
+      this.toast.error("Impossible d'ajouter le logement.");
+    }
   }
 
   requestDeleteHouse(house: House): void {
@@ -194,21 +199,29 @@ export class HousingComponent {
   }
 
   private async deleteHouse(id: string): Promise<void> {
-    const houses = await this.housingApi.deleteHouse(id);
-    this.store.replaceHouses(houses);
+    try {
+      const houses = await this.housingApi.deleteHouse(id);
+      this.store.replaceHouses(houses);
+    } catch {
+      this.toast.error('Impossible de supprimer le logement.');
+    }
   }
 
   async addRoom(houseId: string): Promise<void> {
     const name = this.roomForm.name.trim();
     if (!name) return;
-    const houses = await this.housingApi.createRoom(houseId, {
-      name,
-      bedType: this.roomForm.bedType,
-      beds: this.normalizeBeds(this.roomForm.beds),
-    });
-    this.store.replaceHouses(houses);
-    this.roomForm = { name: '', bedType: 'double', beds: 1 };
-    this.addingRoomFor = null;
+    try {
+      const houses = await this.housingApi.createRoom(houseId, {
+        name,
+        bedType: this.roomForm.bedType,
+        beds: this.normalizeBeds(this.roomForm.beds),
+      });
+      this.store.replaceHouses(houses);
+      this.roomForm = { name: '', bedType: 'double', beds: 1 };
+      this.addingRoomFor = null;
+    } catch {
+      this.toast.error("Impossible d'ajouter la chambre.");
+    }
   }
 
   startEditingRoom(room: Room): void {
@@ -229,16 +242,39 @@ export class HousingComponent {
     const capacity = beds * (bedType === 'double' ? 2 : 1);
     const guestIds = room.guestIds.slice(0, capacity);
     const nextRoom: Room = { ...room, name, bedType, beds, guestIds };
-    const houses = await this.housingApi.updateRoom(nextRoom);
-    this.store.replaceHouses(houses);
-    this.cancelEditingRoom();
+    try {
+      const houses = await this.housingApi.updateRoom(nextRoom);
+      this.store.replaceHouses(houses);
+      this.cancelEditingRoom();
+    } catch {
+      this.toast.error('Impossible de modifier la chambre.');
+    }
   }
 
-  async deleteRoom(roomId: string): Promise<void> {
-    const houses = await this.housingApi.deleteRoom(roomId);
-    this.store.replaceHouses(houses);
-    if (this.editingRoomId === roomId) {
-      this.cancelEditingRoom();
+  requestDeleteRoom(room: Room): void {
+    this.roomPendingDeletion = room;
+  }
+
+  cancelDeleteRoom(): void {
+    this.roomPendingDeletion = null;
+  }
+
+  async confirmDeleteRoom(): Promise<void> {
+    const room = this.roomPendingDeletion;
+    if (!room) return;
+    this.roomPendingDeletion = null;
+    await this.deleteRoom(room.id);
+  }
+
+  private async deleteRoom(roomId: string): Promise<void> {
+    try {
+      const houses = await this.housingApi.deleteRoom(roomId);
+      this.store.replaceHouses(houses);
+      if (this.editingRoomId === roomId) {
+        this.cancelEditingRoom();
+      }
+    } catch {
+      this.toast.error('Impossible de supprimer la chambre.');
     }
   }
 

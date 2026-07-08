@@ -17,15 +17,6 @@
       </button>
     </header>
 
-    @if (assignError()) {
-      <div class="assign-error" role="alert">
-        <span>{{ assignError() }}</span>
-        <button type="button" class="select-banner-close" (click)="assignError.set('')" aria-label="Fermer">
-          <app-icon name="x" />
-        </button>
-      </div>
-    }
-
     @if (addingTable) {
       <div class="inline-panel">
         <input autofocus [(ngModel)]="tableForm.name" placeholder="Nom de la table…" />

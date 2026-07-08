@@ -2,15 +2,19 @@
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-title">Mariage</div>
-      <div class="brand-subtitle">16 juillet 2027 · Escayrac</div>
+      <div class="brand-subtitle">{{ weddingDateLabel }} · {{ weddingPlace }}</div>
     </div>
 
     <nav class="nav-list" aria-label="Sections du planning">
       @for (item of navItems; track item.id) {
-        <button class="nav-item" [class.active]="page === item.id" type="button" (click)="page = item.id">
+        <a
+          class="nav-item"
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }">
           <app-icon [name]="item.icon" />
           <span>{{ item.label }}</span>
-        </button>
+        </a>
       }
     </nav>
 
@@ -44,14 +48,7 @@
   </aside>
 
   <main class="main-panel">
-    @switch (page) {
-      @case ('dashboard') { <app-dashboard /> }
-      @case ('guests') { <app-guests /> }
-      @case ('housing') { <app-housing /> }
-      @case ('seating') { <app-seating /> }
-      @case ('budget') { <app-budget /> }
-      @case ('todos') { <app-todos /> }
-      @case ('vendors') { <app-vendors /> }
-    }
+    <router-outlet />
   </main>
 </div>
+<app-toasts />

@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { DashboardApiService, DashboardSummary } from '../../data/dashboard-api.service';
-import { fmtCurrency } from '../../shared/wedding-utils';
+import { ToastService } from '../../shared/toast.service';
+import { fmtCurrency, WEDDING_DATE_LABEL, WEDDING_PLACE } from '../../shared/wedding-utils';
 
 @Component({
   selector: 'app-dashboard',
@@ -9,7 +10,10 @@ import { fmtCurrency } from '../../shared/wedding-utils';
 })
 export class DashboardComponent {
   private readonly dashboardApi = inject(DashboardApiService);
+  private readonly toast = inject(ToastService);
   readonly fmtCurrency = fmtCurrency;
+  readonly weddingDateLabel = WEDDING_DATE_LABEL;
+  readonly weddingPlace = WEDDING_PLACE;
   readonly summary = signal<DashboardSummary | null>(null);
 
   constructor() {
@@ -25,6 +29,7 @@ export class DashboardComponent {
       this.summary.set(await this.dashboardApi.loadSummary());
     } catch {
       this.summary.set(null);
+      this.toast.error('Impossible de charger le tableau de bord.');
     }
   }
 }

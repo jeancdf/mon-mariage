@@ -2,7 +2,19 @@ import { Injectable, computed, signal } from '@angular/core';
 import {
   Budget, BudgetCategory, BudgetItem, Guest, House, Room, Table, TodoGroup, Task, ThemeKey, Vendor,
 } from './types';
-import { allGuestPeople, plusOneGuestId } from '../shared/wedding-utils';
+import { allGuestPeople, plusOneGuestId, THEME_KEYS } from '../shared/wedding-utils';
+
+const THEME_STORAGE_KEY = 'wedding-theme';
+
+const readStoredTheme = (): ThemeKey => {
+  if (typeof localStorage === 'undefined') return 'nuit';
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    return THEME_KEYS.includes(stored as ThemeKey) ? stored as ThemeKey : 'nuit';
+  } catch {
+    return 'nuit';
+  }
+};
 
 @Injectable({ providedIn: 'root' })
 export class WeddingStore {
@@ -12,7 +24,7 @@ export class WeddingStore {
   readonly budget = signal<Budget>({ categories: [] });
   readonly todos = signal<TodoGroup[]>([]);
   readonly vendors = signal<Vendor[]>([]);
-  readonly theme = signal<ThemeKey>('nuit');
+  readonly theme = signal<ThemeKey>(readStoredTheme());
 
   readonly guestCount = computed(() =>
     this.guests().reduce((count, guest) => count + this.guestPartySize(guest), 0),
@@ -205,6 +217,13 @@ export class WeddingStore {
   // ── Theme ─────────────────────────────────────────────────────────
   setTheme(theme: ThemeKey) {
     this.theme.set(theme);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, theme);
+      } catch {
+        // Theme persistence is best effort.
+      }
+    }
   }
 
   private validGuestIds(): Set<string> {

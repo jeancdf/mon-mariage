@@ -55,15 +55,20 @@ export const THEMES: Record<ThemeKey, ThemeDef> = {
 
 export type PageId = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todos' | 'vendors';
 export type IconName = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todo' | 'vendors' | 'plus' | 'x' | 'edit' | 'trash' | 'bed' | 'chevron' | 'check';
+export type PagePath = '/dashboard' | '/invites' | '/prestataires' | '/hebergement' | '/plan-de-table' | '/budget' | '/a-faire';
 
-export const NAV_ITEMS: { id: PageId; label: string; icon: IconName }[] = [
-  { id: 'dashboard', label: "Vue d'ensemble", icon: 'dashboard' },
-  { id: 'guests', label: 'Invités', icon: 'guests' },
-  { id: 'vendors', label: 'Prestataires', icon: 'vendors' },
-  { id: 'housing', label: 'Hébergement', icon: 'housing' },
-  { id: 'seating', label: 'Plan de table', icon: 'seating' },
-  { id: 'budget', label: 'Budget', icon: 'budget' },
-  { id: 'todos', label: 'À faire', icon: 'todo' },
+export const WEDDING_DATE_ISO = '2027-07-16';
+export const WEDDING_DATE_LABEL = '16 juillet 2027';
+export const WEDDING_PLACE = 'Escayrac';
+
+export const NAV_ITEMS: { id: PageId; label: string; icon: IconName; path: PagePath }[] = [
+  { id: 'dashboard', label: "Vue d'ensemble", icon: 'dashboard', path: '/dashboard' },
+  { id: 'guests', label: 'Invités', icon: 'guests', path: '/invites' },
+  { id: 'vendors', label: 'Prestataires', icon: 'vendors', path: '/prestataires' },
+  { id: 'housing', label: 'Hébergement', icon: 'housing', path: '/hebergement' },
+  { id: 'seating', label: 'Plan de table', icon: 'seating', path: '/plan-de-table' },
+  { id: 'budget', label: 'Budget', icon: 'budget', path: '/budget' },
+  { id: 'todos', label: 'À faire', icon: 'todo', path: '/a-faire' },
 ];
 
 export const THEME_KEYS: ThemeKey[] = ['blanc', 'nuit', 'ivoire'];

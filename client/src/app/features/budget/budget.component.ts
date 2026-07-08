@@ -6,16 +6,19 @@ import { BudgetApiService } from '../../data/budget-api.service';
 import { WeddingStore } from '../../data/store';
 import { fmtCurrency, fmtDate } from '../../shared/wedding-utils';
 import { IconComponent } from '../../shared/icon.component';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-budget',
   standalone: true,
-  imports: [DecimalPipe, FormsModule, IconComponent],
+  imports: [DecimalPipe, FormsModule, IconComponent, ConfirmDialogComponent],
   templateUrl: './budget.component.html',
 })
 export class BudgetComponent {
   readonly store = inject(WeddingStore);
   private readonly budgetApi = inject(BudgetApiService);
+  private readonly toast = inject(ToastService);
   readonly fmtCurrency = fmtCurrency;
   readonly fmtDate = fmtDate;
 
@@ -24,6 +27,7 @@ export class BudgetComponent {
   addingItemFor: string | null = null;
   itemForm: { label: string; amount: number | string; date: string } = { label: '', amount: '', date: '' };
   editingEstimateFor: string | null = null;
+  categoryPendingDeletion: BudgetCategory | null = null;
 
   readonly totals = computed(() => {
     const categories = this.store.budget().categories;
@@ -43,38 +47,73 @@ export class BudgetComponent {
   async addCategory(): Promise<void> {
     const name = this.categoryForm.name.trim();
     if (!name) return;
-    const budget = await this.budgetApi.createCategory({ name, estimated: Number(this.categoryForm.estimated) || 0 });
-    this.store.replaceBudget(budget);
-    this.categoryForm = { name: '', estimated: '' };
-    this.addingCategory = false;
+    try {
+      const budget = await this.budgetApi.createCategory({ name, estimated: Number(this.categoryForm.estimated) || 0 });
+      this.store.replaceBudget(budget);
+      this.categoryForm = { name: '', estimated: '' };
+      this.addingCategory = false;
+    } catch {
+      this.toast.error("Impossible d'ajouter la catégorie.");
+    }
   }
 
   async updateEstimate(category: BudgetCategory, value: number | string): Promise<void> {
-    const budget = await this.budgetApi.updateCategory({ ...category, estimated: Number(value) || 0 });
-    this.store.replaceBudget(budget);
-    this.editingEstimateFor = null;
+    try {
+      const budget = await this.budgetApi.updateCategory({ ...category, estimated: Number(value) || 0 });
+      this.store.replaceBudget(budget);
+      this.editingEstimateFor = null;
+    } catch {
+      this.toast.error('Impossible de modifier le budget estimé.');
+    }
   }
 
-  async deleteCategory(id: string): Promise<void> {
-    const budget = await this.budgetApi.deleteCategory(id);
-    this.store.replaceBudget(budget);
+  requestDeleteCategory(category: BudgetCategory): void {
+    this.categoryPendingDeletion = category;
+  }
+
+  cancelDeleteCategory(): void {
+    this.categoryPendingDeletion = null;
+  }
+
+  async confirmDeleteCategory(): Promise<void> {
+    const category = this.categoryPendingDeletion;
+    if (!category) return;
+    this.categoryPendingDeletion = null;
+    await this.deleteCategory(category.id);
+  }
+
+  private async deleteCategory(id: string): Promise<void> {
+    try {
+      const budget = await this.budgetApi.deleteCategory(id);
+      this.store.replaceBudget(budget);
+    } catch {
+      this.toast.error('Impossible de supprimer la catégorie.');
+    }
   }
 
   async addItem(categoryId: string): Promise<void> {
     const label = this.itemForm.label.trim();
     if (!label || !this.itemForm.amount) return;
-    const budget = await this.budgetApi.createItem(categoryId, {
-      label,
-      amount: Number(this.itemForm.amount) || 0,
-      date: this.itemForm.date,
-    });
-    this.store.replaceBudget(budget);
-    this.itemForm = { label: '', amount: '', date: '' };
-    this.addingItemFor = null;
+    try {
+      const budget = await this.budgetApi.createItem(categoryId, {
+        label,
+        amount: Number(this.itemForm.amount) || 0,
+        date: this.itemForm.date,
+      });
+      this.store.replaceBudget(budget);
+      this.itemForm = { label: '', amount: '', date: '' };
+      this.addingItemFor = null;
+    } catch {
+      this.toast.error("Impossible d'ajouter la dépense.");
+    }
   }
 
   async deleteItem(id: string): Promise<void> {
-    const budget = await this.budgetApi.deleteItem(id);
-    this.store.replaceBudget(budget);
+    try {
+      const budget = await this.budgetApi.deleteItem(id);
+      this.store.replaceBudget(budget);
+    } catch {
+      this.toast.error('Impossible de supprimer la dépense.');
+    }
   }
 }
