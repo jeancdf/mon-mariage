@@ -37,21 +37,32 @@
 
         @if (open) {
           <div class="todo-list">
-            @for (task of group.tasks; track task.id) {
+            @for (task of sortedTasks(group.tasks); track task.id) {
               <div class="todo-row">
                 <button class="check-button" type="button" [class.done]="task.done" (click)="toggleDone(group.id, task)" aria-label="Basculer la tâche">
                   @if (task.done) {
                     <app-icon name="check" [size]="13" />
                   }
                 </button>
-                <span class="todo-label" [class.done]="task.done">{{ task.label }}</span>
+                @if (editingTaskId === task.id) {
+                  <div class="inline-form todo-label-edit">
+                    <input autofocus [(ngModel)]="taskLabelDraft" (keydown.enter)="saveTaskLabel(task)" />
+                    <button class="btn primary small" type="button" (click)="saveTaskLabel(task)">OK</button>
+                    <button class="btn secondary small" type="button" (click)="cancelEditingTask()">Annuler</button>
+                  </div>
+                } @else {
+                  <button class="todo-label" type="button" [class.done]="task.done" (click)="startEditingTask(task)">{{ task.label }}</button>
+                  <button class="icon-button" type="button" (click)="startEditingTask(task)" aria-label="Modifier la tâche">
+                    <app-icon name="edit" />
+                  </button>
+                }
                 <select [ngModel]="task.assignee" (ngModelChange)="updateAssignee(group.id, task, $event)" [style.color]="assigneeColor(task.assignee)">
                   @for (assignee of assigneeOptions; track assignee.value) {
                     <option [value]="assignee.value">{{ assignee.label }}</option>
                   }
                 </select>
                 @if (task.dueDate) {
-                  <time>{{ fmtShortDate(task.dueDate) }}</time>
+                  <time [class.overdue]="isOverdue(task)">{{ fmtShortDate(task.dueDate) }}</time>
                 }
                 <button class="icon-button danger" type="button" (click)="deleteTask(task.id)" aria-label="Supprimer la tâche">
                   <app-icon name="trash" />

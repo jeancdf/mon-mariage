@@ -1714,12 +1714,28 @@ td small {
 
 .todo-label {
   flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
   font-size: 13px;
+  text-align: left;
+  cursor: pointer;
 }
 
 .todo-label.done {
   color: var(--muted);
   text-decoration: line-through;
+}
+
+.todo-label-edit {
+  flex: 1;
+}
+
+.todo-label-edit input {
+  flex: 1;
+  min-width: 160px;
 }
 
 .todo-row select {
@@ -1735,6 +1751,11 @@ td small {
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
+}
+
+.todo-row time.overdue {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .todo-add-row {

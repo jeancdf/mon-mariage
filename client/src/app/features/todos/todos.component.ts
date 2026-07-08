@@ -22,12 +22,15 @@ export class TodosComponent {
   readonly assignees = ASSIGNEES;
   readonly assigneeOptions = ASSIGNEE_OPTIONS;
   readonly fmtShortDate = fmtShortDate;
+  readonly today = new Date().toISOString().slice(0, 10);
 
   expanded: Record<string, boolean> = Object.fromEntries(this.store.todos().map(group => [group.id, true]));
   addingGroup = false;
   groupName = '';
   addingTaskFor: string | null = null;
   taskForm: { label: string; assignee: AssigneeId; dueDate: string } = { label: '', assignee: 'marie', dueDate: '' };
+  editingTaskId: string | null = null;
+  taskLabelDraft = '';
   groupPendingDeletion: TodoGroup | null = null;
 
   readonly totals = computed(() => {
@@ -43,6 +46,19 @@ export class TodosComponent {
 
   completedCount(tasks: Task[]): number {
     return tasks.filter(task => task.done).length;
+  }
+
+  sortedTasks(tasks: Task[]): Task[] {
+    return [...tasks].sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+      if (a.dueDate !== b.dueDate) return a.dueDate ? -1 : 1;
+      return a.label.localeCompare(b.label, 'fr');
+    });
+  }
+
+  isOverdue(task: Task): boolean {
+    return Boolean(task.dueDate) && !task.done && task.dueDate < this.today;
   }
 
   toggleGroup(groupId: string): void {
@@ -101,6 +117,28 @@ export class TodosComponent {
       this.store.replaceTodos(todos);
     } catch {
       this.toast.error('Impossible de mettre à jour la tâche.');
+    }
+  }
+
+  startEditingTask(task: Task): void {
+    this.editingTaskId = task.id;
+    this.taskLabelDraft = task.label;
+  }
+
+  cancelEditingTask(): void {
+    this.editingTaskId = null;
+    this.taskLabelDraft = '';
+  }
+
+  async saveTaskLabel(task: Task): Promise<void> {
+    const label = this.taskLabelDraft.trim();
+    if (!label) return;
+    try {
+      const todos = await this.todosApi.updateTask({ ...task, label });
+      this.store.replaceTodos(todos);
+      this.cancelEditingTask();
+    } catch {
+      this.toast.error('Impossible de modifier la tâche.');
     }
   }
 
