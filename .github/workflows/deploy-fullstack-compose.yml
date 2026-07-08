@@ -21,19 +21,36 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
           FULLSTACK_ENV_PRODUCTION: ${{ secrets.FULLSTACK_ENV_PRODUCTION }}
         run: |
           test -n "$VPS_HOST"
           test -n "$VPS_USER"
           test -n "$VPS_SSH_KEY"
           test -n "$FULLSTACK_ENV_PRODUCTION"
+          case "$VPS_PORT" in
+            ''|*[!0-9]*) echo "::error::VPS_PORT must be a number (1-65535)"; exit 1;;
+          esac
 
       - name: Prepare SSH key
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p "${{ secrets.VPS_PORT || '22' }}" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+          for attempt in 1 2 3; do
+            if ssh-keyscan -T 10 -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts; then
+              exit 0
+            fi
+            echo "ssh-keyscan attempt ${attempt}/3 failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::Cannot reach the VPS over SSH — the host is down, a firewall/fail2ban is dropping GitHub runner IPs, or the VPS_HOST/VPS_PORT secret is stale."
+          exit 1
 
       - name: Write .env.production from secret
         run: |
