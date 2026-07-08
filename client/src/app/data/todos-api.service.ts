@@ -15,6 +15,10 @@ export class TodosApiService {
     return firstValueFrom(this.http.post<TodoGroup[]>('/api/todos/groups', { title }));
   }
 
+  async updateGroup(group: TodoGroup): Promise<TodoGroup[]> {
+    return firstValueFrom(this.http.patch<TodoGroup[]>(`/api/todos/groups/${group.id}`, group));
+  }
+
   async deleteGroup(id: string): Promise<TodoGroup[]> {
     return firstValueFrom(this.http.delete<TodoGroup[]>(`/api/todos/groups/${id}`));
   }

@@ -32,6 +32,8 @@ export class TodosComponent {
   taskForm: { label: string; assignee: AssigneeId; dueDate: string } = { label: '', assignee: 'marie', dueDate: '' };
   editingTaskId: string | null = null;
   taskLabelDraft = '';
+  editingGroupId: string | null = null;
+  groupTitleDraft = '';
   groupPendingDeletion: TodoGroup | null = null;
 
   readonly totals = computed(() => {
@@ -76,6 +78,28 @@ export class TodosComponent {
       this.addingGroup = false;
     } catch {
       this.toast.error('Impossible de créer la liste.');
+    }
+  }
+
+  startEditingGroup(group: TodoGroup): void {
+    this.editingGroupId = group.id;
+    this.groupTitleDraft = group.title;
+  }
+
+  cancelEditingGroup(): void {
+    this.editingGroupId = null;
+    this.groupTitleDraft = '';
+  }
+
+  async saveGroupTitle(group: TodoGroup): Promise<void> {
+    const title = this.groupTitleDraft.trim();
+    if (!title) return;
+    try {
+      const todos = await this.todosApi.updateGroup({ ...group, title });
+      this.store.replaceTodos(todos);
+      this.cancelEditingGroup();
+    } catch {
+      this.toast.error('Impossible de modifier la liste.');
     }
   }
 

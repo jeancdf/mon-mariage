@@ -1733,6 +1733,15 @@ td small {
   flex: 1;
 }
 
+.todo-group-edit {
+  flex: 1;
+}
+
+.todo-group-edit input {
+  flex: 1;
+  min-width: 160px;
+}
+
 .todo-label-edit input {
   flex: 1;
   min-width: 160px;

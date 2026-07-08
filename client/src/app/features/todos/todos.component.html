@@ -27,7 +27,18 @@
       <article class="collapsible">
         <header class="collapsible-header" (click)="toggleGroup(group.id)">
           <app-icon class="chevron" [class.closed]="!open" name="chevron" />
-          <strong>{{ group.title }}</strong>
+          @if (editingGroupId === group.id) {
+            <div class="inline-form todo-group-edit" (click)="$event.stopPropagation()">
+              <input appAutofocus [(ngModel)]="groupTitleDraft" (keydown.enter)="saveGroupTitle(group)" />
+              <button class="btn primary small" type="button" (click)="saveGroupTitle(group)">OK</button>
+              <button class="btn secondary small" type="button" (click)="cancelEditingGroup()">Annuler</button>
+            </div>
+          } @else {
+            <strong>{{ group.title }}</strong>
+            <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditingGroup(group)" aria-label="Renommer le groupe">
+              <app-icon name="edit" />
+            </button>
+          }
           <span>{{ done }}/{{ group.tasks.length }}</span>
           <div class="mini-progress"><i [style.width.%]="group.tasks.length ? (done / group.tasks.length) * 100 : 0"></i></div>
           <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteGroup(group)" aria-label="Supprimer le groupe">
