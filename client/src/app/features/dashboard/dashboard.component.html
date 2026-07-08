@@ -18,31 +18,41 @@
     <article class="panel">Chargement du tableau de bord...</article>
   } @else {
   <div class="stat-grid">
-    <article class="stat-card">
+    <a class="stat-card" routerLink="/invites">
       <div class="eyebrow">Invités</div>
       <strong>{{ s.guests.total }}</strong>
       <span>{{ s.guests.confirmed }} confirmés · {{ s.guests.pending }} en attente</span>
-    </article>
-    <article class="stat-card">
+    </a>
+    <a class="stat-card" routerLink="/invites">
       <div class="eyebrow">Confirmés</div>
       <strong>{{ s.guests.confirmed }}</strong>
       <span>{{ percent(s.guests.confirmed, s.guests.total) }}% du total</span>
-    </article>
-    <article class="stat-card">
+    </a>
+    <a class="stat-card" routerLink="/hebergement">
       <div class="eyebrow">Hébergement</div>
       <strong>{{ s.housing.occupiedBeds }}/{{ s.housing.totalBeds }}</strong>
       <span>places occupées</span>
-    </article>
-    <article class="stat-card">
+    </a>
+    <a class="stat-card" routerLink="/plan-de-table">
       <div class="eyebrow">Plan de table</div>
       <strong>{{ s.seating.seated }}/{{ s.seating.totalSeats }}</strong>
       <span>invités placés</span>
-    </article>
-    <article class="stat-card">
+    </a>
+    <a class="stat-card" routerLink="/budget">
       <div class="eyebrow">Budget engagé</div>
       <strong>{{ fmtCurrency(s.budget.totalSpent) }}</strong>
       <span>sur {{ fmtCurrency(s.budget.totalEstimated) }}</span>
-    </article>
+    </a>
+    <a class="stat-card" routerLink="/a-faire">
+      <div class="eyebrow">À faire</div>
+      <strong>{{ s.todos.done }}/{{ s.todos.total }}</strong>
+      <span>tâches complétées</span>
+    </a>
+    <a class="stat-card" routerLink="/prestataires">
+      <div class="eyebrow">Prestataires</div>
+      <strong>{{ s.vendors.reserved }}/{{ s.vendors.count }}</strong>
+      <span>{{ fmtCurrency(s.vendors.totalCommitted) }} engagés</span>
+    </a>
   </div>
 
   <div class="two-column">
@@ -66,15 +76,19 @@
     <article class="panel">
       <div class="eyebrow panel-title">Budget par poste</div>
       @for (category of s.budget.categories.slice(0, 5); track category.id) {
+        @let over = isOverBudget(category);
         <div class="budget-row">
           <div>
             <span>{{ category.name }}</span>
-            <span>{{ fmtCurrency(category.spent) }} / {{ fmtCurrency(category.estimated) }}</span>
+            <span [class.over]="over">{{ fmtCurrency(category.spent) }} / {{ fmtCurrency(category.estimated) }}</span>
           </div>
           <div class="progress-track slim">
-            <i [style.width.%]="category.estimated ? (category.spent / category.estimated) * 100 : 0"></i>
+            <i [class.danger-fill]="over" [style.width.%]="budgetCategoryPercent(category)"></i>
           </div>
         </div>
+      }
+      @if (s.budget.categories.length > 5) {
+        <p class="dashboard-more">+ {{ s.budget.categories.length - 5 }} autres postes</p>
       }
     </article>
   </div>

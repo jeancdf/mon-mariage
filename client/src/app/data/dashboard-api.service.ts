@@ -26,6 +26,11 @@ export interface DashboardSummary {
     total: number;
     done: number;
   };
+  vendors: {
+    count: number;
+    reserved: number;
+    totalCommitted: number;
+  };
   daysRemaining: number;
 }
 

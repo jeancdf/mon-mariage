@@ -5,6 +5,7 @@ import { GuestsService } from '../guests/guests.service';
 import { HousingService } from '../housing/housing.service';
 import { SeatingService } from '../seating/seating.service';
 import { TodosService } from '../todos/todos.service';
+import { VendorsService } from '../vendors/vendors.service';
 
 export interface DashboardSummary {
   guests: {
@@ -30,6 +31,11 @@ export interface DashboardSummary {
     total: number;
     done: number;
   };
+  vendors: {
+    count: number;
+    reserved: number;
+    totalCommitted: number;
+  };
   daysRemaining: number;
 }
 
@@ -41,16 +47,18 @@ export class DashboardService {
     private readonly seatingService: SeatingService,
     private readonly budgetService: BudgetService,
     private readonly todosService: TodosService,
+    private readonly vendorsService: VendorsService,
     private readonly configService: ConfigService,
   ) {}
 
   async getSummary(): Promise<DashboardSummary> {
-    const [guests, houses, tables, budget, todos] = await Promise.all([
+    const [guests, houses, tables, budget, todos, vendors] = await Promise.all([
       this.guestsService.findAll(),
       this.housingService.findAll(),
       this.seatingService.findAll(),
       this.budgetService.find(),
       this.todosService.findAll(),
+      this.vendorsService.findAll(),
     ]);
 
     const guestPartySize = (guest: { hasPlusOne: boolean }) => guest.hasPlusOne ? 2 : 1;
@@ -77,6 +85,11 @@ export class DashboardService {
     const totalSpent = categories.reduce((sum, category) => sum + category.spent, 0);
     const totalTasks = todos.reduce((sum, group) => sum + group.tasks.length, 0);
     const doneTasks = todos.reduce((sum, group) => sum + group.tasks.filter(task => task.done).length, 0);
+    const committedVendorStatuses = new Set(['reserve', 'acompte-paye', 'solde-paye']);
+    const reservedVendors = vendors.filter(vendor => committedVendorStatuses.has(vendor.status)).length;
+    const vendorTotalCommitted = vendors
+      .filter(vendor => vendor.status !== 'ecarte')
+      .reduce((sum, vendor) => sum + (vendor.priceFinal || vendor.priceEstimate || 0), 0);
 
     const weddingDate = this.configService.get<string>('WEDDING_DATE', '2027-07-16');
 
@@ -103,6 +116,11 @@ export class DashboardService {
       todos: {
         total: totalTasks,
         done: doneTasks,
+      },
+      vendors: {
+        count: vendors.length,
+        reserved: reservedVendors,
+        totalCommitted: vendorTotalCommitted,
       },
       daysRemaining: Math.ceil((new Date(weddingDate).getTime() - Date.now()) / 86_400_000),
     };
