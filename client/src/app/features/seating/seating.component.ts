@@ -1,18 +1,24 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { Table } from '../../data/types';
 import { SeatingApiService } from '../../data/seating-api.service';
 import { WeddingStore } from '../../data/store';
 import { IconComponent } from '../../shared/icon.component';
 import { GuestSidebarComponent } from '../../shared/guest-sidebar.component';
-import { gid } from '../../data/seed';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
-import { GuestPerson, allGuestPeople } from '../../shared/wedding-utils';
+import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
+
+interface PairSuggestion {
+  partnerId: string;
+  partnerName: string;
+  tableId: string;
+}
 
 @Component({
   selector: 'app-seating',
   standalone: true,
-  imports: [FormsModule, IconComponent, GuestSidebarComponent, ConfirmDialogComponent],
+  imports: [FormsModule, CdkDrag, CdkDropList, CdkDropListGroup, IconComponent, GuestSidebarComponent, ConfirmDialogComponent],
   templateUrl: './seating.component.html',
   host: { class: 'split-pane-host' },
 })
@@ -23,8 +29,10 @@ export class SeatingComponent {
   tableForm: { name: string; seats: number | string } = { name: '', seats: 12 };
   editingTableId: string | null = null;
   editTableForm: { name: string; seats: number | string } = { name: '', seats: 12 };
-  selectedGuestId: string | null = null;
   tablePendingDeletion: Table | null = null;
+  readonly dragging = signal(false);
+  readonly assignError = signal('');
+  readonly pairSuggestion = signal<PairSuggestion | null>(null);
 
   readonly guests = computed(() => allGuestPeople(this.store.guests()));
   readonly guestMap = computed(() => new Map(this.guests().map(guest => [guest.id, guest])));
@@ -46,18 +54,76 @@ export class SeatingComponent {
     return guest ? `${guest.firstName[0] ?? ''}${guest.lastName[0] ?? ''}` : '';
   }
 
-  selectedGuest(): GuestPerson | undefined {
-    return this.selectedGuestId ? this.guestById(this.selectedGuestId) : undefined;
+  isTableFull(table: Table): boolean {
+    return table.guestIds.length >= table.seats;
   }
 
-  canPlace(table: Table): boolean {
-    if (!this.selectedGuestId) return false;
-    if (table.guestIds.length >= table.seats) return false;
-    return !table.guestIds.includes(this.selectedGuestId);
+  tableEnterPredicate = (table: Table) => (drag: CdkDrag<string>): boolean => {
+    if (table.guestIds.includes(drag.data)) return false;
+    return !this.isTableFull(table);
+  };
+
+  onDragStarted(): void {
+    this.dragging.set(true);
+    this.pairSuggestion.set(null);
   }
 
-  clearSelection(): void {
-    this.selectedGuestId = null;
+  onDragEnded(): void {
+    this.dragging.set(false);
+  }
+
+  async onDrop(event: CdkDragDrop<Table>): Promise<void> {
+    if (event.previousContainer === event.container) return;
+    const guestId = event.item.data as string;
+    const target = event.container.data as Table | 'sidebar';
+    await this.moveGuest(guestId, target === 'sidebar' ? null : target);
+  }
+
+  async removeGuest(guestId: string): Promise<void> {
+    await this.moveGuest(guestId, null);
+  }
+
+  async acceptPairSuggestion(): Promise<void> {
+    const suggestion = this.pairSuggestion();
+    if (!suggestion) return;
+    this.pairSuggestion.set(null);
+    const table = this.store.tables().find(t => t.id === suggestion.tableId);
+    if (!table || this.isTableFull(table)) return;
+    await this.moveGuest(suggestion.partnerId, table);
+  }
+
+  dismissPairSuggestion(): void {
+    this.pairSuggestion.set(null);
+  }
+
+  private async moveGuest(guestId: string, table: Table | null): Promise<void> {
+    const snapshot = this.store.tables();
+    this.assignError.set('');
+    this.store.assignGuestTable(guestId, table?.id ?? null);
+    try {
+      const tables = await this.seatingApi.assignGuest(guestId, table?.id ?? null);
+      this.store.replaceTables(tables);
+      if (table) this.suggestPartner(guestId, table.id);
+    } catch {
+      this.store.tables.set(snapshot);
+      this.assignError.set("Impossible d'enregistrer le placement. Vérifiez la connexion et réessayez.");
+    }
+  }
+
+  private suggestPartner(personId: string, tableId: string): void {
+    const person = this.guestMap().get(personId);
+    if (!person) return;
+    const partnerId = person.isPlusOne ? person.parentGuestId : plusOneGuestId(person.id);
+    const partner = this.guestMap().get(partnerId);
+    if (!partner || partner.rsvp === 'declined') return;
+    if (this.assignedIds().has(partnerId)) return;
+    const table = this.store.tables().find(t => t.id === tableId);
+    if (!table || this.isTableFull(table)) return;
+    this.pairSuggestion.set({
+      partnerId,
+      partnerName: `${partner.firstName} ${partner.lastName}`.trim(),
+      tableId,
+    });
   }
 
   async addTable(): Promise<void> {
@@ -67,11 +133,11 @@ export class SeatingComponent {
     try {
       const tables = await this.seatingApi.createTable({ name, seats });
       this.store.replaceTables(tables);
+      this.tableForm = { name: '', seats: 12 };
+      this.addingTable = false;
     } catch {
-      this.store.addTable({ id: gid(), name, seats, guestIds: [] });
+      this.assignError.set("Impossible de créer la table. Vérifiez la connexion et réessayez.");
     }
-    this.tableForm = { name: '', seats: 12 };
-    this.addingTable = false;
   }
 
   startEditing(table: Table): void {
@@ -88,14 +154,13 @@ export class SeatingComponent {
     const name = this.editTableForm.name.trim();
     if (!name) return;
     const seats = this.normalizeSeats(this.editTableForm.seats);
-    const nextTable = { ...table, name, seats };
     try {
-      const tables = await this.seatingApi.updateTable(nextTable);
+      const tables = await this.seatingApi.updateTable({ ...table, name, seats });
       this.store.replaceTables(tables);
+      this.cancelEditing();
     } catch {
-      this.store.replaceTables(this.store.tables().map(item => item.id === table.id ? nextTable : item));
+      this.assignError.set("Impossible de modifier la table. Vérifiez la connexion et réessayez.");
     }
-    this.cancelEditing();
   }
 
   requestDeleteTable(table: Table): void {
@@ -117,43 +182,12 @@ export class SeatingComponent {
     try {
       const tables = await this.seatingApi.deleteTable(id);
       this.store.replaceTables(tables);
+      if (this.editingTableId === id) {
+        this.cancelEditing();
+      }
     } catch {
-      this.store.deleteTable(id);
+      this.assignError.set("Impossible de supprimer la table. Vérifiez la connexion et réessayez.");
     }
-    if (this.editingTableId === id) {
-      this.cancelEditing();
-    }
-  }
-
-  async placeSelected(table: Table): Promise<void> {
-    if (!this.canPlace(table)) return;
-    const guestId = this.selectedGuestId;
-    if (!guestId) return;
-    this.selectedGuestId = null;
-    try {
-      const tables = await this.seatingApi.assignGuest(guestId, table.id);
-      this.store.replaceTables(tables);
-    } catch {
-      this.store.assignGuestTable(guestId, table.id);
-    }
-  }
-
-  async removeGuest(guestId: string): Promise<void> {
-    try {
-      const tables = await this.seatingApi.assignGuest(guestId, null);
-      this.store.replaceTables(tables);
-    } catch {
-      this.store.assignGuestTable(guestId, null);
-    }
-  }
-
-  async handleSeatClick(table: Table, guest: GuestPerson | undefined, event: Event): Promise<void> {
-    event.stopPropagation();
-    if (guest) {
-      await this.removeGuest(guest.id);
-      return;
-    }
-    await this.placeSelected(table);
   }
 
   private normalizeSeats(value: number | string): number {

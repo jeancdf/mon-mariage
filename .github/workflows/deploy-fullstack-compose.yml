@@ -37,7 +37,13 @@ jobs:
 
       - name: Write .env.production from secret
         run: |
-          printf '%s' "${{ secrets.FULLSTACK_ENV_PRODUCTION }}" > .env.production
+          {
+            printf '%s\n' "${{ secrets.FULLSTACK_ENV_PRODUCTION }}"
+            printf '%s\n' "COMPOSE_PROJECT_NAME=mon_mariage"
+            printf '%s\n' "FRONTEND_HOST_PORT=9003"
+            printf '%s\n' "BACKEND_HOST_PORT=3006"
+            printf '%s\n' "CLIENT_ORIGIN=http://${{ secrets.VPS_HOST }}:9003"
+          } > .env.production
 
       - name: Set deployment metadata
         run: |
@@ -45,36 +51,59 @@ jobs:
           echo "DEPLOY_VERSION=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
           echo "DEPLOYED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
 
-      - name: Create Docker SSH context
+      - name: Package application
+        run: |
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=dist \
+            --exclude=.angular \
+            --exclude=mon-mariage-release.tgz \
+            -czf mon-mariage-release.tgz .
+
+      - name: Upload application over SSH
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
           VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
         run: |
-          unset DOCKER_HOST DOCKER_CONTEXT
-          if [ "$VPS_PORT" = "22" ]; then
-            VPS_DOCKER_ENDPOINT="ssh://${VPS_USER}@${VPS_HOST}"
-          else
-            VPS_DOCKER_ENDPOINT="ssh://${VPS_USER}@${VPS_HOST}:${VPS_PORT}"
-          fi
-          docker context create vps --docker "host=${VPS_DOCKER_ENDPOINT}"
-          docker --context vps version
+          set -euo pipefail
+          REMOTE_PATH="${VPS_DEPLOY_PATH:-/home/${VPS_USER}/mon-mariage}"
+          REMOTE_ARCHIVE="/tmp/mon-mariage-${GITHUB_RUN_ID}.tgz"
+          REMOTE_PATH_Q="$(printf '%q' "$REMOTE_PATH")"
+          REMOTE_ARCHIVE_Q="$(printf '%q' "$REMOTE_ARCHIVE")"
 
-      - name: Deploy stack over Docker SSH
+          scp -P "$VPS_PORT" mon-mariage-release.tgz "${VPS_USER}@${VPS_HOST}:${REMOTE_ARCHIVE}"
+          ssh -p "$VPS_PORT" "${VPS_USER}@${VPS_HOST}" \
+            "mkdir -p ${REMOTE_PATH_Q} && tar -xzf ${REMOTE_ARCHIVE_Q} -C ${REMOTE_PATH_Q} && rm -f ${REMOTE_ARCHIVE_Q}"
+
+      - name: Deploy stack with remote Docker Compose
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
         run: |
-          unset DOCKER_HOST DOCKER_CONTEXT
-          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production build frontend backend
-          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans
-          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps --force-recreate frontend
-          docker --context vps compose -f docker-compose.prod.yml --env-file .env.production ps
+          set -euo pipefail
+          REMOTE_PATH="${VPS_DEPLOY_PATH:-/home/${VPS_USER}/mon-mariage}"
+          REMOTE_PATH_Q="$(printf '%q' "$REMOTE_PATH")"
+          DEPLOY_SHA_Q="$(printf '%q' "$DEPLOY_SHA")"
+          DEPLOY_VERSION_Q="$(printf '%q' "$DEPLOY_VERSION")"
+          DEPLOYED_AT_Q="$(printf '%q' "$DEPLOYED_AT")"
+
+          ssh -p "$VPS_PORT" "${VPS_USER}@${VPS_HOST}" \
+            "cd ${REMOTE_PATH_Q} && DEPLOY_SHA=${DEPLOY_SHA_Q} DEPLOY_VERSION=${DEPLOY_VERSION_Q} DEPLOYED_AT=${DEPLOYED_AT_Q} docker compose -f docker-compose.prod.yml --env-file .env.production build frontend backend && DEPLOY_SHA=${DEPLOY_SHA_Q} DEPLOY_VERSION=${DEPLOY_VERSION_Q} DEPLOYED_AT=${DEPLOYED_AT_Q} docker compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans && DEPLOY_SHA=${DEPLOY_SHA_Q} DEPLOY_VERSION=${DEPLOY_VERSION_Q} DEPLOYED_AT=${DEPLOYED_AT_Q} docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps --force-recreate frontend && docker compose -f docker-compose.prod.yml --env-file .env.production ps"
 
       - name: Healthchecks
+        env:
+          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
         run: |
           set -a
           . ./.env.production
           set +a
-          FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-8081}"
-          BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-3001}"
+          FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-9003}"
+          BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-3006}"
           ssh -p "${{ secrets.VPS_PORT || '22' }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             "FRONTEND_HOST_PORT='${FRONTEND_HOST_PORT}' BACKEND_HOST_PORT='${BACKEND_HOST_PORT}' DEPLOY_SHA='${DEPLOY_SHA}' DEPLOY_VERSION='${DEPLOY_VERSION}' DEPLOYED_AT='${DEPLOYED_AT}' bash -s" << 'EOF'
           set -euo pipefail

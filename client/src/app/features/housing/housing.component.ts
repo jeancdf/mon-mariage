@@ -1,4 +1,5 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { BedType, House, Room } from '../../data/types';
 import { WeddingStore } from '../../data/store';
@@ -6,7 +7,7 @@ import { IconComponent } from '../../shared/icon.component';
 import { GuestSidebarComponent } from '../../shared/guest-sidebar.component';
 import { HousingApiService } from '../../data/housing-api.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
-import { GuestPerson, allGuestPeople } from '../../shared/wedding-utils';
+import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
 
 interface RoomFormState {
   name: string;
@@ -14,10 +15,16 @@ interface RoomFormState {
   beds: number | string;
 }
 
+interface PairSuggestion {
+  partnerId: string;
+  partnerName: string;
+  roomId: string;
+}
+
 @Component({
   selector: 'app-housing',
   standalone: true,
-  imports: [FormsModule, IconComponent, GuestSidebarComponent, ConfirmDialogComponent],
+  imports: [FormsModule, CdkDrag, CdkDropList, CdkDropListGroup, IconComponent, GuestSidebarComponent, ConfirmDialogComponent],
   templateUrl: './housing.component.html',
   host: { class: 'split-pane-host' },
 })
@@ -31,8 +38,10 @@ export class HousingComponent {
   roomForm: RoomFormState = { name: '', bedType: 'double', beds: 1 };
   editingRoomId: string | null = null;
   editRoomForm: RoomFormState = { name: '', bedType: 'double', beds: 1 };
-  selectedGuestId: string | null = null;
   housePendingDeletion: House | null = null;
+  readonly dragging = signal(false);
+  readonly assignError = signal('');
+  readonly pairSuggestion = signal<PairSuggestion | null>(null);
 
   readonly guests = computed(() => allGuestPeople(this.store.guests()));
   readonly guestMap = computed(() => new Map(this.guests().map(guest => [guest.id, guest])));
@@ -67,10 +76,6 @@ export class HousingComponent {
     return this.guestMap().get(id);
   }
 
-  selectedGuest(): GuestPerson | undefined {
-    return this.selectedGuestId ? this.guestById(this.selectedGuestId) : undefined;
-  }
-
   isRoomFull(room: Room): boolean {
     return room.guestIds.length >= this.roomCapacity(room);
   }
@@ -80,10 +85,84 @@ export class HousingComponent {
     return capacity > 0 && this.houseOccupied(house) >= capacity;
   }
 
-  canAssignRoom(room: Room): boolean {
-    if (!this.selectedGuestId) return false;
-    if (room.guestIds.includes(this.selectedGuestId)) return false;
+  roomEnterPredicate = (room: Room) => (drag: CdkDrag<string>): boolean => {
+    if (room.guestIds.includes(drag.data)) return false;
     return !this.isRoomFull(room);
+  };
+
+  onDragStarted(): void {
+    this.dragging.set(true);
+    this.pairSuggestion.set(null);
+  }
+
+  onDragEnded(): void {
+    this.dragging.set(false);
+  }
+
+  async onDrop(event: CdkDragDrop<Room>): Promise<void> {
+    if (event.previousContainer === event.container) return;
+    const guestId = event.item.data as string;
+    const target = event.container.data as Room | 'sidebar';
+    await this.moveGuest(guestId, target === 'sidebar' ? null : target);
+  }
+
+  async unassignGuest(guestId: string): Promise<void> {
+    await this.moveGuest(guestId, null);
+  }
+
+  async acceptPairSuggestion(): Promise<void> {
+    const suggestion = this.pairSuggestion();
+    if (!suggestion) return;
+    this.pairSuggestion.set(null);
+    const room = this.roomById(suggestion.roomId);
+    if (!room || this.isRoomFull(room)) return;
+    await this.moveGuest(suggestion.partnerId, room);
+  }
+
+  dismissPairSuggestion(): void {
+    this.pairSuggestion.set(null);
+  }
+
+  private async moveGuest(guestId: string, room: Room | null): Promise<void> {
+    const snapshot = this.store.houses();
+    this.assignError.set('');
+    this.store.assignGuestRoom(guestId, room ? this.houseIdOf(room.id) : null, room?.id ?? null);
+    try {
+      const houses = await this.housingApi.assignGuest(guestId, room?.id ?? null);
+      this.store.replaceHouses(houses);
+      if (room) this.suggestPartner(guestId, room.id);
+    } catch {
+      this.store.houses.set(snapshot);
+      this.assignError.set("Impossible d'enregistrer l'affectation. Vérifiez la connexion et réessayez.");
+    }
+  }
+
+  private suggestPartner(personId: string, roomId: string): void {
+    const person = this.guestMap().get(personId);
+    if (!person) return;
+    const partnerId = person.isPlusOne ? person.parentGuestId : plusOneGuestId(person.id);
+    const partner = this.guestMap().get(partnerId);
+    if (!partner || partner.rsvp === 'declined') return;
+    if (this.assignedGuestIds().has(partnerId)) return;
+    const room = this.roomById(roomId);
+    if (!room || this.isRoomFull(room)) return;
+    this.pairSuggestion.set({
+      partnerId,
+      partnerName: `${partner.firstName} ${partner.lastName}`.trim(),
+      roomId,
+    });
+  }
+
+  private roomById(roomId: string): Room | undefined {
+    for (const house of this.store.houses()) {
+      const room = house.rooms.find(r => r.id === roomId);
+      if (room) return room;
+    }
+    return undefined;
+  }
+
+  private houseIdOf(roomId: string): string | null {
+    return this.store.houses().find(house => house.rooms.some(room => room.id === roomId))?.id ?? null;
   }
 
   toggleHouse(houseId: string): void {
@@ -161,23 +240,6 @@ export class HousingComponent {
     if (this.editingRoomId === roomId) {
       this.cancelEditingRoom();
     }
-  }
-
-  async assignSelectedToRoom(room: Room): Promise<void> {
-    if (!this.canAssignRoom(room)) return;
-    const guestId = this.selectedGuestId;
-    if (!guestId) return;
-    this.selectedGuestId = null;
-    await this.assignGuestRoom(guestId, room.id);
-  }
-
-  async assignGuestRoom(guestId: string, roomId: string | null): Promise<void> {
-    const houses = await this.housingApi.assignGuest(guestId, roomId);
-    this.store.replaceHouses(houses);
-  }
-
-  clearSelection(): void {
-    this.selectedGuestId = null;
   }
 
   private normalizeBeds(value: number | string): number {

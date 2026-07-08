@@ -1,25 +1,26 @@
-<section class="split-pane">
+<section class="split-pane" cdkDropListGroup>
   <app-guest-sidebar
     label="Non placés"
     [guests]="unplacedGuests()"
-    [(selectedId)]="selectedGuestId" />
+    (guestDropped)="removeGuest($event)"
+    (dragStarted)="onDragStarted()"
+    (dragEnded)="onDragEnded()" />
 
   <div class="split-pane-main">
     <header class="page-header split">
       <div>
         <h1>Plan de table</h1>
-        <p>{{ totals().placed }} / {{ totals().totalSeats }} places · {{ unplacedGuests().length }} non placés</p>
+        <p>{{ totals().placed }} / {{ totals().totalSeats }} places · {{ unplacedGuests().length }} non placés · glissez un invité vers une table</p>
       </div>
       <button class="btn primary" type="button" (click)="addingTable = true">
         <app-icon name="plus" /> Ajouter une table
       </button>
     </header>
 
-    @if (selectedGuest(); as guest) {
-      <div class="select-banner">
-        <strong>{{ guest.firstName }} {{ guest.lastName }}</strong>
-        <span>sélectionné · cliquez sur une table pour placer</span>
-        <button type="button" class="select-banner-close" (click)="clearSelection()" aria-label="Annuler la sélection">
+    @if (assignError()) {
+      <div class="assign-error" role="alert">
+        <span>{{ assignError() }}</span>
+        <button type="button" class="select-banner-close" (click)="assignError.set('')" aria-label="Fermer">
           <app-icon name="x" />
         </button>
       </div>
@@ -36,12 +37,14 @@
 
     <div class="table-grid">
       @for (table of store.tables(); track table.id) {
-        @let full = table.guestIds.length >= table.seats;
-        @let canPlaceHere = canPlace(table);
+        @let full = isTableFull(table);
         <article
           class="seating-card"
-          [class.can-place]="canPlaceHere"
-          (click)="placeSelected(table)">
+          cdkDropList
+          cdkDropListSortingDisabled
+          [cdkDropListData]="table"
+          [cdkDropListEnterPredicate]="tableEnterPredicate(table)"
+          (cdkDropListDropped)="onDrop($event)">
           <header>
             <strong>{{ table.name }}</strong>
             <span [class.full]="full">{{ table.guestIds.length }}/{{ table.seats }}</span>
@@ -66,31 +69,50 @@
             @for (_ of [].constructor(table.seats); track $index) {
               @let guestId = table.guestIds[$index];
               @let guest = guestId ? guestById(guestId) : undefined;
-              <button
-                type="button"
+              <span
                 class="seat-dot"
                 [class.occupied]="guest"
-                [class.can-place]="!guest && canPlaceHere"
-                [attr.title]="guest ? guest.firstName + ' ' + guest.lastName + ' — cliquer pour retirer' : 'Place libre'"
-                (click)="handleSeatClick(table, guest, $event)">
+                [attr.title]="guest ? guest.firstName + ' ' + guest.lastName : 'Place libre'">
                 {{ initials(guest) }}
-              </button>
+              </span>
             }
           </div>
 
           @if (table.guestIds.length) {
-            <p class="seated-names">
-              @for (id of table.guestIds; track id; let last = $last) {
-                @let guest = guestById(id);
+            <div class="table-guests">
+              @for (guestId of table.guestIds; track guestId) {
+                @let guest = guestById(guestId);
                 @if (guest) {
-                  <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isPlusOne ? ' (+1)' : '' }}{{ !last ? ' · ' : '' }}</span>
+                  <div
+                    class="room-guest draggable-chip"
+                    cdkDrag
+                    [cdkDragData]="guestId"
+                    (cdkDragStarted)="onDragStarted()"
+                    (cdkDragEnded)="onDragEnded()">
+                    <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isPlusOne ? ' (+1)' : '' }}</span>
+                    <button type="button" (click)="$event.stopPropagation(); removeGuest(guestId)" aria-label="Retirer">
+                      <app-icon name="x" [size]="11" />
+                    </button>
+                  </div>
                 }
               }
-            </p>
+            </div>
           }
 
-          @if (canPlaceHere) {
-            <div class="card-cta">Cliquer pour placer</div>
+          @if (pairSuggestion(); as suggestion) {
+            @if (suggestion.tableId === table.id) {
+              <div class="pair-suggestion">
+                <span>Placer aussi <strong>{{ suggestion.partnerName }}</strong> ici ?</span>
+                <button class="btn primary small" type="button" (click)="acceptPairSuggestion()">Oui</button>
+                <button class="btn secondary small" type="button" (click)="dismissPairSuggestion()">Non</button>
+              </div>
+            }
+          }
+
+          @if (dragging() && !full) {
+            <div class="drop-hint">⊕ Déposer ici</div>
+          } @else if (dragging() && full) {
+            <div class="drop-hint muted">Table complète</div>
           }
         </article>
       }

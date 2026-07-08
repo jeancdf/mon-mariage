@@ -1,5 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { NgStyle } from '@angular/common';
+import { Component, DOCUMENT, computed, effect, inject, signal } from '@angular/core';
 import { ThemeKey } from '../data/types';
 import { BudgetApiService } from '../data/budget-api.service';
 import { GuestApiService } from '../data/guest-api.service';
@@ -28,7 +27,6 @@ interface DeploymentMetadata {
   selector: 'app-wedding-shell',
   standalone: true,
   imports: [
-    NgStyle,
     IconComponent,
     DashboardComponent,
     GuestsComponent,
@@ -42,6 +40,7 @@ interface DeploymentMetadata {
 })
 export class WeddingShellComponent {
   readonly store = inject(WeddingStore);
+  private readonly document = inject(DOCUMENT);
   private readonly guestApi = inject(GuestApiService);
   private readonly housingApi = inject(HousingApiService);
   private readonly seatingApi = inject(SeatingApiService);
@@ -57,22 +56,22 @@ export class WeddingShellComponent {
   constructor() {
     void this.loadInitialData();
     void this.loadDeploymentMetadata();
+    // Theme variables live on <html> so elements CDK appends to <body>
+    // (drag previews, overlays) inherit them too.
+    effect(() => {
+      const theme = THEMES[this.store.theme()];
+      const style = this.document.documentElement.style;
+      style.setProperty('--bg', theme.bg);
+      style.setProperty('--surface', theme.surface);
+      style.setProperty('--surface-alt', theme.surfaceAlt);
+      style.setProperty('--border', theme.border);
+      style.setProperty('--text', theme.text);
+      style.setProperty('--muted', theme.muted);
+      style.setProperty('--accent', theme.accent);
+      style.setProperty('--accent-fg', theme.accentFg);
+      style.setProperty('--badge-bg', theme.badgeBg);
+    });
   }
-
-  readonly themeVars = computed(() => {
-    const theme = THEMES[this.store.theme()];
-    return {
-      '--bg': theme.bg,
-      '--surface': theme.surface,
-      '--surface-alt': theme.surfaceAlt,
-      '--border': theme.border,
-      '--text': theme.text,
-      '--muted': theme.muted,
-      '--accent': theme.accent,
-      '--accent-fg': theme.accentFg,
-      '--badge-bg': theme.badgeBg,
-    };
-  });
 
   setTheme(theme: ThemeKey): void {
     this.store.setTheme(theme);

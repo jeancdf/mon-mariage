@@ -1,4 +1,5 @@
-import { Component, computed, input, model, signal } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
+import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { GuestCategory } from '../data/types';
 import { CATS } from '../data/seed';
@@ -12,7 +13,7 @@ interface CategoryOption {
 @Component({
   selector: 'app-guest-sidebar',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, CdkDrag, CdkDropList],
   template: `
     <aside class="guest-sidebar">
       <div class="guest-sidebar-head">
@@ -36,23 +37,31 @@ interface CategoryOption {
         </div>
       </div>
 
-      <div class="guest-sidebar-list">
+      <div
+        class="guest-sidebar-list"
+        cdkDropList
+        cdkDropListSortingDisabled
+        [cdkDropListData]="'sidebar'"
+        (cdkDropListDropped)="onDrop($event)">
+        <div class="guest-sidebar-dropzone">Déposer ici pour retirer</div>
         @if (filtered().length === 0) {
           <div class="guest-sidebar-empty">Aucun résultat</div>
         }
         @for (guest of filtered(); track guest.id) {
-          <button
-            type="button"
+          <div
             class="guest-row"
-            [class.active]="selectedId() === guest.id"
-            [attr.data-cat]="guest.category"
-            (click)="toggle(guest.id)">
+            cdkDrag
+            [cdkDragData]="guest.id"
+            (cdkDragStarted)="dragStarted.emit()"
+            (cdkDragEnded)="dragEnded.emit()"
+            [attr.data-cat]="guest.category">
             <span class="guest-avatar" [attr.data-cat]="guest.category">{{ initials(guest) }}</span>
             <span class="guest-row-text">
               <span class="guest-row-name">{{ guest.firstName }} {{ guest.lastName }}</span>
               <span class="guest-row-cat" [attr.data-cat]="guest.category">{{ guest.isPlusOne ? '+1 · ' : '' }}{{ catShort(guest.category) }}</span>
             </span>
-          </button>
+            <span class="guest-row-grip" aria-hidden="true">⠿</span>
+          </div>
         }
       </div>
     </aside>
@@ -61,7 +70,9 @@ interface CategoryOption {
 export class GuestSidebarComponent {
   readonly guests = input.required<GuestPerson[]>();
   readonly label = input('');
-  readonly selectedId = model<string | null>(null);
+  readonly guestDropped = output<string>();
+  readonly dragStarted = output<void>();
+  readonly dragEnded = output<void>();
 
   readonly search = signal('');
   readonly categoryFilter = signal<'all' | GuestCategory>('all');
@@ -89,7 +100,8 @@ export class GuestSidebarComponent {
     return CATS[category]?.short ?? '';
   }
 
-  toggle(id: string): void {
-    this.selectedId.set(this.selectedId() === id ? null : id);
+  onDrop(event: CdkDragDrop<string>): void {
+    if (event.previousContainer === event.container) return;
+    this.guestDropped.emit(event.item.data as string);
   }
 }

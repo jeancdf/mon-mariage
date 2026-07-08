@@ -1,25 +1,26 @@
-<section class="split-pane">
+<section class="split-pane" cdkDropListGroup>
   <app-guest-sidebar
     label="Sans logement"
     [guests]="unassignedGuests()"
-    [(selectedId)]="selectedGuestId" />
+    (guestDropped)="unassignGuest($event)"
+    (dragStarted)="onDragStarted()"
+    (dragEnded)="onDragEnded()" />
 
   <div class="split-pane-main">
     <header class="page-header split">
       <div>
         <h1>Hébergement</h1>
-        <p>{{ totals().occupied }} / {{ totals().totalBeds }} places · {{ unassignedGuests().length }} sans logement</p>
+        <p>{{ totals().occupied }} / {{ totals().totalBeds }} places · {{ unassignedGuests().length }} sans logement · glissez un invité vers une chambre</p>
       </div>
       <button class="btn primary" type="button" (click)="addingHouse = true">
         <app-icon name="plus" /> Ajouter une maison
       </button>
     </header>
 
-    @if (selectedGuest(); as guest) {
-      <div class="select-banner">
-        <strong>{{ guest.firstName }} {{ guest.lastName }}</strong>
-        <span>sélectionné · cliquez sur une chambre pour assigner</span>
-        <button type="button" class="select-banner-close" (click)="clearSelection()" aria-label="Annuler la sélection">
+    @if (assignError()) {
+      <div class="assign-error" role="alert">
+        <span>{{ assignError() }}</span>
+        <button type="button" class="select-banner-close" (click)="assignError.set('')" aria-label="Fermer">
           <app-icon name="x" />
         </button>
       </div>
@@ -54,14 +55,16 @@
             <div class="collapsible-body">
               <div class="card-grid">
                 @for (room of house.rooms; track room.id) {
-                  @let canAssign = canAssignRoom(room);
                   @let editing = editingRoomId === room.id;
                   @let full = isRoomFull(room);
                   <article
                     class="room-card"
-                    [class.can-assign]="canAssign"
+                    cdkDropList
+                    cdkDropListSortingDisabled
+                    [cdkDropListData]="room"
+                    [cdkDropListEnterPredicate]="roomEnterPredicate(room)"
                     [class.full]="full && !editing"
-                    (click)="assignSelectedToRoom(room)">
+                    (cdkDropListDropped)="onDrop($event)">
                     <header>
                       <app-icon name="bed" />
                       <strong>{{ room.name }}</strong>
@@ -92,23 +95,38 @@
                         @for (guestId of room.guestIds; track guestId) {
                           @let guest = guestById(guestId);
                           @if (guest) {
-                            <div class="room-guest">
+                            <div
+                              class="room-guest draggable-chip"
+                              cdkDrag
+                              [cdkDragData]="guestId"
+                              (cdkDragStarted)="onDragStarted()"
+                              (cdkDragEnded)="onDragEnded()">
                               <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isPlusOne ? ' (+1)' : '' }}</span>
-                              <button type="button" (click)="$event.stopPropagation(); assignGuestRoom(guestId, null)" aria-label="Retirer">
+                              <button type="button" (click)="$event.stopPropagation(); unassignGuest(guestId)" aria-label="Retirer">
                                 <app-icon name="x" [size]="11" />
                               </button>
                             </div>
                           }
                         }
                       </div>
-                    } @else if (!canAssign && !editing) {
+                    } @else if (!editing && !dragging()) {
                       <div class="room-empty">Chambre vide</div>
                     }
 
-                    @if (canAssign) {
-                      <div class="room-cta">Cliquer pour assigner</div>
-                    } @else if (full && selectedGuestId && !editing && !room.guestIds.includes(selectedGuestId)) {
-                      <div class="room-cta room-cta-muted">Chambre complète</div>
+                    @if (pairSuggestion(); as suggestion) {
+                      @if (suggestion.roomId === room.id) {
+                        <div class="pair-suggestion">
+                          <span>Placer aussi <strong>{{ suggestion.partnerName }}</strong> ici ?</span>
+                          <button class="btn primary small" type="button" (click)="acceptPairSuggestion()">Oui</button>
+                          <button class="btn secondary small" type="button" (click)="dismissPairSuggestion()">Non</button>
+                        </div>
+                      }
+                    }
+
+                    @if (dragging() && !full) {
+                      <div class="drop-hint">⊕ Déposer ici</div>
+                    } @else if (dragging() && full && !editing) {
+                      <div class="drop-hint muted">Chambre complète</div>
                     }
                   </article>
                 }
