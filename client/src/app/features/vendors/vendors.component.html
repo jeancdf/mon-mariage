@@ -9,6 +9,21 @@
     </div>
   </header>
 
+  @if (upcomingPayments().length) {
+    <section class="vendor-payments-panel" aria-label="Paiements à venir">
+      <div class="eyebrow">Paiements à venir</div>
+      <div class="vendor-payments-list">
+        @for (payment of upcomingPayments(); track payment.vendor.id) {
+          <div>
+            <span>{{ payment.vendor.name || 'Sans nom' }}</span>
+            <time>{{ fmtShortDate(payment.vendor.balanceDueDate) }}</time>
+            <strong>{{ fmtCurrency(payment.amount) }}</strong>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
   <div class="vendors-toolbar">
     <input
       class="vendors-search"
@@ -69,6 +84,28 @@
                     <div class="vendor-summary-meta">
                       <span class="status-badge" [attr.data-tone]="statusTone(v.status)">{{ statusLabel(v.status) }}</span>
                       <span class="vendor-price">{{ vendorPriceLabel(v) }}</span>
+                      @if (v.phone) {
+                        <a class="vendor-contact-link" [href]="contactHref(v, 'phone')" (click)="$event.stopPropagation()">Tél.</a>
+                      }
+                      @if (v.email) {
+                        <a class="vendor-contact-link" [href]="contactHref(v, 'email')" (click)="$event.stopPropagation()">Email</a>
+                      }
+                      @if (v.website) {
+                        <a
+                          class="vendor-contact-link"
+                          [href]="contactHref(v, 'website')"
+                          target="_blank"
+                          rel="noreferrer"
+                          (click)="$event.stopPropagation()">Web</a>
+                      }
+                      @if (v.instagram) {
+                        <a
+                          class="vendor-contact-link"
+                          [href]="contactHref(v, 'instagram')"
+                          target="_blank"
+                          rel="noreferrer"
+                          (click)="$event.stopPropagation()">Instagram</a>
+                      }
                       @if (v.meetingDate) {
                         <time>{{ fmtShortDate(v.meetingDate) }}</time>
                       }

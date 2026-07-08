@@ -1209,6 +1209,34 @@ td small {
   gap: 6px;
 }
 
+.vendor-payments-panel {
+  margin: -6px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.vendor-payments-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.vendor-payments-list div {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.vendor-payments-list span,
+.vendor-payments-list strong {
+  color: var(--text);
+}
+
 .vendors-list {
   display: flex;
   flex-direction: column;
@@ -1263,6 +1291,18 @@ td small {
 .vendor-price {
   font-variant-numeric: tabular-nums;
   font-size: 13px;
+}
+.vendor-contact-link {
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  text-decoration: none;
+}
+.vendor-contact-link:hover {
+  border-color: var(--accent);
+  color: var(--text);
 }
 
 .vendor-form {

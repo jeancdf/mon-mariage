@@ -19,6 +19,12 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
 
 type StatusFilter = 'all' | VendorStatus;
+type ContactLinkKind = 'phone' | 'email' | 'website' | 'instagram';
+
+interface UpcomingPayment {
+  vendor: Vendor;
+  amount: number;
+}
 
 @Component({
   selector: 'app-vendors',
@@ -71,9 +77,19 @@ export class VendorsComponent {
     const reserved = vendors.filter(v =>
       v.status === 'reserve' || v.status === 'acompte-paye' || v.status === 'solde-paye'
     ).length;
-    const totalSpent = vendors.reduce((sum, v) => sum + (v.priceFinal || v.priceEstimate || 0), 0);
+    const totalSpent = vendors
+      .filter(v => v.status !== 'ecarte')
+      .reduce((sum, v) => sum + (v.priceFinal || v.priceEstimate || 0), 0);
     return { count: vendors.length, reserved, totalSpent };
   });
+
+  readonly upcomingPayments = computed<UpcomingPayment[]>(() =>
+    this.store.vendors()
+      .filter(v => Boolean(v.balanceDueDate) && v.status !== 'solde-paye' && v.status !== 'ecarte')
+      .map(v => ({ vendor: v, amount: this.balanceAmount(v) }))
+      .filter(payment => payment.amount > 0)
+      .sort((a, b) => a.vendor.balanceDueDate.localeCompare(b.vendor.balanceDueDate)),
+  );
 
   vendorsFor(key: VendorCategoryKey): Vendor[] {
     return this.vendorsByCategory().get(key) ?? [];
@@ -217,5 +233,18 @@ export class VendorsComponent {
     const price = vendor.priceFinal || vendor.priceEstimate;
     if (!price) return '—';
     return fmtCurrency(price) + (vendor.priceFinal ? '' : ' (est.)');
+  }
+
+  contactHref(vendor: Vendor, kind: ContactLinkKind): string {
+    if (kind === 'phone') return `tel:${vendor.phone}`;
+    if (kind === 'email') return `mailto:${vendor.email}`;
+    if (kind === 'instagram') return `https://instagram.com/${vendor.instagram.replace(/^@/, '')}`;
+    return vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`;
+  }
+
+  private balanceAmount(vendor: Vendor): number {
+    const price = vendor.priceFinal || vendor.priceEstimate || 0;
+    if (!vendor.depositPaid) return price;
+    return Math.max(price - (vendor.depositAmount || 0), 0);
   }
 }
