@@ -1505,7 +1505,7 @@ td small {
 .vendor-toggle-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 14px;
+  gap: 10px 12px;
   margin-top: 14px;
 }
 
@@ -1514,19 +1514,20 @@ td small {
 }
 
 .vendor-form .toggle-field {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 46px;
+  grid-template-columns: minmax(0, 1fr) 50px;
   align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  padding: 9px 12px;
+  gap: 14px;
+  min-height: 52px;
+  padding: 10px 12px 10px 14px;
   border: 1px solid var(--border);
   border-radius: 7px;
-  background: color-mix(in srgb, var(--surface-alt) 52%, var(--surface));
+  background: color-mix(in srgb, var(--surface-alt) 42%, var(--surface));
   color: var(--text);
   font-size: 13px;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
 }
 
 .vendor-form .toggle-field:hover {
@@ -1534,59 +1535,80 @@ td small {
   background: var(--surface-alt);
 }
 
-.vendor-form .toggle-field input {
-  appearance: none;
+.vendor-form .toggle-field:has(.toggle-input:checked) {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+
+.vendor-form .toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.vendor-form .toggle-copy {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  color: var(--text);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.vendor-form .toggle-switch {
   position: relative;
   grid-column: 2;
   grid-row: 1;
   justify-self: end;
-  width: 44px;
-  height: 24px;
-  margin: 0;
-  border: 1px solid color-mix(in srgb, var(--muted) 35%, var(--border));
+  width: 50px;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, var(--muted) 34%, var(--border));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 18%, transparent);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  background: color-mix(in srgb, var(--bg) 76%, var(--surface));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 12%, transparent);
+  transition: border-color 0.16s, background 0.16s, box-shadow 0.16s;
 }
 
-.vendor-form .toggle-field input::after {
+.vendor-form .toggle-switch::after {
   content: '';
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--muted) 72%, var(--text));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
-  transition: transform 0.18s ease, background 0.15s;
+  background: color-mix(in srgb, var(--surface-alt) 90%, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.26);
+  transition: transform 0.18s ease, background 0.16s;
 }
 
-.vendor-form .toggle-field input:checked {
+.vendor-form .toggle-input:checked ~ .toggle-switch {
   border-color: var(--accent);
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 88%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-fg) 18%, transparent);
 }
 
-.vendor-form .toggle-field input:checked::after {
-  transform: translateX(20px);
+.vendor-form .toggle-input:checked ~ .toggle-switch::after {
+  transform: translateX(22px);
   background: var(--accent-fg);
 }
 
-.vendor-form .toggle-field input:focus-visible {
-  outline: 0;
+.vendor-form .toggle-input:focus-visible ~ .toggle-switch {
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, #000 18%, transparent);
+    inset 0 1px 2px color-mix(in srgb, #000 12%, transparent);
 }
 
-.vendor-form .toggle-field span {
-  grid-column: 1;
-  grid-row: 1;
-  min-width: 0;
-  line-height: 1.25;
+.vendor-form .toggle-input:disabled ~ .toggle-copy,
+.vendor-form .toggle-input:disabled ~ .toggle-switch {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .vendor-form-grid .span-2 {

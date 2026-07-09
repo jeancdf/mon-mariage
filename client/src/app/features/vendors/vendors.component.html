@@ -109,12 +109,14 @@
             </div>
             <div class="vendor-toggle-grid">
               <label class="toggle-field">
-                <input type="checkbox" [checked]="v.depositPaid" (change)="updateField('depositPaid', $any($event.target).checked)" />
-                <span>Acompte payé</span>
+                <input class="toggle-input" type="checkbox" [checked]="v.depositPaid" (change)="updateField('depositPaid', $any($event.target).checked)" />
+                <span class="toggle-copy">Acompte payé</span>
+                <span class="toggle-switch" aria-hidden="true"></span>
               </label>
               <label class="toggle-field">
-                <input type="checkbox" [checked]="v.contractSigned" (change)="updateField('contractSigned', $any($event.target).checked)" />
-                <span>Contrat signé</span>
+                <input class="toggle-input" type="checkbox" [checked]="v.contractSigned" (change)="updateField('contractSigned', $any($event.target).checked)" />
+                <span class="toggle-copy">Contrat signé</span>
+                <span class="toggle-switch" aria-hidden="true"></span>
               </label>
             </div>
           </section>
@@ -173,8 +175,9 @@
               <div class="vendor-toggle-grid">
                 @for (field of booleanFieldsFor(v.category); track field.key) {
                   <label class="toggle-field">
-                    <input type="checkbox" [checked]="detailBool(field.key)" (change)="updateDetail(field.key, $any($event.target).checked)" />
-                    <span>{{ field.label }}</span>
+                    <input class="toggle-input" type="checkbox" [checked]="detailBool(field.key)" (change)="updateDetail(field.key, $any($event.target).checked)" />
+                    <span class="toggle-copy">{{ field.label }}</span>
+                    <span class="toggle-switch" aria-hidden="true"></span>
                   </label>
                 }
               </div>
