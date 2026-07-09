@@ -33,21 +33,24 @@
 
   <div class="stack">
     @for (category of store.budget().categories; track category.id) {
+      @let open = expanded[category.id] !== false;
       @let spent = spentFor(category);
       @let over = category.estimated > 0 && spent > category.estimated;
       <article class="budget-card">
-        <header>
+        <header (click)="toggleCategory(category.id)">
+          <app-icon class="chevron" [class.closed]="!open" name="chevron" />
           @if (editingCategoryNameFor === category.id) {
             <input
               class="small-input budget-name-input"
               appAutofocus
               [(ngModel)]="categoryNameDraft"
+              (click)="$event.stopPropagation()"
               (keydown.enter)="renameCategory(category)" />
-            <button class="btn primary small" type="button" (click)="renameCategory(category)">OK</button>
-            <button class="btn secondary small" type="button" (click)="editingCategoryNameFor = null">Annuler</button>
+            <button class="btn primary small" type="button" (click)="$event.stopPropagation(); renameCategory(category)">OK</button>
+            <button class="btn secondary small" type="button" (click)="$event.stopPropagation(); editingCategoryNameFor = null">Annuler</button>
           } @else {
             <strong>{{ category.name }}</strong>
-            <button class="icon-button" type="button" (click)="startRenamingCategory(category)" aria-label="Renommer le poste">
+            <button class="icon-button" type="button" (click)="$event.stopPropagation(); startRenamingCategory(category)" aria-label="Renommer le poste">
               <app-icon name="edit" />
             </button>
           }
@@ -57,17 +60,18 @@
               class="money-input small-input"
               type="number"
               [ngModel]="category.estimated"
+              (click)="$event.stopPropagation()"
               (blur)="updateEstimate(category, $any($event.target).value)"
               (keydown.enter)="updateEstimate(category, $any($event.target).value)" />
           } @else {
-            <button class="icon-button" type="button" (click)="editingEstimateFor = category.id" aria-label="Modifier le budget">
+            <button class="icon-button" type="button" (click)="$event.stopPropagation(); editingEstimateFor = category.id" aria-label="Modifier le budget">
               <app-icon name="edit" />
             </button>
           }
-          <button class="icon-button" type="button" (click)="addingItemFor = addingItemFor === category.id ? null : category.id" aria-label="Ajouter une dépense">
+          <button class="icon-button" type="button" (click)="$event.stopPropagation(); startAddingItem(category.id)" aria-label="Ajouter une dépense">
             <app-icon name="plus" />
           </button>
-          <button class="icon-button danger" type="button" (click)="requestDeleteCategory(category)" aria-label="Supprimer le poste">
+          <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteCategory(category)" aria-label="Supprimer le poste">
             <app-icon name="trash" />
           </button>
         </header>
@@ -76,44 +80,46 @@
           <i [class.danger-fill]="over" [style.width.%]="percentFor(category)"></i>
         </div>
 
-        @if (category.items.length) {
-          <div class="budget-items">
-            @for (item of category.items; track item.id) {
-              <div>
-                @if (editingItemId === item.id) {
-                  <div class="inline-form budget-item-edit">
-                    <input appAutofocus [(ngModel)]="itemEditForm.label" placeholder="Description" />
-                    <input class="money-input small-input" type="number" [(ngModel)]="itemEditForm.amount" placeholder="Montant (€)" />
-                    <input type="date" [(ngModel)]="itemEditForm.date" />
-                    <button class="btn primary small" type="button" (click)="saveItem(item)">OK</button>
-                    <button class="btn secondary small" type="button" (click)="cancelEditingItem()">Annuler</button>
-                  </div>
-                } @else {
-                  <span>{{ item.label }}</span>
-                  @if (item.date) {
-                    <time>{{ fmtDate(item.date) }}</time>
+        @if (open) {
+          @if (category.items.length) {
+            <div class="budget-items">
+              @for (item of category.items; track item.id) {
+                <div>
+                  @if (editingItemId === item.id) {
+                    <div class="inline-form budget-item-edit">
+                      <input appAutofocus [(ngModel)]="itemEditForm.label" placeholder="Description" />
+                      <input class="money-input small-input" type="number" [(ngModel)]="itemEditForm.amount" placeholder="Montant (€)" />
+                      <input type="date" [(ngModel)]="itemEditForm.date" />
+                      <button class="btn primary small" type="button" (click)="saveItem(item)">OK</button>
+                      <button class="btn secondary small" type="button" (click)="cancelEditingItem()">Annuler</button>
+                    </div>
+                  } @else {
+                    <span>{{ item.label }}</span>
+                    @if (item.date) {
+                      <time>{{ fmtDate(item.date) }}</time>
+                    }
+                    <strong>{{ fmtCurrency(item.amount) }}</strong>
+                    <button class="icon-button" type="button" (click)="startEditingItem(item)" aria-label="Modifier la dépense">
+                      <app-icon name="edit" />
+                    </button>
+                    <button class="icon-button danger" type="button" (click)="deleteItem(item.id)" aria-label="Supprimer la dépense">
+                      <app-icon name="trash" />
+                    </button>
                   }
-                  <strong>{{ fmtCurrency(item.amount) }}</strong>
-                  <button class="icon-button" type="button" (click)="startEditingItem(item)" aria-label="Modifier la dépense">
-                    <app-icon name="edit" />
-                  </button>
-                  <button class="icon-button danger" type="button" (click)="deleteItem(item.id)" aria-label="Supprimer la dépense">
-                    <app-icon name="trash" />
-                  </button>
-                }
-              </div>
-            }
-          </div>
-        }
+                </div>
+              }
+            </div>
+          }
 
-        @if (addingItemFor === category.id) {
-          <div class="inline-form add-item-form">
-            <input appAutofocus [(ngModel)]="itemForm.label" placeholder="Description de la dépense" />
-            <input class="money-input" type="number" [(ngModel)]="itemForm.amount" placeholder="Montant (€)" />
-            <input type="date" [(ngModel)]="itemForm.date" />
-            <button class="btn primary small" type="button" (click)="addItem(category.id)">Ajouter</button>
-            <button class="btn secondary small" type="button" (click)="addingItemFor = null">Annuler</button>
-          </div>
+          @if (addingItemFor === category.id) {
+            <div class="inline-form add-item-form">
+              <input appAutofocus [(ngModel)]="itemForm.label" placeholder="Description de la dépense" />
+              <input class="money-input" type="number" [(ngModel)]="itemForm.amount" placeholder="Montant (€)" />
+              <input type="date" [(ngModel)]="itemForm.date" />
+              <button class="btn primary small" type="button" (click)="addItem(category.id)">Ajouter</button>
+              <button class="btn secondary small" type="button" (click)="addingItemFor = null">Annuler</button>
+            </div>
+          }
         }
       </article>
     }

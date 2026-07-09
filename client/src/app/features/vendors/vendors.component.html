@@ -136,7 +136,7 @@
     @let v = editing();
     @if (v) {
       <div class="vendor-form">
-        <div class="vendor-form-grid">
+        <div class="vendor-form-section vendor-form-primary">
           <label class="field">
             <span>Nom</span>
             <input
@@ -144,30 +144,6 @@
               [ngModel]="v.name"
               (ngModelChange)="updateField('name', $event)"
               placeholder="Nom de l'entreprise" />
-          </label>
-          <label class="field">
-            <span>Contact</span>
-            <input [ngModel]="v.contactName" (ngModelChange)="updateField('contactName', $event)" />
-          </label>
-          <label class="field">
-            <span>Téléphone</span>
-            <input type="tel" [ngModel]="v.phone" (ngModelChange)="updateField('phone', $event)" />
-          </label>
-          <label class="field">
-            <span>Email</span>
-            <input type="email" [ngModel]="v.email" (ngModelChange)="updateField('email', $event)" />
-          </label>
-          <label class="field">
-            <span>Site web</span>
-            <input type="url" [ngModel]="v.website" (ngModelChange)="updateField('website', $event)" />
-          </label>
-          <label class="field">
-            <span>Instagram</span>
-            <input [ngModel]="v.instagram" (ngModelChange)="updateField('instagram', $event)" placeholder="@compte" />
-          </label>
-          <label class="field span-2">
-            <span>Adresse</span>
-            <input [ngModel]="v.address" (ngModelChange)="updateField('address', $event)" />
           </label>
           <label class="field">
             <span>Statut</span>
@@ -185,47 +161,79 @@
             <span>Prochain RDV</span>
             <input type="datetime-local" [ngModel]="v.meetingDate" (ngModelChange)="updateField('meetingDate', $event)" />
           </label>
-          <label class="field">
-            <span>Devis estimé (€)</span>
-            <input type="number" [ngModel]="v.priceEstimate" (ngModelChange)="updateField('priceEstimate', +$event)" />
-          </label>
-          <label class="field">
-            <span>Prix final (€)</span>
-            <input type="number" [ngModel]="v.priceFinal" (ngModelChange)="updateField('priceFinal', +$event)" />
-          </label>
-          <label class="field">
-            <span>Acompte (€)</span>
-            <input type="number" [ngModel]="v.depositAmount" (ngModelChange)="updateField('depositAmount', +$event)" />
-          </label>
-          <label class="field checkbox">
-            <input type="checkbox" [checked]="v.depositPaid" (change)="updateField('depositPaid', $any($event.target).checked)" />
-            <span>Acompte payé</span>
-          </label>
-          <label class="field">
-            <span>Solde dû le</span>
-            <input type="date" [ngModel]="v.balanceDueDate" (ngModelChange)="updateField('balanceDueDate', $event)" />
-          </label>
-          <label class="field checkbox">
-            <input type="checkbox" [checked]="v.contractSigned" (change)="updateField('contractSigned', $any($event.target).checked)" />
-            <span>Contrat signé</span>
-          </label>
-          <label class="field span-2">
-            <span>Lien contrat</span>
-            <input type="url" [ngModel]="v.contractUrl" (ngModelChange)="updateField('contractUrl', $event)" />
-          </label>
-          <label class="field span-full">
-            <span>Notes</span>
-            <textarea rows="2" [ngModel]="v.notes" (ngModelChange)="updateField('notes', $event)"></textarea>
-          </label>
         </div>
 
         <div class="vendor-form-section">
-          <h3>{{ cat.label }} — détails</h3>
+          <h3>Contact</h3>
+          <div class="vendor-form-grid">
+            <label class="field">
+              <span>Contact</span>
+              <input [ngModel]="v.contactName" (ngModelChange)="updateField('contactName', $event)" />
+            </label>
+            <label class="field">
+              <span>Téléphone</span>
+              <input type="tel" [ngModel]="v.phone" (ngModelChange)="updateField('phone', $event)" />
+            </label>
+            <label class="field">
+              <span>Email</span>
+              <input type="email" [ngModel]="v.email" (ngModelChange)="updateField('email', $event)" />
+            </label>
+            <label class="field">
+              <span>Instagram</span>
+              <input [ngModel]="v.instagram" (ngModelChange)="updateField('instagram', $event)" placeholder="@compte" />
+            </label>
+            <label class="field">
+              <span>Site web</span>
+              <input type="url" [ngModel]="v.website" (ngModelChange)="updateField('website', $event)" />
+            </label>
+            <label class="field span-2">
+              <span>Adresse</span>
+              <input [ngModel]="v.address" (ngModelChange)="updateField('address', $event)" />
+            </label>
+          </div>
+        </div>
+
+        <div class="vendor-form-section">
+          <h3>Budget & contrat</h3>
+          <div class="vendor-form-grid">
+            <label class="field">
+              <span>Devis estimé (€)</span>
+              <input type="number" [ngModel]="v.priceEstimate" (ngModelChange)="updateField('priceEstimate', +$event)" />
+            </label>
+            <label class="field">
+              <span>Prix final (€)</span>
+              <input type="number" [ngModel]="v.priceFinal" (ngModelChange)="updateField('priceFinal', +$event)" />
+            </label>
+            <label class="field">
+              <span>Acompte (€)</span>
+              <input type="number" [ngModel]="v.depositAmount" (ngModelChange)="updateField('depositAmount', +$event)" />
+            </label>
+            <label class="field">
+              <span>Solde dû le</span>
+              <input type="date" [ngModel]="v.balanceDueDate" (ngModelChange)="updateField('balanceDueDate', $event)" />
+            </label>
+            <label class="toggle-field">
+              <input type="checkbox" [checked]="v.depositPaid" (change)="updateField('depositPaid', $any($event.target).checked)" />
+              <span>Acompte payé</span>
+            </label>
+            <label class="toggle-field">
+              <input type="checkbox" [checked]="v.contractSigned" (change)="updateField('contractSigned', $any($event.target).checked)" />
+              <span>Contrat signé</span>
+            </label>
+            <label class="field span-2">
+              <span>Lien contrat</span>
+              <input type="url" [ngModel]="v.contractUrl" (ngModelChange)="updateField('contractUrl', $event)" />
+            </label>
+          </div>
+        </div>
+
+        <div class="vendor-form-section">
+          <h3>{{ cat.label }}</h3>
           <div class="vendor-form-grid">
             @for (field of fieldsFor(v.category); track field.key) {
               @switch (field.type) {
                 @case ('boolean') {
-                  <label class="field checkbox">
+                  <label class="toggle-field">
                     <input type="checkbox" [checked]="detailBool(field.key)" (change)="updateDetail(field.key, $any($event.target).checked)" />
                     <span>{{ field.label }}</span>
                   </label>
@@ -275,6 +283,13 @@
               }
             }
           </div>
+        </div>
+
+        <div class="vendor-form-section">
+          <h3>Notes</h3>
+          <label class="field span-full">
+            <textarea rows="3" [ngModel]="v.notes" (ngModelChange)="updateField('notes', $event)"></textarea>
+          </label>
         </div>
 
         <div class="vendor-form-actions">

@@ -25,6 +25,7 @@ export class BudgetComponent {
 
   addingCategory = false;
   categoryForm: { name: string; estimated: number | string } = { name: '', estimated: '' };
+  expanded: Record<string, boolean> = {};
   addingItemFor: string | null = null;
   itemForm: { label: string; amount: number | string; date: string } = { label: '', amount: '', date: '' };
   editingEstimateFor: string | null = null;
@@ -53,6 +54,10 @@ export class BudgetComponent {
 
   percentFor(category: BudgetCategory): number {
     return category.estimated ? Math.min((this.spentFor(category) / category.estimated) * 100, 100) : 0;
+  }
+
+  toggleCategory(categoryId: string): void {
+    this.expanded = { ...this.expanded, [categoryId]: this.expanded[categoryId] === false };
   }
 
   async addCategory(): Promise<void> {
@@ -135,6 +140,11 @@ export class BudgetComponent {
     } catch {
       this.toast.error("Impossible d'ajouter la dépense.");
     }
+  }
+
+  startAddingItem(categoryId: string): void {
+    this.expanded = { ...this.expanded, [categoryId]: true };
+    this.addingItemFor = this.addingItemFor === categoryId ? null : categoryId;
   }
 
   startEditingItem(item: BudgetItem): void {
