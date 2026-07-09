@@ -1515,11 +1515,11 @@ td small {
 
 .vendor-form .toggle-field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 46px;
   align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 8px 11px;
+  gap: 12px;
+  min-height: 44px;
+  padding: 9px 12px;
   border: 1px solid var(--border);
   border-radius: 7px;
   background: color-mix(in srgb, var(--surface-alt) 52%, var(--surface));
@@ -1540,14 +1540,15 @@ td small {
   grid-column: 2;
   grid-row: 1;
   justify-self: end;
-  width: 34px;
-  height: 20px;
+  width: 44px;
+  height: 24px;
   margin: 0;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--muted) 35%, var(--border));
   border-radius: 999px;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 18%, transparent);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
 .vendor-form .toggle-field input::after {
@@ -1555,21 +1556,30 @@ td small {
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--muted);
-  transition: transform 0.15s, background 0.15s;
+  background: color-mix(in srgb, var(--muted) 72%, var(--text));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
+  transition: transform 0.18s ease, background 0.15s;
 }
 
 .vendor-form .toggle-field input:checked {
   border-color: var(--accent);
   background: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-fg) 18%, transparent);
 }
 
 .vendor-form .toggle-field input:checked::after {
-  transform: translateX(14px);
+  transform: translateX(20px);
   background: var(--accent-fg);
+}
+
+.vendor-form .toggle-field input:focus-visible {
+  outline: 0;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #000 18%, transparent);
 }
 
 .vendor-form .toggle-field span {
