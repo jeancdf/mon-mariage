@@ -19,7 +19,6 @@
       <i [style.width.%]="totals().percent"></i>
     </div>
     <p>{{ totals().percent | number:'1.0-0' }}% du budget total utilisé</p>
-    <p>Engagements prestataires : {{ fmtCurrency(vendorEngagements()) }}</p>
   </article>
 
   @if (addingCategory) {

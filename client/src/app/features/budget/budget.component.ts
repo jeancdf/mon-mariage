@@ -42,12 +42,6 @@ export class BudgetComponent {
     return { estimated, spent, remaining: estimated - spent, percent: estimated ? Math.min((spent / estimated) * 100, 100) : 0 };
   });
 
-  readonly vendorEngagements = computed(() =>
-    this.store.vendors()
-      .filter(vendor => vendor.status === 'reserve' || vendor.status === 'acompte-paye' || vendor.status === 'solde-paye')
-      .reduce((sum, vendor) => sum + (vendor.priceFinal || vendor.priceEstimate || 0), 0),
-  );
-
   spentFor(category: BudgetCategory): number {
     return category.items.reduce((sum, item) => sum + item.amount, 0);
   }

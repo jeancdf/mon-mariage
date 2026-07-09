@@ -24,9 +24,9 @@
       <div class="vendor-editor-surface">
         <div class="vendor-form">
           <section class="vendor-form-section vendor-form-section-primary">
-            <h3>Essentiel</h3>
+            <h3>Identité</h3>
             <div class="vendor-form-grid vendor-form-grid-primary">
-              <label class="field span-2">
+              <label class="field">
                 <span>Nom</span>
                 <input
                   appAutofocus
@@ -35,21 +35,47 @@
                   placeholder="Nom de l'entreprise" />
               </label>
               <label class="field">
-                <span>Statut</span>
-                <select [ngModel]="v.status" (ngModelChange)="updateField('status', $event)">
-                  @for (option of statusOptions; track option.value) {
-                    <option [value]="option.value">{{ option.label }}</option>
-                  }
-                </select>
-              </label>
-              <label class="field">
-                <span>Note (0-5)</span>
+                <span>Note interne (0-5)</span>
                 <input type="number" min="0" max="5" [ngModel]="v.rating" (ngModelChange)="updateField('rating', +$event)" />
               </label>
-              <label class="field">
-                <span>Prochain RDV</span>
-                <input type="datetime-local" [ngModel]="v.meetingDate" (ngModelChange)="updateField('meetingDate', $event)" />
-              </label>
+            </div>
+          </section>
+
+          <section class="vendor-form-section">
+            <h3>Suivi</h3>
+            <div class="vendor-followup">
+              <div class="vendor-step-selector" role="group" aria-label="Étape actuelle du prestataire">
+                @for (option of statusOptions; track option.value) {
+                  <button
+                    class="vendor-step-button"
+                    type="button"
+                    [class.active]="v.status === option.value"
+                    [attr.data-tone]="option.tone"
+                    [attr.aria-pressed]="v.status === option.value"
+                    (click)="updateField('status', option.value)">
+                    {{ option.label }}
+                  </button>
+                }
+              </div>
+
+              <div class="vendor-form-grid vendor-form-grid-followup">
+                <label class="field">
+                  <span>Prochain RDV</span>
+                  <input type="datetime-local" [ngModel]="v.meetingDate" (ngModelChange)="updateField('meetingDate', $event)" />
+                </label>
+                <label class="field span-2">
+                  <span>Lien contrat</span>
+                  <input type="url" [ngModel]="v.contractUrl" (ngModelChange)="updateField('contractUrl', $event)" />
+                </label>
+              </div>
+
+              <div class="vendor-toggle-grid vendor-toggle-grid-compact">
+                <label class="toggle-field">
+                  <input class="toggle-input" type="checkbox" [checked]="v.contractSigned" (change)="updateField('contractSigned', $any($event.target).checked)" />
+                  <span class="toggle-copy">Contrat signé</span>
+                  <span class="toggle-switch" aria-hidden="true"></span>
+                </label>
+              </div>
             </div>
           </section>
 
@@ -84,94 +110,8 @@
           </section>
 
           <section class="vendor-form-section">
-            <h3>Budget & contrat</h3>
-            <div class="vendor-form-grid">
-              <label class="field">
-                <span>Devis estimé (€)</span>
-                <input type="number" [ngModel]="v.priceEstimate" (ngModelChange)="updateField('priceEstimate', +$event)" />
-              </label>
-              <label class="field">
-                <span>Prix final (€)</span>
-                <input type="number" [ngModel]="v.priceFinal" (ngModelChange)="updateField('priceFinal', +$event)" />
-              </label>
-              <label class="field">
-                <span>Acompte (€)</span>
-                <input type="number" [ngModel]="v.depositAmount" (ngModelChange)="updateField('depositAmount', +$event)" />
-              </label>
-              <label class="field">
-                <span>Solde dû le</span>
-                <input type="date" [ngModel]="v.balanceDueDate" (ngModelChange)="updateField('balanceDueDate', $event)" />
-              </label>
-              <label class="field span-2">
-                <span>Lien contrat</span>
-                <input type="url" [ngModel]="v.contractUrl" (ngModelChange)="updateField('contractUrl', $event)" />
-              </label>
-            </div>
-            <div class="vendor-toggle-grid">
-              <label class="toggle-field">
-                <input class="toggle-input" type="checkbox" [checked]="v.depositPaid" (change)="updateField('depositPaid', $any($event.target).checked)" />
-                <span class="toggle-copy">Acompte payé</span>
-                <span class="toggle-switch" aria-hidden="true"></span>
-              </label>
-              <label class="toggle-field">
-                <input class="toggle-input" type="checkbox" [checked]="v.contractSigned" (change)="updateField('contractSigned', $any($event.target).checked)" />
-                <span class="toggle-copy">Contrat signé</span>
-                <span class="toggle-switch" aria-hidden="true"></span>
-              </label>
-            </div>
-          </section>
-
-          <section class="vendor-form-section">
-            <h3>{{ categoryLabel(v.category) }}</h3>
-            <div class="vendor-form-grid">
-              @for (field of detailFieldsFor(v.category); track field.key) {
-                @switch (field.type) {
-                  @case ('textarea') {
-                    <label class="field span-full">
-                      <span>{{ field.label }}</span>
-                      <textarea rows="2" [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)"></textarea>
-                    </label>
-                  }
-                  @case ('number') {
-                    <label class="field">
-                      <span>{{ field.label }}</span>
-                      <input type="number" [ngModel]="detailNumber(field.key)" (ngModelChange)="updateDetail(field.key, +$event)" />
-                      @if (field.hint) { <small>{{ field.hint }}</small> }
-                    </label>
-                  }
-                  @case ('date') {
-                    <label class="field">
-                      <span>{{ field.label }}</span>
-                      <input type="date" [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)" />
-                    </label>
-                  }
-                  @case ('datetime') {
-                    <label class="field">
-                      <span>{{ field.label }}</span>
-                      <input type="datetime-local" [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)" />
-                    </label>
-                  }
-                  @case ('select') {
-                    <label class="field">
-                      <span>{{ field.label }}</span>
-                      <select [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)">
-                        @for (option of field.options ?? []; track option.value) {
-                          <option [value]="option.value">{{ option.label }}</option>
-                        }
-                      </select>
-                    </label>
-                  }
-                  @default {
-                    <label class="field">
-                      <span>{{ field.label }}</span>
-                      <input [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)" />
-                      @if (field.hint) { <small>{{ field.hint }}</small> }
-                    </label>
-                  }
-                }
-              }
-            </div>
-            @if (booleanFieldsFor(v.category).length) {
+            <h3>Inclus</h3>
+            <div class="vendor-inclusions">
               <div class="vendor-toggle-grid">
                 @for (field of booleanFieldsFor(v.category); track field.key) {
                   <label class="toggle-field">
@@ -181,13 +121,65 @@
                   </label>
                 }
               </div>
-            }
+              <div class="vendor-form-grid">
+                @for (field of detailFieldsFor(v.category); track field.key) {
+                  @switch (field.type) {
+                    @case ('textarea') {
+                      <label class="field span-full">
+                        <span>{{ field.label }}</span>
+                        <textarea rows="2" [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)"></textarea>
+                      </label>
+                    }
+                    @case ('number') {
+                      <label class="field">
+                        <span>{{ field.label }}</span>
+                        <input type="number" [ngModel]="detailNumber(field.key)" (ngModelChange)="updateDetail(field.key, +$event)" />
+                        @if (field.hint) { <small>{{ field.hint }}</small> }
+                      </label>
+                    }
+                    @case ('date') {
+                      <label class="field">
+                        <span>{{ field.label }}</span>
+                        <input type="date" [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)" />
+                      </label>
+                    }
+                    @case ('datetime') {
+                      <label class="field">
+                        <span>{{ field.label }}</span>
+                        <input type="datetime-local" [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)" />
+                      </label>
+                    }
+                    @case ('select') {
+                      <label class="field">
+                        <span>{{ field.label }}</span>
+                        <select [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)">
+                          @for (option of field.options ?? []; track option.value) {
+                            <option [value]="option.value">{{ option.label }}</option>
+                          }
+                        </select>
+                      </label>
+                    }
+                    @default {
+                      <label class="field">
+                        <span>{{ field.label }}</span>
+                        <input [ngModel]="detailString(field.key)" (ngModelChange)="updateDetail(field.key, $event)" />
+                        @if (field.hint) { <small>{{ field.hint }}</small> }
+                      </label>
+                    }
+                  }
+                }
+              </div>
+            </div>
           </section>
 
           <section class="vendor-form-section">
             <h3>Notes</h3>
             <label class="field span-full">
-              <textarea rows="3" [ngModel]="v.notes" (ngModelChange)="updateField('notes', $event)"></textarea>
+              <textarea
+                rows="5"
+                [ngModel]="v.notes"
+                (ngModelChange)="updateField('notes', $event)"
+                placeholder="Décisions, questions ouvertes, relances, points à confirmer"></textarea>
             </label>
           </section>
         </div>
@@ -205,27 +197,9 @@
     <header class="page-header split">
       <div>
         <h1>Prestataires</h1>
-        <p>
-          {{ totals().reserved }} / {{ totals().count }} réservés ·
-          {{ fmtCurrency(totals().totalSpent) }} engagés
-        </p>
+        <p>{{ totals().reserved }} réservés · {{ totals().count }} prestataires suivis</p>
       </div>
     </header>
-
-    @if (upcomingPayments().length) {
-      <section class="vendor-payments-panel" aria-label="Paiements à venir">
-        <div class="eyebrow">Paiements à venir</div>
-        <div class="vendor-payments-list">
-          @for (payment of upcomingPayments(); track payment.vendor.id) {
-            <div>
-              <span>{{ payment.vendor.name || 'Sans nom' }}</span>
-              <time>{{ fmtShortDate(payment.vendor.balanceDueDate) }}</time>
-              <strong>{{ fmtCurrency(payment.amount) }}</strong>
-            </div>
-          }
-        </div>
-      </section>
-    }
 
     <div class="vendors-toolbar">
       <input
@@ -275,6 +249,7 @@
               }
 
               @for (v of vendors; track v.id) {
+                @let included = includedCount(v);
                 <div class="vendor-card">
                   <div class="vendor-summary" (click)="startEditing(v)">
                     <div class="vendor-summary-main">
@@ -282,10 +257,21 @@
                       @if (v.contactName) {
                         <span class="vendor-contact">{{ v.contactName }}</span>
                       }
+                      @if (v.notes) {
+                        <span class="vendor-summary-note">{{ v.notes }}</span>
+                      }
                     </div>
                     <div class="vendor-summary-meta">
                       <span class="status-badge" [attr.data-tone]="statusTone(v.status)">{{ statusLabel(v.status) }}</span>
-                      <span class="vendor-price">{{ vendorPriceLabel(v) }}</span>
+                      @if (included) {
+                        <span class="vendor-meta-pill">{{ included }} inclus</span>
+                      }
+                      @if (v.contractSigned) {
+                        <span class="vendor-meta-pill">Contrat signé</span>
+                      }
+                      @if (v.meetingDate) {
+                        <time class="vendor-meta-pill">RDV {{ fmtShortDate(v.meetingDate) }}</time>
+                      }
                       @if (v.phone) {
                         <a class="vendor-contact-link" [href]="contactHref(v, 'phone')" (click)="$event.stopPropagation()">Tél.</a>
                       }
@@ -307,9 +293,6 @@
                           target="_blank"
                           rel="noreferrer"
                           (click)="$event.stopPropagation()">Instagram</a>
-                      }
-                      @if (v.meetingDate) {
-                        <time>{{ fmtShortDate(v.meetingDate) }}</time>
                       }
                     </div>
                   </div>

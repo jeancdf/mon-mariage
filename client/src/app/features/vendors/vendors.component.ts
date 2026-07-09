@@ -12,7 +12,7 @@ import {
 } from '../../data/vendor-categories';
 import { VendorsApiService } from '../../data/vendors-api.service';
 import { WeddingStore } from '../../data/store';
-import { fmtCurrency, fmtShortDate } from '../../shared/wedding-utils';
+import { fmtShortDate } from '../../shared/wedding-utils';
 import { IconComponent } from '../../shared/icon.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
@@ -20,11 +20,6 @@ import { AutofocusDirective } from '../../shared/autofocus.directive';
 
 type StatusFilter = 'all' | VendorStatus;
 type ContactLinkKind = 'phone' | 'email' | 'website' | 'instagram';
-
-interface UpcomingPayment {
-  vendor: Vendor;
-  amount: number;
-}
 
 @Component({
   selector: 'app-vendors',
@@ -39,7 +34,6 @@ export class VendorsComponent {
 
   readonly categories = VENDOR_CATEGORIES;
   readonly statusOptions = VENDOR_STATUS_OPTIONS;
-  readonly fmtCurrency = fmtCurrency;
   readonly fmtShortDate = fmtShortDate;
 
   readonly search = signal('');
@@ -77,19 +71,8 @@ export class VendorsComponent {
     const reserved = vendors.filter(v =>
       v.status === 'reserve' || v.status === 'acompte-paye' || v.status === 'solde-paye'
     ).length;
-    const totalSpent = vendors
-      .filter(v => v.status !== 'ecarte')
-      .reduce((sum, v) => sum + (v.priceFinal || v.priceEstimate || 0), 0);
-    return { count: vendors.length, reserved, totalSpent };
+    return { count: vendors.length, reserved };
   });
-
-  readonly upcomingPayments = computed<UpcomingPayment[]>(() =>
-    this.store.vendors()
-      .filter(v => Boolean(v.balanceDueDate) && v.status !== 'solde-paye' && v.status !== 'ecarte')
-      .map(v => ({ vendor: v, amount: this.balanceAmount(v) }))
-      .filter(payment => payment.amount > 0)
-      .sort((a, b) => a.vendor.balanceDueDate.localeCompare(b.vendor.balanceDueDate)),
-  );
 
   vendorsFor(key: VendorCategoryKey): Vendor[] {
     return this.vendorsByCategory().get(key) ?? [];
@@ -151,6 +134,10 @@ export class VendorsComponent {
 
   categoryLabel(key: VendorCategoryKey): string {
     return getVendorCategory(key).label;
+  }
+
+  includedCount(vendor: Vendor): number {
+    return this.booleanFieldsFor(vendor.category).filter(field => vendor.details?.[field.key] === true).length;
   }
 
   updateField(key: string, value: string | number | boolean): void {
@@ -241,22 +228,10 @@ export class VendorsComponent {
     }
   }
 
-  vendorPriceLabel(vendor: Vendor): string {
-    const price = vendor.priceFinal || vendor.priceEstimate;
-    if (!price) return '—';
-    return fmtCurrency(price) + (vendor.priceFinal ? '' : ' (est.)');
-  }
-
   contactHref(vendor: Vendor, kind: ContactLinkKind): string {
     if (kind === 'phone') return `tel:${vendor.phone}`;
     if (kind === 'email') return `mailto:${vendor.email}`;
     if (kind === 'instagram') return `https://instagram.com/${vendor.instagram.replace(/^@/, '')}`;
     return vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`;
-  }
-
-  private balanceAmount(vendor: Vendor): number {
-    const price = vendor.priceFinal || vendor.priceEstimate || 0;
-    if (!vendor.depositPaid) return price;
-    return Math.max(price - (vendor.depositAmount || 0), 0);
   }
 }
