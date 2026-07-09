@@ -1,5 +1,4 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Vendor, VendorCategoryKey, VendorStatus } from '../../data/types';
 import {
@@ -30,7 +29,7 @@ interface UpcomingPayment {
 @Component({
   selector: 'app-vendors',
   standalone: true,
-  imports: [FormsModule, NgTemplateOutlet, IconComponent, ConfirmDialogComponent, AutofocusDirective],
+  imports: [FormsModule, IconComponent, ConfirmDialogComponent, AutofocusDirective],
   templateUrl: './vendors.component.html',
 })
 export class VendorsComponent {
@@ -140,6 +139,18 @@ export class VendorsComponent {
 
   fieldsFor(key: VendorCategoryKey): VendorCategoryDef['fields'] {
     return getVendorCategory(key).fields;
+  }
+
+  detailFieldsFor(key: VendorCategoryKey): VendorCategoryDef['fields'] {
+    return this.fieldsFor(key).filter(field => field.type !== 'boolean');
+  }
+
+  booleanFieldsFor(key: VendorCategoryKey): VendorCategoryDef['fields'] {
+    return this.fieldsFor(key).filter(field => field.type === 'boolean');
+  }
+
+  categoryLabel(key: VendorCategoryKey): string {
+    return getVendorCategory(key).label;
   }
 
   updateField(key: string, value: string | number | boolean): void {

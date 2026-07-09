@@ -5,10 +5,10 @@
       <p>{{ store.guestCount() }} invités · {{ store.confirmedCount() }} confirmés · {{ store.pendingCount() }} en attente</p>
     </div>
     <div class="row-actions">
-      <button class="btn" type="button" [disabled]="isImporting" (click)="openImportPicker()">
+      <button class="btn secondary" type="button" [disabled]="isImporting" (click)="openImportPicker()">
         {{ isImporting ? 'Import...' : 'Importer Excel' }}
       </button>
-      <button class="btn" type="button" [disabled]="isExporting" (click)="exportGuests()">
+      <button class="btn secondary" type="button" [disabled]="isExporting" (click)="exportGuests()">
         {{ isExporting ? 'Export...' : 'Exporter Excel' }}
       </button>
       <button class="btn primary" type="button" (click)="openAdd()">
