@@ -79,7 +79,7 @@ export class DashboardService {
     const occupiedBeds = houses.reduce((sum, house) =>
       sum + house.rooms.reduce((roomSum, room) => roomSum + room.guestIds.length, 0), 0);
     const totalSeats = tables.reduce((sum, table) => sum + table.seats, 0);
-    const seated = tables.reduce((sum, table) => sum + table.guestIds.length, 0);
+    const seated = tables.reduce((sum, table) => sum + table.assignments.length, 0);
     const categories = budget.categories.map(category => ({
       id: category.id,
       name: category.name,

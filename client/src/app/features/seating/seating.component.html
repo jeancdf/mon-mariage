@@ -7,107 +7,174 @@
     (dragStarted)="onDragStarted()"
     (dragEnded)="onDragEnded()" />
 
-  <div class="split-pane-main">
+  <div class="split-pane-main floor-main">
     <header class="page-header split">
       <div>
         <h1>Plan de table</h1>
-        <p>{{ totals().placed }} / {{ totals().totalSeats }} places · {{ unplacedGuests().length }} non placés · glissez un invité vers une table</p>
+        <p>{{ totals().placed }} / {{ totals().totalSeats }} places · {{ unplacedGuests().length }} non placés · déplacez les tables dans la salle, posez chaque invité sur son siège</p>
       </div>
-      <button class="btn primary" type="button" (click)="addingTable = true">
-        <app-icon name="plus" /> Ajouter une table
-      </button>
+      <div class="floor-toolbar">
+        <div class="zoom-controls" role="group" aria-label="Zoom">
+          <button class="icon-button" type="button" (click)="zoomOut()" aria-label="Réduire le zoom">−</button>
+          <button class="zoom-level" type="button" (click)="resetZoom()" title="Revenir à 100 %">{{ (zoom() * 100).toFixed(0) }} %</button>
+          <button class="icon-button" type="button" (click)="zoomIn()" aria-label="Augmenter le zoom">+</button>
+        </div>
+        <button class="btn primary" type="button" (click)="addingTable = true; cancelEditing()">
+          <app-icon name="plus" /> Ajouter une table
+        </button>
+      </div>
     </header>
 
     @if (addingTable) {
       <div class="inline-panel">
-        <input appAutofocus [(ngModel)]="tableForm.name" placeholder="Nom de la table…" />
+        <input appAutofocus [(ngModel)]="tableForm.name" placeholder="Nom de la table…" (keydown.enter)="addTable()" />
         <input class="number-input" type="number" min="2" max="40" [(ngModel)]="tableForm.seats" placeholder="Places" />
+        <select [(ngModel)]="tableForm.shape" aria-label="Forme de la table">
+          <option value="round">Ronde</option>
+          <option value="rect">Rectangulaire</option>
+        </select>
         <button class="btn primary" type="button" (click)="addTable()">Ajouter</button>
         <button class="btn secondary" type="button" (click)="addingTable = false">Annuler</button>
       </div>
     }
 
-    <div class="table-grid">
-      @for (table of store.tables(); track table.id) {
-        @let full = isTableFull(table);
-        <article
-          class="seating-card"
-          cdkDropList
-          cdkDropListSortingDisabled
-          [cdkDropListData]="table"
-          [cdkDropListEnterPredicate]="tableEnterPredicate(table)"
-          (cdkDropListDropped)="onDrop($event)">
-          <header>
-            <strong>{{ table.name }}</strong>
-            <span [class.full]="full">{{ table.guestIds.length }}/{{ table.seats }}</span>
-            <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditing(table)" aria-label="Modifier la table">
-              <app-icon name="edit" />
-            </button>
-            <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteTable(table)" aria-label="Supprimer la table">
-              <app-icon name="trash" />
-            </button>
-          </header>
+    @if (editingTableId) {
+      <div class="inline-panel">
+        <input appAutofocus [(ngModel)]="editTableForm.name" placeholder="Nom de la table" (keydown.enter)="saveTable()" />
+        <input class="number-input" type="number" min="2" max="40" [(ngModel)]="editTableForm.seats" placeholder="Places" />
+        <select [(ngModel)]="editTableForm.shape" aria-label="Forme de la table">
+          <option value="round">Ronde</option>
+          <option value="rect">Rectangulaire</option>
+        </select>
+        <button class="btn primary small" type="button" (click)="saveTable()">OK</button>
+        <button class="btn secondary small" type="button" (click)="cancelEditing()">Annuler</button>
+      </div>
+    }
 
-          @if (editingTableId === table.id) {
-            <div class="inline-form table-edit-form" (click)="$event.stopPropagation()">
-              <input [(ngModel)]="editTableForm.name" placeholder="Nom de la table" />
-              <input class="number-input" type="number" min="2" max="40" [(ngModel)]="editTableForm.seats" placeholder="Places" />
-              <button class="btn primary small" type="button" (click)="saveTable(table)">OK</button>
-              <button class="btn secondary small" type="button" (click)="cancelEditing()">Annuler</button>
-            </div>
+    <div class="floor-viewport">
+      @if (pairSuggestion(); as suggestion) {
+        <div class="pair-suggestion floor-suggestion">
+          <span>Placer aussi <strong>{{ suggestion.partnerName }}</strong> à la table {{ suggestion.tableName }}{{ suggestion.seat !== null ? ', juste à côté' : '' }} ?</span>
+          <button class="btn primary small" type="button" (click)="acceptPairSuggestion()">Oui</button>
+          <button class="btn secondary small" type="button" (click)="dismissPairSuggestion()">Non</button>
+        </div>
+      }
+
+      @if (neighborInfo(); as info) {
+        <div class="neighbor-readout">
+          <strong>{{ info.guestName }}</strong>
+          <span> · {{ info.tableName }}</span>
+          @if (info.neighborNames.length === 2) {
+            <span> · entre {{ info.neighborNames[0] }} et {{ info.neighborNames[1] }}</span>
+          } @else if (info.neighborNames.length === 1) {
+            <span> · à côté de {{ info.neighborNames[0] }}</span>
+          } @else {
+            <span> · sans voisin pour l'instant</span>
           }
+        </div>
+      }
 
-          <div class="seat-dots">
-            @for (_ of [].constructor(table.seats); track $index) {
-              @let guestId = table.guestIds[$index];
-              @let guest = guestId ? guestById(guestId) : undefined;
-              <span
-                class="seat-dot"
-                [class.occupied]="guest"
-                [attr.title]="guest ? guest.firstName + ' ' + guest.lastName : 'Place libre'">
-                {{ initials(guest) }}
-              </span>
-            }
-          </div>
+      <div class="floor-scroll">
+        <div class="floor-canvas" [style.width.px]="floorWidth * zoom()" [style.height.px]="floorHeight * zoom()">
+          <div
+            class="floor-plane"
+            [class.guest-dragging]="dragging()"
+            [style.width.px]="floorWidth"
+            [style.height.px]="floorHeight"
+            [style.transform]="'scale(' + zoom() + ')'">
 
-          @if (table.guestIds.length) {
-            <div class="table-guests">
-              @for (guestId of table.guestIds; track guestId) {
-                @let guest = guestById(guestId);
-                @if (guest) {
-                  <div
-                    class="room-guest draggable-chip"
-                    cdkDrag
-                    [cdkDragData]="guestId"
-                    (cdkDragStarted)="onDragStarted()"
-                    (cdkDragEnded)="onDragEnded()">
-                    <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isKid ? ' (enfant)' : guest.isPlusOne ? ' (+1)' : '' }}</span>
-                    <button type="button" (click)="$event.stopPropagation(); removeGuest(guestId)" aria-label="Retirer">
-                      <app-icon name="x" [size]="11" />
-                    </button>
-                  </div>
-                }
-              }
-            </div>
-          }
-
-          @if (pairSuggestion(); as suggestion) {
-            @if (suggestion.tableId === table.id) {
-              <div class="pair-suggestion">
-                <span>Placer aussi <strong>{{ suggestion.partnerName }}</strong> ici ?</span>
-                <button class="btn primary small" type="button" (click)="acceptPairSuggestion()">Oui</button>
-                <button class="btn secondary small" type="button" (click)="dismissPairSuggestion()">Non</button>
+            @if (store.loaded() && store.tables().length === 0) {
+              <div class="floor-empty">
+                <p>La salle est vide.</p>
+                <p>Ajoutez votre première table pour dessiner le plan.</p>
               </div>
             }
-          }
 
-          @if (dragging() && !full) {
-            <div class="drop-hint">⊕ Déposer ici</div>
-          } @else if (dragging() && full) {
-            <div class="drop-hint muted">Table complète</div>
-          }
-        </article>
-      }
+            @for (table of store.tables(); track table.id) {
+              @let layout = layoutOf(table);
+              @let full = isTableFull(table);
+              <div
+                class="floor-table"
+                [class.dragging]="draggingTableId() === table.id"
+                [style.left.px]="table.x"
+                [style.top.px]="table.y"
+                (pointerdown)="onTablePointerDown($event, table)">
+
+                <div class="floor-table-rotor" [style.transform]="'rotate(' + table.rotation + 'deg)'">
+                  <div
+                    class="table-shape"
+                    [class.round]="table.shape === 'round'"
+                    [class.rect]="table.shape === 'rect'"
+                    [class.full]="full"
+                    [style.width.px]="layout.width"
+                    [style.height.px]="layout.height"
+                    cdkDropList
+                    cdkDropListSortingDisabled
+                    [cdkDropListData]="table"
+                    [cdkDropListEnterPredicate]="tableEnterPredicate(table)"
+                    (cdkDropListDropped)="onTableDrop($event)">
+                    <div class="table-shape-label" [style.transform]="'rotate(' + (-table.rotation) + 'deg)'">
+                      <span class="table-name">{{ table.name }}</span>
+                      <span class="table-count" [class.full]="full">{{ table.assignments.length }}/{{ table.seats }}</span>
+                    </div>
+                  </div>
+
+                  @for (spot of layout.seats; track spot.index) {
+                    @let guest = occupant(table, spot.index);
+                    <div
+                      class="floor-seat"
+                      [class.occupied]="guest"
+                      [class.neighbor]="isNeighborSeat(table, spot.index)"
+                      [class.hovered]="isHoveredSeat(table, spot.index)"
+                      [style.left.px]="spot.x"
+                      [style.top.px]="spot.y"
+                      cdkDropList
+                      cdkDropListSortingDisabled
+                      [cdkDropListData]="{ table, seat: spot.index }"
+                      [cdkDropListEnterPredicate]="seatEnterPredicate(table, spot.index)"
+                      (cdkDropListDropped)="onSeatDrop($event)">
+                      @if (guest) {
+                        <div
+                          class="floor-seat-guest"
+                          [attr.data-cat]="guest.category"
+                          [style.transform]="'rotate(' + (-table.rotation) + 'deg)'"
+                          [attr.title]="guestTitle(guest)"
+                          cdkDrag
+                          [cdkDragData]="guest.id"
+                          (cdkDragStarted)="onDragStarted()"
+                          (cdkDragEnded)="onDragEnded()"
+                          (mouseenter)="hoveredSeat.set({ tableId: table.id, seat: spot.index })"
+                          (mouseleave)="hoveredSeat.set(null)">
+                          <span class="floor-seat-initials">{{ initials(guest) }}</span>
+                          <button
+                            class="floor-seat-remove"
+                            type="button"
+                            (click)="$event.stopPropagation(); removeGuest(guest.id)"
+                            [attr.aria-label]="'Retirer ' + guestTitle(guest)">×</button>
+                        </div>
+                      } @else {
+                        <span class="floor-seat-number" [style.transform]="'rotate(' + (-table.rotation) + 'deg)'">{{ spot.index + 1 }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <div class="floor-table-actions" [style.top.px]="layout.extent + 8">
+                  <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditing(table)" aria-label="Modifier la table">
+                    <app-icon name="edit" [size]="12" />
+                  </button>
+                  @if (table.shape === 'rect') {
+                    <button class="icon-button" type="button" (click)="$event.stopPropagation(); rotateTable(table)" aria-label="Pivoter la table">⟳</button>
+                  }
+                  <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteTable(table)" aria-label="Supprimer la table">
+                    <app-icon name="trash" [size]="12" />
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

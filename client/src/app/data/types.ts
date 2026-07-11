@@ -40,11 +40,22 @@ export interface House {
   rooms: Room[];
 }
 
+export type TableShape = 'round' | 'rect';
+
+export interface TableAssignment {
+  guestId: string;
+  seat: number;
+}
+
 export interface Table {
   id: string;
   name: string;
   seats: number;
-  guestIds: string[];
+  shape: TableShape;
+  x: number;
+  y: number;
+  rotation: number;
+  assignments: TableAssignment[];
 }
 
 export interface Task {

@@ -17,4 +17,7 @@ export class TableGuestEntity {
 
   @Column({ type: 'uuid' })
   tableId!: string;
+
+  @Column({ type: 'int', nullable: true })
+  seat!: number | null;
 }
