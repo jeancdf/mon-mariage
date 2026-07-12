@@ -1982,8 +1982,10 @@ td small {
 
 .floor-table-rotor {
   position: absolute;
-  left: 0;
-  top: 0;
+}
+
+.floor-table-dropzone {
+  position: absolute;
 }
 
 .table-shape {

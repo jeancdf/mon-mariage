@@ -92,61 +92,69 @@
                 [style.top.px]="table.y"
                 (pointerdown)="onTablePointerDown($event, table)">
 
-                <div class="floor-table-rotor" [style.transform]="'rotate(' + table.rotation + 'deg)'">
+                <div
+                  class="floor-table-dropzone"
+                  [style.left.px]="-layout.extent"
+                  [style.top.px]="-layout.extent"
+                  [style.width.px]="layout.extent * 2"
+                  [style.height.px]="layout.extent * 2"
+                  cdkDropList
+                  cdkDropListSortingDisabled
+                  [cdkDropListData]="table"
+                  [cdkDropListEnterPredicate]="tableEnterPredicate(table)"
+                  (cdkDropListDropped)="onTableDrop($event)">
                   <div
-                    class="table-shape rect"
-                    [class.full]="full"
-                    [style.width.px]="layout.width"
-                    [style.height.px]="layout.height"
-                    cdkDropList
-                    cdkDropListSortingDisabled
-                    [cdkDropListData]="table"
-                    [cdkDropListEnterPredicate]="tableEnterPredicate(table)"
-                    (cdkDropListDropped)="onTableDrop($event)">
+                    class="floor-table-rotor"
+                    [style.left.px]="layout.extent"
+                    [style.top.px]="layout.extent"
+                    [style.transform]="'rotate(' + table.rotation + 'deg)'">
+                    <div
+                      class="table-shape rect"
+                      [class.full]="full"
+                      [style.width.px]="layout.width"
+                      [style.height.px]="layout.height">
                     <div class="table-shape-label" [style.transform]="'rotate(' + (-table.rotation) + 'deg)'">
                       <span class="table-name">{{ table.name }}</span>
                       <span class="table-count" [class.full]="full">{{ table.assignments.length }}/{{ table.seats }}</span>
                     </div>
-                  </div>
-
-                  @for (spot of layout.seats; track spot.index) {
-                    @let guest = occupant(table, spot.index);
-                    <div
-                      class="floor-seat"
-                      [class.occupied]="guest"
-                      [class.neighbor]="isNeighborSeat(table, spot.index)"
-                      [class.hovered]="isHoveredSeat(table, spot.index)"
-                      [style.left.px]="spot.x"
-                      [style.top.px]="spot.y"
-                      cdkDropList
-                      cdkDropListSortingDisabled
-                      [cdkDropListData]="{ table, seat: spot.index }"
-                      [cdkDropListEnterPredicate]="seatEnterPredicate(table, spot.index)"
-                      (cdkDropListDropped)="onSeatDrop($event)">
-                      @if (guest) {
-                        <div
-                          class="floor-seat-guest"
-                          [attr.data-cat]="guest.category"
-                          [style.transform]="'rotate(' + (-table.rotation) + 'deg)'"
-                          [attr.title]="guestTitle(guest)"
-                          cdkDrag
-                          [cdkDragData]="guest.id"
-                          (cdkDragStarted)="onDragStarted()"
-                          (cdkDragEnded)="onDragEnded()"
-                          (mouseenter)="hoveredSeat.set({ tableId: table.id, seat: spot.index })"
-                          (mouseleave)="hoveredSeat.set(null)">
-                          <span class="floor-seat-initials">{{ initials(guest) }}</span>
-                          <button
-                            class="floor-seat-remove"
-                            type="button"
-                            (click)="$event.stopPropagation(); removeGuest(guest.id)"
-                            [attr.aria-label]="'Retirer ' + guestTitle(guest)">×</button>
-                        </div>
-                      } @else {
-                        <span class="floor-seat-number" [style.transform]="'rotate(' + (-table.rotation) + 'deg)'">{{ spot.index + 1 }}</span>
-                      }
                     </div>
-                  }
+
+                    @for (spot of layout.seats; track spot.index) {
+                      @let guest = occupant(table, spot.index);
+                      <div
+                        class="floor-seat"
+                        [attr.data-table-id]="table.id"
+                        [attr.data-seat]="spot.index"
+                        [class.occupied]="guest"
+                        [class.neighbor]="isNeighborSeat(table, spot.index)"
+                        [class.hovered]="isHoveredSeat(table, spot.index)"
+                        [style.left.px]="spot.x"
+                        [style.top.px]="spot.y">
+                        @if (guest) {
+                          <div
+                            class="floor-seat-guest"
+                            [attr.data-cat]="guest.category"
+                            [style.transform]="'rotate(' + (-table.rotation) + 'deg)'"
+                            [attr.title]="guestTitle(guest)"
+                            cdkDrag
+                            [cdkDragData]="guest.id"
+                            (cdkDragStarted)="onDragStarted()"
+                            (cdkDragEnded)="onDragEnded()"
+                            (mouseenter)="hoveredSeat.set({ tableId: table.id, seat: spot.index })"
+                            (mouseleave)="hoveredSeat.set(null)">
+                            <span class="floor-seat-initials">{{ initials(guest) }}</span>
+                            <button
+                              class="floor-seat-remove"
+                              type="button"
+                              (click)="$event.stopPropagation(); removeGuest(guest.id)"
+                              [attr.aria-label]="'Retirer ' + guestTitle(guest)">×</button>
+                          </div>
+                        } @else {
+                          <span class="floor-seat-number" [style.transform]="'rotate(' + (-table.rotation) + 'deg)'">{{ spot.index + 1 }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
                 </div>
 
                 <div class="floor-table-actions" [style.top.px]="layout.extent + 8">
