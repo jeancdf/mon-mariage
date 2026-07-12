@@ -27,7 +27,7 @@ export class SeatingService {
     await this.tablesRepository.save(this.tablesRepository.create({
       name: String(input.name ?? '').trim(),
       seats: this.normalizeSeats(input.seats),
-      shape: input.shape === 'rect' ? 'rect' : 'round',
+      shape: 'rect',
       x: this.clamp(Number(input.x), 0, FLOOR_WIDTH),
       y: this.clamp(Number(input.y), 0, FLOOR_HEIGHT),
       rotation: 0,
@@ -43,7 +43,7 @@ export class SeatingService {
     if (!table) throw new NotFoundException('Table not found');
     if (input.name !== undefined) table.name = String(input.name).trim();
     if (input.seats !== undefined) table.seats = this.normalizeSeats(input.seats);
-    if (input.shape !== undefined) table.shape = input.shape === 'rect' ? 'rect' : 'round';
+    table.shape = 'rect';
     if (input.x !== undefined) table.x = this.clamp(Number(input.x), 0, FLOOR_WIDTH);
     if (input.y !== undefined) table.y = this.clamp(Number(input.y), 0, FLOOR_HEIGHT);
     if (input.rotation !== undefined) table.rotation = Math.round(Number(input.rotation) || 0) % 360;
@@ -137,11 +137,17 @@ export class SeatingService {
     const dirtyTables: SeatingTableEntity[] = [];
     const dirtyAssignments: TableGuestEntity[] = [];
     tables.forEach((table, index) => {
+      let tableIsDirty = false;
       if (table.x === null || table.y === null) {
         table.x = 190 + (index % 4) * 330;
         table.y = 170 + Math.floor(index / 4) * 270;
-        dirtyTables.push(table);
+        tableIsDirty = true;
       }
+      if (table.shape !== 'rect') {
+        table.shape = 'rect';
+        tableIsDirty = true;
+      }
+      if (tableIsDirty) dirtyTables.push(table);
       const used = new Set<number>();
       const sorted = [...(table.assignments ?? [])].sort((a, b) =>
         (a.seat ?? Number.MAX_SAFE_INTEGER) - (b.seat ?? Number.MAX_SAFE_INTEGER) || a.guestId.localeCompare(b.guestId));
@@ -170,7 +176,7 @@ export class SeatingService {
   }
 
   private normalizeSeats(value: unknown): number {
-    const seats = Math.trunc(Number(value)) || 12;
+    const seats = Math.trunc(Number(value)) || 10;
     return Math.min(Math.max(seats, 2), 40);
   }
 
@@ -184,7 +190,7 @@ export class SeatingService {
       id: table.id,
       name: table.name,
       seats: table.seats,
-      shape: table.shape === 'rect' ? 'rect' : 'round',
+      shape: 'rect',
       x: table.x ?? FLOOR_WIDTH / 2,
       y: table.y ?? FLOOR_HEIGHT / 2,
       rotation: table.rotation ?? 0,

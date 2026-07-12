@@ -36,13 +36,13 @@ export const INITIAL_HOUSES: House[] = [
 
 export const INITIAL_TABLES: Table[] = [
   { id: 't1', name: 'Table des Mariés', seats: 10, shape: 'rect', x: 700, y: 170, rotation: 0, assignments: [] },
-  { id: 't2', name: 'Famille', seats: 14, shape: 'round', x: 320, y: 520, rotation: 0, assignments: [
+  { id: 't2', name: 'Famille', seats: 14, shape: 'rect', x: 320, y: 520, rotation: 0, assignments: [
     { guestId: 'g1', seat: 0 }, { guestId: 'g2', seat: 1 }, { guestId: 'g10', seat: 2 }, { guestId: 'g7', seat: 3 },
   ]},
-  { id: 't3', name: 'Amis Proches', seats: 12, shape: 'round', x: 700, y: 560, rotation: 0, assignments: [
+  { id: 't3', name: 'Amis Proches', seats: 12, shape: 'rect', x: 700, y: 560, rotation: 0, assignments: [
     { guestId: 'g3', seat: 0 }, { guestId: 'g4', seat: 1 }, { guestId: 'g8', seat: 2 }, { guestId: 'g11', seat: 3 },
   ]},
-  { id: 't4', name: 'Table 4', seats: 12, shape: 'round', x: 1080, y: 520, rotation: 0, assignments: [
+  { id: 't4', name: 'Table 4', seats: 12, shape: 'rect', x: 1080, y: 520, rotation: 0, assignments: [
     { guestId: 'g5', seat: 0 }, { guestId: 'g6', seat: 1 },
   ]},
 ];

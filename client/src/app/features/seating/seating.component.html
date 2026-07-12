@@ -29,10 +29,6 @@
       <div class="inline-panel">
         <input appAutofocus [(ngModel)]="tableForm.name" placeholder="Nom de la table…" (keydown.enter)="addTable()" />
         <input class="number-input" type="number" min="2" max="40" [(ngModel)]="tableForm.seats" placeholder="Places" />
-        <select [(ngModel)]="tableForm.shape" aria-label="Forme de la table">
-          <option value="round">Ronde</option>
-          <option value="rect">Rectangulaire</option>
-        </select>
         <button class="btn primary" type="button" (click)="addTable()">Ajouter</button>
         <button class="btn secondary" type="button" (click)="addingTable = false">Annuler</button>
       </div>
@@ -42,10 +38,6 @@
       <div class="inline-panel">
         <input appAutofocus [(ngModel)]="editTableForm.name" placeholder="Nom de la table" (keydown.enter)="saveTable()" />
         <input class="number-input" type="number" min="2" max="40" [(ngModel)]="editTableForm.seats" placeholder="Places" />
-        <select [(ngModel)]="editTableForm.shape" aria-label="Forme de la table">
-          <option value="round">Ronde</option>
-          <option value="rect">Rectangulaire</option>
-        </select>
         <button class="btn primary small" type="button" (click)="saveTable()">OK</button>
         <button class="btn secondary small" type="button" (click)="cancelEditing()">Annuler</button>
       </div>
@@ -102,9 +94,7 @@
 
                 <div class="floor-table-rotor" [style.transform]="'rotate(' + table.rotation + 'deg)'">
                   <div
-                    class="table-shape"
-                    [class.round]="table.shape === 'round'"
-                    [class.rect]="table.shape === 'rect'"
+                    class="table-shape rect"
                     [class.full]="full"
                     [style.width.px]="layout.width"
                     [style.height.px]="layout.height"
@@ -163,9 +153,7 @@
                   <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditing(table)" aria-label="Modifier la table">
                     <app-icon name="edit" [size]="12" />
                   </button>
-                  @if (table.shape === 'rect') {
-                    <button class="icon-button" type="button" (click)="$event.stopPropagation(); rotateTable(table)" aria-label="Pivoter la table">⟳</button>
-                  }
+                  <button class="icon-button" type="button" (click)="$event.stopPropagation(); rotateTable(table)" aria-label="Pivoter la table">⟳</button>
                   <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteTable(table)" aria-label="Supprimer la table">
                     <app-icon name="trash" [size]="12" />
                   </button>

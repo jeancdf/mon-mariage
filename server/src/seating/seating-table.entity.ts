@@ -10,10 +10,10 @@ export class SeatingTableEntity {
   @Column({ type: 'text' })
   name!: string;
 
-  @Column({ type: 'int', default: 12 })
+  @Column({ type: 'int', default: 10 })
   seats!: number;
 
-  @Column({ type: 'text', default: 'round' })
+  @Column({ type: 'text', default: 'rect' })
   shape!: TableShape;
 
   @Column({ type: 'double precision', nullable: true })

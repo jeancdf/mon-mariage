@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
-import { Table, TableShape } from '../../data/types';
+import { Table } from '../../data/types';
 import { SeatingApiService } from '../../data/seating-api.service';
 import { WeddingStore } from '../../data/store';
 import { IconComponent } from '../../shared/icon.component';
@@ -15,6 +15,7 @@ export const FLOOR_WIDTH = 1400;
 export const FLOOR_HEIGHT = 900;
 const SEAT_PITCH = 38;
 const SEAT_GAP = 27;
+const DEFAULT_TABLE_SEATS = 10;
 const ZOOM_LEVELS = [0.5, 0.65, 0.8, 1, 1.2, 1.4];
 
 interface SeatSpot {
@@ -52,7 +53,6 @@ interface NeighborInfo {
 interface TableForm {
   name: string;
   seats: number | string;
-  shape: TableShape;
 }
 
 @Component({
@@ -71,9 +71,9 @@ export class SeatingComponent {
   readonly floorHeight = FLOOR_HEIGHT;
 
   addingTable = false;
-  tableForm: TableForm = { name: '', seats: 12, shape: 'round' };
+  tableForm: TableForm = { name: '', seats: DEFAULT_TABLE_SEATS };
   editingTableId: string | null = null;
-  editTableForm: TableForm = { name: '', seats: 12, shape: 'round' };
+  editTableForm: TableForm = { name: '', seats: DEFAULT_TABLE_SEATS };
   tablePendingDeletion: Table | null = null;
 
   readonly zoom = signal(1);
@@ -144,20 +144,6 @@ export class SeatingComponent {
   // ── Geometry ──────────────────────────────────────────────────────
 
   private computeLayout(table: Table): TableLayout {
-    if (table.shape === 'round') {
-      const ringRadius = Math.max((table.seats * SEAT_PITCH) / (2 * Math.PI), 45 + SEAT_GAP);
-      const diameter = Math.round((ringRadius - SEAT_GAP) * 2);
-      const seats: SeatSpot[] = [];
-      for (let index = 0; index < table.seats; index += 1) {
-        const angle = -Math.PI / 2 + (index * 2 * Math.PI) / table.seats;
-        seats.push({
-          index,
-          x: Math.round(Math.cos(angle) * ringRadius),
-          y: Math.round(Math.sin(angle) * ringRadius),
-        });
-      }
-      return { width: diameter, height: diameter, extent: ringRadius + 15, seats };
-    }
     const topCount = Math.ceil(table.seats / 2);
     const bottomCount = table.seats - topCount;
     const width = Math.max(topCount, bottomCount) * SEAT_PITCH + 26;
@@ -180,14 +166,10 @@ export class SeatingComponent {
     return { width, height, extent: Math.max(width, height) / 2 + SEAT_GAP + 15, seats };
   }
 
-  /** Seats immediately to the left/right of a seat: ring neighbors on a round table, same-side neighbors on a rectangular one. */
+  /** Seats immediately to the left/right of a seat on the same side of the rectangular table. */
   private adjacentSeats(table: Table, seat: number): number[] {
     const count = table.seats;
     if (count <= 1) return [];
-    if (table.shape === 'round') {
-      if (count === 2) return [(seat + 1) % 2];
-      return [(seat + count - 1) % count, (seat + 1) % count];
-    }
     const topCount = Math.ceil(count / 2);
     const neighbors: number[] = [];
     if (seat < topCount) {
@@ -311,14 +293,11 @@ export class SeatingComponent {
 
   // ── Guest placement ───────────────────────────────────────────────
 
-  seatEnterPredicate = (table: Table, seat: number) => (drag: CdkDrag<string>): boolean => {
-    const occupantGuest = this.occupant(table, seat);
-    return occupantGuest?.id !== drag.data;
-  };
+  seatEnterPredicate = (_table: Table, _seat: number) => (_drag: CdkDrag<string>): boolean => true;
 
   tableEnterPredicate = (table: Table) => (drag: CdkDrag<string>): boolean => {
-    if (table.assignments.some(assignment => assignment.guestId === drag.data)) return false;
-    return !this.isTableFull(table);
+    const alreadyAtTable = table.assignments.some(assignment => assignment.guestId === drag.data);
+    return alreadyAtTable || !this.isTableFull(table);
   };
 
   onDragStarted(): void {
@@ -410,12 +389,12 @@ export class SeatingComponent {
       const tables = await this.seatingApi.createTable({
         name,
         seats,
-        shape: this.tableForm.shape,
+        shape: 'rect',
         x: position.x,
         y: position.y,
       });
       this.store.replaceTables(tables);
-      this.tableForm = { name: '', seats: 12, shape: 'round' };
+      this.tableForm = { name: '', seats: DEFAULT_TABLE_SEATS };
       this.addingTable = false;
     } catch {
       this.toast.error('Impossible de créer la table.');
@@ -437,13 +416,13 @@ export class SeatingComponent {
 
   startEditing(table: Table): void {
     this.editingTableId = table.id;
-    this.editTableForm = { name: table.name, seats: table.seats, shape: table.shape };
+    this.editTableForm = { name: table.name, seats: table.seats };
     this.addingTable = false;
   }
 
   cancelEditing(): void {
     this.editingTableId = null;
-    this.editTableForm = { name: '', seats: 12, shape: 'round' };
+    this.editTableForm = { name: '', seats: DEFAULT_TABLE_SEATS };
   }
 
   async saveTable(): Promise<void> {
@@ -456,7 +435,7 @@ export class SeatingComponent {
       const tables = await this.seatingApi.updateTable(id, {
         name,
         seats,
-        shape: this.editTableForm.shape,
+        shape: 'rect',
       });
       this.store.replaceTables(tables);
       this.cancelEditing();
@@ -490,7 +469,7 @@ export class SeatingComponent {
 
   private normalizeSeats(value: number | string): number {
     const seats = Math.trunc(Number(value));
-    if (!Number.isFinite(seats)) return 12;
+    if (!Number.isFinite(seats)) return DEFAULT_TABLE_SEATS;
     return Math.min(Math.max(seats, 2), 40);
   }
 }
