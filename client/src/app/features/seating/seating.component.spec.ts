@@ -6,10 +6,10 @@ import { Table } from '../../data/types';
 import { WeddingStore } from '../../data/store';
 import { SeatingComponent } from './seating.component';
 
-const table = (assignments: Table['assignments']): Table => ({
-  id: 'table-1',
-  name: 'Table 1',
-  seats: 10,
+const table = (assignments: Table['assignments'], id = 'table-1', seats = 10): Table => ({
+  id,
+  name: id === 'table-1' ? 'Table 1' : 'Table 2',
+  seats,
   shape: 'rect',
   x: 100,
   y: 100,
@@ -32,49 +32,57 @@ describe('SeatingComponent', () => {
     });
   });
 
-  afterEach(() => {
-    document.querySelectorAll('.floor-seat[data-table-id]').forEach(element => element.remove());
-  });
-
-  it('allows a seated guest to remain in the table drop zone', () => {
+  it('refuses the central drop zone when the table is full', () => {
     const component = TestBed.runInInjectionContext(() => new SeatingComponent());
-    const currentTable = table([{ guestId: 'guest-1', seat: 0 }]);
+    const currentTable = table([
+      { guestId: 'guest-1', seat: 0 },
+      { guestId: 'guest-2', seat: 1 },
+    ], 'table-1', 2);
     const drag = { data: 'guest-1' } as CdkDrag<string>;
 
-    expect(component.tableEnterPredicate(currentTable)(drag)).toBe(true);
+    expect(component.tableEnterPredicate(currentTable)(drag)).toBe(false);
   });
 
-  it('uses the drop coordinates to move a guest within the same table container', async () => {
+  it('allows a seated guest to target an occupied seat at another full table', () => {
     const component = TestBed.runInInjectionContext(() => new SeatingComponent());
-    const currentTable = table([{ guestId: 'guest-1', seat: 0 }]);
-    component.store.tables.set([currentTable]);
-    const seat = document.createElement('div');
-    seat.className = 'floor-seat';
-    seat.dataset['tableId'] = currentTable.id;
-    seat.dataset['seat'] = '4';
-    seat.getBoundingClientRect = () => ({
-      x: 100,
-      y: 100,
-      left: 100,
-      top: 100,
-      right: 130,
-      bottom: 130,
-      width: 30,
-      height: 30,
-      toJSON: () => ({}),
-    });
-    document.body.appendChild(seat);
-    const container = { data: currentTable } as CdkDropList<Table>;
+    const source = table([{ guestId: 'guest-1', seat: 0 }]);
+    const target = table([
+      { guestId: 'guest-2', seat: 0 },
+      { guestId: 'guest-3', seat: 1 },
+    ], 'table-2', 2);
+    component.store.tables.set([source, target]);
+
+    expect(component.seatEnterPredicate(target, 0)({ data: 'guest-1' } as CdkDrag<string>)).toBe(true);
+    expect(component.seatEnterPredicate(target, 0)({ data: 'unplaced' } as CdkDrag<string>)).toBe(false);
+  });
+
+  it('places a guest on the explicit seat target without using drop coordinates', async () => {
+    const component = TestBed.runInInjectionContext(() => new SeatingComponent());
+    const source = table([{ guestId: 'guest-1', seat: 0 }]);
+    const target = table([], 'table-2');
+    component.store.tables.set([source, target]);
+    const container = { data: target } as CdkDropList<Table>;
     const event = {
       item: { data: 'guest-1' },
       container,
-      previousContainer: container,
-      dropPoint: { x: 115, y: 115 },
+      previousContainer: { data: source },
     } as unknown as CdkDragDrop<Table>;
 
-    await component.onTableDrop(event);
+    await component.onSeatDrop(event, target, 4);
 
-    expect(assignGuest).toHaveBeenCalledWith('guest-1', 'table-1', 4);
+    expect(assignGuest).toHaveBeenCalledWith('guest-1', 'table-2', 4);
+  });
+
+  it('uses the first free seat for a drop at the centre of another table', async () => {
+    const component = TestBed.runInInjectionContext(() => new SeatingComponent());
+    const source = table([{ guestId: 'guest-1', seat: 0 }]);
+    const target = table([], 'table-2');
+    component.store.tables.set([source, target]);
+    const event = { item: { data: 'guest-1' } } as unknown as CdkDragDrop<Table>;
+
+    await component.onTableDrop(event, target);
+
+    expect(assignGuest).toHaveBeenCalledWith('guest-1', 'table-2', null);
   });
 });
 
@@ -101,5 +109,28 @@ describe('WeddingStore table seating', () => {
       { guestId: 'guest-1', seat: 1 },
       { guestId: 'guest-2', seat: 0 },
     ]));
+  });
+
+  it('swaps guests between two full tables', () => {
+    const store = new WeddingStore();
+    store.tables.set([
+      table([{ guestId: 'guest-1', seat: 0 }], 'table-1', 1),
+      table([{ guestId: 'guest-2', seat: 0 }], 'table-2', 1),
+    ]);
+
+    store.assignGuestTable('guest-1', 'table-2', 0);
+
+    expect(store.tables()[0].assignments).toEqual([{ guestId: 'guest-2', seat: 0 }]);
+    expect(store.tables()[1].assignments).toEqual([{ guestId: 'guest-1', seat: 0 }]);
+  });
+
+  it('keeps the plan unchanged when an unplaced guest targets an occupied seat at a full table', () => {
+    const store = new WeddingStore();
+    const fullTable = table([{ guestId: 'guest-1', seat: 0 }], 'table-1', 1);
+    store.tables.set([fullTable]);
+
+    store.assignGuestTable('unplaced', 'table-1', 0);
+
+    expect(store.tables()).toEqual([fullTable]);
   });
 });

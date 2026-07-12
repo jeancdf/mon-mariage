@@ -97,12 +97,7 @@
                   [style.left.px]="-layout.extent"
                   [style.top.px]="-layout.extent"
                   [style.width.px]="layout.extent * 2"
-                  [style.height.px]="layout.extent * 2"
-                  cdkDropList
-                  cdkDropListSortingDisabled
-                  [cdkDropListData]="table"
-                  [cdkDropListEnterPredicate]="tableEnterPredicate(table)"
-                  (cdkDropListDropped)="onTableDrop($event)">
+                  [style.height.px]="layout.extent * 2">
                   <div
                     class="floor-table-rotor"
                     [style.left.px]="layout.extent"
@@ -112,11 +107,16 @@
                       class="table-shape rect"
                       [class.full]="full"
                       [style.width.px]="layout.width"
-                      [style.height.px]="layout.height">
-                    <div class="table-shape-label" [style.transform]="'rotate(' + (-table.rotation) + 'deg)'">
-                      <span class="table-name">{{ table.name }}</span>
-                      <span class="table-count" [class.full]="full">{{ table.assignments.length }}/{{ table.seats }}</span>
-                    </div>
+                      [style.height.px]="layout.height"
+                      cdkDropList
+                      cdkDropListSortingDisabled
+                      [cdkDropListData]="table"
+                      [cdkDropListEnterPredicate]="tableEnterPredicate(table)"
+                      (cdkDropListDropped)="onTableDrop($event, table)">
+                      <div class="table-shape-label" [style.transform]="'rotate(' + (-table.rotation) + 'deg)'">
+                        <span class="table-name">{{ table.name }}</span>
+                        <span class="table-count" [class.full]="full">{{ table.assignments.length }}/{{ table.seats }}</span>
+                      </div>
                     </div>
 
                     @for (spot of layout.seats; track spot.index) {
@@ -129,7 +129,12 @@
                         [class.neighbor]="isNeighborSeat(table, spot.index)"
                         [class.hovered]="isHoveredSeat(table, spot.index)"
                         [style.left.px]="spot.x"
-                        [style.top.px]="spot.y">
+                        [style.top.px]="spot.y"
+                        cdkDropList
+                        cdkDropListSortingDisabled
+                        [cdkDropListData]="table"
+                        [cdkDropListEnterPredicate]="seatEnterPredicate(table, spot.index)"
+                        (cdkDropListDropped)="onSeatDrop($event, table, spot.index)">
                         @if (guest) {
                           <div
                             class="floor-seat-guest"

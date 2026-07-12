@@ -59,55 +59,48 @@ export class SeatingService {
   }
 
   async assignGuest(guestId: string, tableId: string | null, seat?: number | null): Promise<Table[]> {
-    const previous = await this.assignmentsRepository.findOne({ where: { guestId } });
-    await this.assignmentsRepository.delete({ guestId });
-    if (!tableId) return this.findAll();
-
-    const table = await this.tablesRepository.findOne({
-      where: { id: tableId },
-      relations: { assignments: true },
-    });
-    if (!table) throw new NotFoundException('Table not found');
-    const others = (table.assignments ?? []).filter(assignment => assignment.guestId !== guestId);
-    const taken = new Set(others.map(assignment => assignment.seat).filter((value): value is number => value !== null));
-
-    let targetSeat = Number.isInteger(seat) && Number(seat) >= 0 && Number(seat) < table.seats
-      ? Number(seat)
-      : this.firstFreeSeat(table.seats, taken);
-
-    if (targetSeat === null) return this.restoreAndReload(previous);
-
-    const occupant = others.find(assignment => assignment.seat === targetSeat);
-    if (occupant) {
-      if (previous) {
-        occupant.tableId = previous.tableId;
-        occupant.seat = previous.seat;
-        await this.assignmentsRepository.save(occupant);
-      } else {
-        taken.delete(targetSeat);
-        const fallback = this.firstFreeSeat(table.seats, new Set([...taken, targetSeat]));
-        if (fallback === null) return this.restoreAndReload(previous);
-        occupant.seat = fallback;
-        await this.assignmentsRepository.save(occupant);
+    await this.assignmentsRepository.manager.transaction(async manager => {
+      const assignmentsRepository = manager.getRepository(TableGuestEntity);
+      const tablesRepository = manager.getRepository(SeatingTableEntity);
+      const previous = await assignmentsRepository.findOne({ where: { guestId } });
+      if (!tableId) {
+        await assignmentsRepository.delete({ guestId });
+        return;
       }
-    }
 
-    await this.assignmentsRepository.save(this.assignmentsRepository.create({
-      guestId,
-      tableId,
-      seat: targetSeat,
-    }));
-    return this.findAll();
-  }
+      const table = await tablesRepository.findOne({
+        where: { id: tableId },
+        relations: { assignments: true },
+      });
+      if (!table) throw new NotFoundException('Table not found');
+      const others = (table.assignments ?? []).filter(assignment => assignment.guestId !== guestId);
+      const taken = new Set(others.map(assignment => assignment.seat)
+        .filter((value): value is number => value !== null));
 
-  private async restoreAndReload(previous: TableGuestEntity | null): Promise<Table[]> {
-    if (previous) {
-      await this.assignmentsRepository.save(this.assignmentsRepository.create({
-        guestId: previous.guestId,
-        tableId: previous.tableId,
-        seat: previous.seat,
-      }));
-    }
+      const targetSeat = Number.isInteger(seat) && Number(seat) >= 0 && Number(seat) < table.seats
+        ? Number(seat)
+        : this.firstFreeSeat(table.seats, taken);
+
+      if (targetSeat === null) return;
+
+      const occupant = others.find(assignment => assignment.seat === targetSeat);
+      if (occupant) {
+        if (previous) {
+          occupant.tableId = previous.tableId;
+          occupant.seat = previous.seat;
+        } else {
+          const fallback = this.firstFreeSeat(table.seats, taken);
+          if (fallback === null) return;
+          occupant.seat = fallback;
+        }
+        await assignmentsRepository.save(occupant);
+      }
+
+      const assignment = previous ?? assignmentsRepository.create({ guestId });
+      assignment.tableId = tableId;
+      assignment.seat = targetSeat;
+      await assignmentsRepository.save(assignment);
+    });
     return this.findAll();
   }
 

@@ -293,11 +293,16 @@ export class SeatingComponent {
 
   // ── Guest placement ───────────────────────────────────────────────
 
-  tableEnterPredicate = (table: Table) => (drag: CdkDrag<string>): boolean => {
-    const alreadyAtTable = table.assignments.some(assignment => assignment.guestId === drag.data);
+  tableEnterPredicate = (table: Table) => (_drag: CdkDrag<string>): boolean =>
+    !this.isTableFull(table);
+
+  seatEnterPredicate = (table: Table, seat: number) => (drag: CdkDrag<string>): boolean => {
+    const occupant = table.assignments.find(assignment => assignment.seat === seat);
+    if (!occupant || occupant.guestId === drag.data) return true;
+
     const alreadySeated = this.store.tables().some(candidate =>
       candidate.assignments.some(assignment => assignment.guestId === drag.data));
-    return alreadyAtTable || alreadySeated || !this.isTableFull(table);
+    return alreadySeated || !this.isTableFull(table);
   };
 
   onDragStarted(): void {
@@ -310,32 +315,21 @@ export class SeatingComponent {
     this.dragging.set(false);
   }
 
-  async onTableDrop(event: CdkDragDrop<Table>): Promise<void> {
+  async onTableDrop(event: CdkDragDrop<Table>, table: Table): Promise<void> {
     const guestId = event.item.data as string;
-    const table = event.container.data;
-    const targetSeat = this.seatAtDropPoint(table.id, event.dropPoint);
-    const currentSeat = table.assignments.find(assignment => assignment.guestId === guestId)?.seat;
-    if (event.previousContainer === event.container && (targetSeat === null || targetSeat === currentSeat)) return;
-    await this.placeGuest(guestId, table.id, targetSeat);
+    const currentTable = this.store.tables().find(candidate =>
+      candidate.assignments.some(assignment => assignment.guestId === guestId));
+    if (currentTable?.id === table.id) return;
+    await this.placeGuest(guestId, table.id, null);
   }
 
-  private seatAtDropPoint(tableId: string, dropPoint: { x: number; y: number }): number | null {
-    let nearestSeat: number | null = null;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-    const seats = document.querySelectorAll<HTMLElement>('.floor-seat[data-table-id]');
-    for (const element of seats) {
-      if (element.dataset['tableId'] !== tableId) continue;
-      const seat = Number(element.dataset['seat']);
-      if (!Number.isInteger(seat)) continue;
-      const rect = element.getBoundingClientRect();
-      const distance = Math.hypot(dropPoint.x - (rect.left + rect.width / 2), dropPoint.y - (rect.top + rect.height / 2));
-      const hitRadius = Math.max(rect.width, rect.height) * 0.75;
-      if (distance <= hitRadius && distance < nearestDistance) {
-        nearestSeat = seat;
-        nearestDistance = distance;
-      }
-    }
-    return nearestSeat;
+  async onSeatDrop(event: CdkDragDrop<Table>, table: Table, seat: number): Promise<void> {
+    const guestId = event.item.data as string;
+    const current = this.store.tables()
+      .flatMap(candidate => candidate.assignments.map(assignment => ({ tableId: candidate.id, ...assignment })))
+      .find(assignment => assignment.guestId === guestId);
+    if (current?.tableId === table.id && current.seat === seat) return;
+    await this.placeGuest(guestId, table.id, seat);
   }
 
   async removeGuest(guestId: string): Promise<void> {

@@ -1986,6 +1986,13 @@ td small {
 
 .floor-table-dropzone {
   position: absolute;
+  pointer-events: none;
+}
+
+.floor-table-dropzone .table-shape,
+.floor-table-dropzone .floor-seat,
+.floor-table-dropzone .floor-seat-guest {
+  pointer-events: auto;
 }
 
 .table-shape {
@@ -2017,6 +2024,7 @@ td small {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
 }
 
+.table-shape.cdk-drop-list-receiving,
 .table-shape:has(.cdk-drag-placeholder) {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
@@ -2088,6 +2096,7 @@ td small {
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
 }
 
+.floor-seat.cdk-drop-list-receiving,
 .floor-seat:has(.cdk-drag-placeholder) {
   border-color: var(--accent);
   border-style: solid;
