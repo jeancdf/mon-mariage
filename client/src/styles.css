@@ -1989,11 +1989,6 @@ td small {
   pointer-events: none;
 }
 
-/* Keep the hover path open from the table and seats down to the action toolbar. */
-.floor-table:hover .floor-table-dropzone {
-  pointer-events: auto;
-}
-
 .floor-table-dropzone .table-shape,
 .floor-table-dropzone .floor-seat,
 .floor-table-dropzone .floor-seat-guest {
@@ -2054,6 +2049,12 @@ td small {
   padding: 4px 8px;
   text-align: center;
   pointer-events: none;
+  transition: opacity 0.12s;
+}
+
+.floor-plane:not(.guest-dragging) .floor-table:hover .table-shape-label,
+.floor-table:focus-within .table-shape-label {
+  opacity: 0;
 }
 
 .table-name {
@@ -2186,6 +2187,7 @@ td small {
 
 .floor-table-actions {
   position: absolute;
+  top: 0;
   left: 0;
   z-index: 6;
   display: flex;
@@ -2195,13 +2197,13 @@ td small {
   border-radius: 7px;
   background: var(--surface);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s;
 }
 
-.floor-table:hover .floor-table-actions,
+.floor-plane:not(.guest-dragging) .floor-table:hover .floor-table-actions,
 .floor-table-actions:focus-within {
   opacity: 1;
   pointer-events: auto;
