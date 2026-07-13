@@ -1989,6 +1989,11 @@ td small {
   pointer-events: none;
 }
 
+/* Keep the hover path open from the table and seats down to the action toolbar. */
+.floor-table:hover .floor-table-dropzone {
+  pointer-events: auto;
+}
+
 .floor-table-dropzone .table-shape,
 .floor-table-dropzone .floor-seat,
 .floor-table-dropzone .floor-seat-guest {
