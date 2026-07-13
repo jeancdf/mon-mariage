@@ -2121,10 +2121,13 @@ td small {
 
 .floor-seat-guest {
   position: absolute;
-  inset: -1.5px;
+  top: -1.5px;
+  left: -1.5px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 31px;
+  height: 31px;
   border: 1.5px solid var(--border);
   border-radius: 50%;
   background: var(--surface-alt);
@@ -2132,6 +2135,11 @@ td small {
   font-size: 9.5px;
   font-weight: 700;
   cursor: grab;
+}
+
+/* CDK parks the original drag element off-screen; it must not cover the other seat drop zones. */
+.floor-seat-guest.cdk-drag-dragging {
+  pointer-events: none;
 }
 
 .floor-seat-guest[data-cat='famille-moi'] { background: rgba(37, 99, 235, 0.2); border-color: rgba(37, 99, 235, 0.45); color: #1d4ed8; }
