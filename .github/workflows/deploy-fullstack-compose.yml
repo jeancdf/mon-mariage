@@ -55,6 +55,12 @@ jobs:
       - name: Write .env.production from secret
         run: |
           printf '%s' "${{ secrets.FULLSTACK_ENV_PRODUCTION }}" > .env.production
+          for key in SESSION_SECRET PRIVATE_EVENT_CODE BOOTSTRAP_ORGANIZER_EMAIL BOOTSTRAP_ORGANIZER_PASSWORD; do
+            if ! grep -q "^${key}=..*" .env.production; then
+              echo "::error::${key} is missing from FULLSTACK_ENV_PRODUCTION"
+              exit 1
+            fi
+          done
 
       - name: Set deployment metadata
         run: |
@@ -152,6 +158,7 @@ jobs:
             "FRONTEND_HOST_PORT='${FRONTEND_HOST_PORT}' BACKEND_HOST_PORT='${BACKEND_HOST_PORT}' DEPLOY_SHA='${DEPLOY_SHA}' DEPLOY_VERSION='${DEPLOY_VERSION}' DEPLOYED_AT='${DEPLOYED_AT}' bash -s" << 'EOF'
           set -euo pipefail
           wget -qO- "http://localhost:${BACKEND_HOST_PORT}/api/health" >/dev/null
+          wget -qO- "http://localhost:${BACKEND_HOST_PORT}/api/auth/setup" | grep '"configured":true' >/dev/null
           wget -qO- "http://localhost:${FRONTEND_HOST_PORT}/" >/dev/null
           DEPLOY_METADATA="$(wget -qO- "http://localhost:${FRONTEND_HOST_PORT}/deploy-version.json")"
           printf '%s' "${DEPLOY_METADATA}" | grep "\"revision\":\"${DEPLOY_SHA}\"" >/dev/null

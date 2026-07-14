@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { AccountEntity } from './account.entity';
 
 @Entity({ name: 'account_sessions' })
@@ -16,6 +16,7 @@ export class SessionEntity {
   @ManyToOne(() => AccountEntity, account => account.sessions, {
     onDelete: 'CASCADE',
   })
+  @JoinColumn({ name: 'accountId' })
   account!: AccountEntity;
 
   @Column({ type: 'uuid' })
@@ -36,4 +37,3 @@ export class SessionEntity {
   @CreateDateColumn()
   createdAt!: Date;
 }
-

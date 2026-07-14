@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import type { AccessProfileKey, SectionKey } from '../auth.types';
 import { AccessProfileEntity } from './access-profile.entity';
 
@@ -14,6 +14,7 @@ export class PermissionEntity {
   @ManyToOne(() => AccessProfileEntity, profile => profile.permissions, {
     onDelete: 'CASCADE',
   })
+  @JoinColumn({ name: 'profileKey', referencedColumnName: 'key' })
   profile!: AccessProfileEntity;
 
   @Column({ type: 'text' })
@@ -25,4 +26,3 @@ export class PermissionEntity {
   @Column({ type: 'boolean', default: false })
   canEdit!: boolean;
 }
-

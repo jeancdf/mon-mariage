@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import type { AccessProfileKey, AccountStatus } from '../auth.types';
 import { AccessProfileEntity } from './access-profile.entity';
 import { SessionEntity } from './session.entity';
@@ -25,6 +25,7 @@ export class AccountEntity {
   profileKey!: AccessProfileKey;
 
   @ManyToOne(() => AccessProfileEntity, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'profileKey', referencedColumnName: 'key' })
   profile!: AccessProfileEntity;
 
   @Column({ type: 'boolean', default: false })
@@ -45,4 +46,3 @@ export class AccountEntity {
   @UpdateDateColumn()
   updatedAt!: Date;
 }
-

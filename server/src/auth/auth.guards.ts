@@ -14,7 +14,7 @@ export class SessionGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (this.isPublic(context)) return true;
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const session = await this.accountsService.resolveSession(request.headers.cookie ?? '');
+    const session = await this.accountsService.resolveSession(String(request.headers.cookie ?? ''));
     if (!session || session.account.status !== 'active') {
       throw new UnauthorizedException('Authentification requise.');
     }

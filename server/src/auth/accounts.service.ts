@@ -108,17 +108,19 @@ export class AccountsService implements OnModuleInit {
 
   async createSession(account: AccountEntity, response: CookieResponse, userAgent: string): Promise<{ csrfToken: string }> {
     const token = randomBytes(32).toString('base64url');
-    const csrfToken = randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-    await this.sessionsRepository.save(this.sessionsRepository.create({
+    let session = await this.sessionsRepository.save(this.sessionsRepository.create({
       accountId: account.id,
       tokenHash: this.hashSessionToken(token),
-      csrfTokenHash: this.hashCsrfToken(csrfToken),
+      csrfTokenHash: '',
       expiresAt,
       revokedAt: null,
       lastSeenAt: new Date(),
       userAgent: String(userAgent ?? '').slice(0, 500),
     }));
+    const csrfToken = this.csrfTokenForSession(session);
+    session.csrfTokenHash = this.hashCsrfToken(csrfToken);
+    session = await this.sessionsRepository.save(session);
     response.cookie(COOKIE_NAME, token, {
       httpOnly: true,
       secure: this.config.get<string>('NODE_ENV') === 'production',
@@ -152,9 +154,12 @@ export class AccountsService implements OnModuleInit {
   }
 
   async rotateCsrfToken(session: SessionEntity): Promise<string> {
-    const csrfToken = randomBytes(24).toString('base64url');
-    session.csrfTokenHash = this.hashCsrfToken(csrfToken);
-    await this.sessionsRepository.save(session);
+    const csrfToken = this.csrfTokenForSession(session);
+    const expectedHash = this.hashCsrfToken(csrfToken);
+    if (session.csrfTokenHash !== expectedHash) {
+      session.csrfTokenHash = expectedHash;
+      await this.sessionsRepository.save(session);
+    }
     return csrfToken;
   }
 
@@ -451,6 +456,11 @@ export class AccountsService implements OnModuleInit {
 
   private hashCsrfToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  private csrfTokenForSession(session: SessionEntity): string {
+    const secret = this.config.get<string>('SESSION_SECRET', 'local-development-session-secret');
+    return createHmac('sha256', secret).update(`csrf:${session.id}`).digest('base64url');
   }
 
   private readCookie(header: string, name: string): string | null {
