@@ -17,6 +17,7 @@ import { IconComponent } from '../../shared/icon.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
 import { AutofocusDirective } from '../../shared/autofocus.directive';
+import { AuthService } from '../../auth/auth.service';
 
 type StatusFilter = 'all' | VendorStatus;
 type ContactLinkKind = 'phone' | 'email' | 'website' | 'instagram';
@@ -31,6 +32,7 @@ export class VendorsComponent {
   readonly store = inject(WeddingStore);
   private readonly api = inject(VendorsApiService);
   private readonly toast = inject(ToastService);
+  readonly auth = inject(AuthService);
 
   readonly categories = VENDOR_CATEGORIES;
   readonly statusOptions = VENDOR_STATUS_OPTIONS;
@@ -95,11 +97,13 @@ export class VendorsComponent {
   }
 
   startAdding(key: VendorCategoryKey): void {
+    if (!this.auth.can('vendors', 'edit')) return;
     this.editing.set(emptyVendor(key));
     this.addingFor.set(key);
   }
 
   startEditing(vendor: Vendor): void {
+    if (!this.auth.can('vendors', 'edit')) return;
     this.editing.set({
       ...vendor,
       details: mergeDetails(vendor.category, vendor.details),
@@ -175,6 +179,7 @@ export class VendorsComponent {
   }
 
   async save(): Promise<void> {
+    if (!this.auth.can('vendors', 'edit')) return;
     const vendor = this.editing();
     if (!vendor || !vendor.name.trim()) return;
     const payload: Vendor = {
@@ -194,6 +199,7 @@ export class VendorsComponent {
   }
 
   requestDeleteVendor(vendor: Vendor): void {
+    if (!this.auth.can('vendors', 'edit')) return;
     this.vendorPendingDeletion.set(vendor);
   }
 
@@ -219,6 +225,7 @@ export class VendorsComponent {
   }
 
   async quickStatus(vendor: Vendor, status: VendorStatus): Promise<void> {
+    if (!this.auth.can('vendors', 'edit')) return;
     if (vendor.status === status) return;
     try {
       const list = await this.api.updateVendor({ ...vendor, status });

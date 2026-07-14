@@ -197,7 +197,10 @@ export class AccountsService implements OnModuleInit {
 
   async assertGuestAccountEmail(emailValue: unknown, guestId: string | undefined, role: OrganizationRole): Promise<void> {
     const email = normalizeEmail(emailValue);
-    if (!email || !['parent', 'sibling', 'witness'].includes(role)) return;
+    const existingGuestAccount = guestId
+      ? await this.accountsRepository.findOne({ where: { guestId } })
+      : null;
+    if (!email || (!existingGuestAccount && !['parent', 'sibling', 'witness'].includes(role))) return;
     this.assertUsableEmail(email);
     const existing = await this.accountsRepository.findOne({ where: { email } });
     if (existing && existing.guestId !== (guestId ?? null)) {
@@ -210,14 +213,17 @@ export class AccountsService implements OnModuleInit {
     const profileKey = profileForOrganizationRole(guest.organizationRole);
     let account = await this.accountsRepository.findOne({ where: { guestId: guest.id } });
     const eligibleForAutomaticAccount = ['parent', 'sibling', 'witness'].includes(guest.organizationRole);
-    if (!account && (!eligibleForAutomaticAccount || !email)) return;
     if (!account && email) {
       const matchingEmail = await this.accountsRepository.findOne({ where: { email } });
+      if (matchingEmail?.isOrganizer && eligibleForAutomaticAccount) {
+        throw new ConflictException("Cette adresse e-mail appartient au compte organisateur.");
+      }
       if (matchingEmail && !matchingEmail.isOrganizer) {
         account = matchingEmail;
         account.guestId = guest.id;
       }
     }
+    if (!account && (!eligibleForAutomaticAccount || !email)) return;
     if (!account) {
       account = this.accountsRepository.create({
         guestId: guest.id,
@@ -234,6 +240,16 @@ export class AccountsService implements OnModuleInit {
       account.profileKey = profileKey;
     }
     await this.accountsRepository.save(account);
+  }
+
+  async assertImportAccountEmail(emailValue: unknown, role: OrganizationRole): Promise<void> {
+    const email = normalizeEmail(emailValue);
+    if (!email || !['parent', 'sibling', 'witness'].includes(role)) return;
+    this.assertUsableEmail(email);
+    const existing = await this.accountsRepository.findOne({ where: { email } });
+    if (existing?.isOrganizer) {
+      throw new ConflictException("Une adresse de l'import appartient au compte organisateur.");
+    }
   }
 
   async reconcileGuestAccounts(guests: GuestEntity[]): Promise<void> {

@@ -112,6 +112,8 @@ export class FinalWeeksService {
     }
     if ('arrivalAt' in input) presence.arrivalAt = this.optionalDate(input.arrivalAt);
     if ('departureAt' in input) presence.departureAt = this.optionalDate(input.departureAt);
+    if (presence.arrivalAt) this.assertDate(this.localDate(presence.arrivalAt));
+    if (presence.departureAt) this.assertDate(this.localDate(presence.departureAt));
     if (presence.arrivalAt && presence.departureAt && presence.departureAt < presence.arrivalAt) {
       throw new BadRequestException("Le départ doit être postérieur à l'arrivée.");
     }
@@ -140,11 +142,12 @@ export class FinalWeeksService {
     const title = String(input.title ?? '').trim();
     if (!title) throw new BadRequestException('Le titre est obligatoire.');
     const scheduledAt = this.requiredDate(input.scheduledAt);
-    const datePart = scheduledAt.toISOString().slice(0, 10);
+    const datePart = this.localDate(scheduledAt);
     this.assertDate(datePart);
     const config = this.eventConfig.getConfiguration();
     const dates = expandRecurrenceDates(datePart, config.weddingDate, input.recurrence);
-    const timePart = this.inputTime(input.scheduledAt ?? '');
+    if (!dates.length) throw new BadRequestException('Aucune occurrence ne correspond aux jours sélectionnés.');
+    const time = this.localTime(scheduledAt);
     const recurrenceGroupId = dates.length > 1 ? randomUUID() : null;
     const assigneeIds = this.uniqueIds(input.assigneeIds);
     await this.assertAccountsExist(assigneeIds);
@@ -153,7 +156,7 @@ export class FinalWeeksService {
         title,
         notes: String(input.notes ?? '').trim(),
         category: TASK_CATEGORIES.includes(input.category as OperationalTaskCategory) ? input.category! : 'other',
-        scheduledAt: new Date(`${date}T${timePart}`),
+        scheduledAt: this.zonedDateTime(date, time.hour, time.minute, time.second),
         status: 'todo',
         recurrenceGroupId,
         createdByAccountId: account.id,
@@ -187,7 +190,7 @@ export class FinalWeeksService {
     }
     if (input.scheduledAt) {
       const scheduledAt = this.requiredDate(input.scheduledAt);
-      this.assertDate(scheduledAt.toISOString().slice(0, 10));
+      this.assertDate(this.localDate(scheduledAt));
       task.scheduledAt = scheduledAt;
     }
     await this.tasksRepository.save(task);
@@ -274,7 +277,7 @@ export class FinalWeeksService {
 
   private mealHeadcount(people: Array<Record<string, unknown>>, date: string, kind: MealKind): number {
     const mealHour = kind === 'breakfast' ? 8 : kind === 'lunch' ? 13 : 20;
-    const at = new Date(`${date}T${String(mealHour).padStart(2, '0')}:00:00`);
+    const at = this.zonedDateTime(date, mealHour, 0, 0);
     return people.filter(person => {
       const meals = (person['mealSelections'] ?? {}) as MealSelections;
       return (meals[date] ?? []).includes(kind) && this.isPresent(person, at);
@@ -334,11 +337,6 @@ export class FinalWeeksService {
     }
   }
 
-  private inputTime(value: string): string {
-    const match = value.match(/T(\d{2}:\d{2}(?::\d{2})?)/);
-    return `${match?.[1] ?? '09:00'}${match?.[1]?.length === 5 ? ':00' : ''}`;
-  }
-
   private uniqueIds(ids: string[] | undefined): string[] {
     return Array.from(new Set((ids ?? []).filter(id => typeof id === 'string' && id)));
   }
@@ -366,9 +364,37 @@ export class FinalWeeksService {
   }
 
   private localDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Europe/Paris',
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: this.eventConfig.getTimeZone(),
       year: 'numeric', month: '2-digit', day: '2-digit',
-    }).format(date);
+    }).formatToParts(date);
+    const value = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value ?? '';
+    return `${value('year')}-${value('month')}-${value('day')}`;
+  }
+
+  private localTime(date: Date): { hour: number; minute: number; second: number } {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: this.eventConfig.getTimeZone(),
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    }).formatToParts(date);
+    const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(part => part.type === type)?.value ?? 0);
+    return { hour: value('hour'), minute: value('minute'), second: value('second') };
+  }
+
+  private zonedDateTime(date: string, hour: number, minute: number, second: number): Date {
+    const [year, month, day] = date.split('-').map(Number);
+    const desiredUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+    let guess = desiredUtc;
+    for (let pass = 0; pass < 2; pass += 1) {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: this.eventConfig.getTimeZone(),
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+      }).formatToParts(new Date(guess));
+      const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(part => part.type === type)?.value ?? 0);
+      const representedUtc = Date.UTC(value('year'), value('month') - 1, value('day'), value('hour'), value('minute'), value('second'));
+      guess -= representedUtc - desiredUtc;
+    }
+    return new Date(guess);
   }
 }

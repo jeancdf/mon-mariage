@@ -1,17 +1,19 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { AuthAccount, AuthResponse, SectionKey } from './auth.types';
+import { AuthResponse, SectionKey } from './auth.types';
 import { CsrfStateService } from './csrf-state.service';
+import { AuthSessionStateService } from './auth-session-state.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly csrf = inject(CsrfStateService);
+  private readonly state = inject(AuthSessionStateService);
   private initialization: Promise<void> | null = null;
 
-  readonly account = signal<AuthAccount | null>(null);
-  readonly initialized = signal(false);
+  readonly account = this.state.account;
+  readonly initialized = this.state.initialized;
   readonly authenticated = computed(() => Boolean(this.account()));
   readonly isOrganizer = computed(() => Boolean(this.account()?.isOrganizer));
 
@@ -51,8 +53,7 @@ export class AuthService {
   }
 
   clear(): void {
-    this.account.set(null);
-    this.csrf.token.set('');
+    this.state.clear();
   }
 
   private async loadCurrentAccount(): Promise<void> {
@@ -71,4 +72,3 @@ export class AuthService {
     this.initialized.set(true);
   }
 }
-

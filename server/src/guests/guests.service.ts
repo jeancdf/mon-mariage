@@ -81,19 +81,22 @@ export class GuestsService {
       .map(guest => this.normalizeGuest(guest))
       .filter(guest => guest.firstName);
 
-    await this.guestsRepository.clear();
-    if (!guests.length) {
-      await this.deleteAssignmentsExcept([]);
-      await this.accountsService.reconcileGuestAccounts([]);
-      return [];
-    }
-
     const duplicateEligibleEmails = guests
       .filter(guest => ['parent', 'sibling', 'witness'].includes(guest.organizationRole) && guest.email)
       .map(guest => guest.email)
       .filter((email, index, values) => values.indexOf(email) !== index);
     if (duplicateEligibleEmails.length) {
       throw new ConflictException(`Adresse e-mail dupliquée dans l'import : ${duplicateEligibleEmails[0]}`);
+    }
+    for (const guest of guests) {
+      await this.accountsService.assertImportAccountEmail(guest.email, guest.organizationRole);
+    }
+
+    await this.guestsRepository.clear();
+    if (!guests.length) {
+      await this.deleteAssignmentsExcept([]);
+      await this.accountsService.reconcileGuestAccounts([]);
+      return [];
     }
 
     await this.guestsRepository.insert(guests);
@@ -142,7 +145,9 @@ export class GuestsService {
       firstName: String(guest.firstName ?? '').trim(),
       lastName: String(guest.lastName ?? '').trim(),
       email: normalizeEmail(guest.email),
-      organizationRole: guest.organizationRole ?? 'other',
+      organizationRole: ['parent', 'sibling', 'witness', 'friend_cousin', 'other'].includes(guest.organizationRole)
+        ? guest.organizationRole
+        : guest.category === 'temoins' ? 'witness' : 'other',
       category: guest.category ?? 'amis',
       rsvp: guest.rsvp ?? 'pending',
       hasPlusOne: Boolean(guest.hasPlusOne),

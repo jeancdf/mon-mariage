@@ -233,6 +233,7 @@
             <app-icon class="chevron" [class.closed]="!open" name="chevron" />
             <strong>{{ cat.label }}</strong>
             <span>{{ vendors.length }}</span>
+            @if (auth.can('vendors', 'edit')) {
             <button
               class="icon-button"
               type="button"
@@ -240,6 +241,7 @@
               aria-label="Ajouter un prestataire">
               <app-icon name="plus" />
             </button>
+            }
           </header>
 
           @if (open) {
@@ -251,7 +253,7 @@
               @for (v of vendors; track v.id) {
                 @let included = includedCount(v);
                 <div class="vendor-card">
-                  <div class="vendor-summary" (click)="startEditing(v)">
+                  <div class="vendor-summary" [class.editable]="auth.can('vendors', 'edit')" (click)="startEditing(v)">
                     <div class="vendor-summary-main">
                       <strong>{{ v.name || 'Sans nom' }}</strong>
                       @if (v.contactName) {
@@ -299,9 +301,11 @@
                 </div>
               }
 
+              @if (auth.can('vendors', 'edit')) {
               <button class="btn ghost small vendors-add" type="button" (click)="startAdding(cat.key)">
                 <app-icon name="plus" /> Ajouter un prestataire
               </button>
+              }
             </div>
           }
         </article>

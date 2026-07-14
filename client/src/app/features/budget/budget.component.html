@@ -4,9 +4,11 @@
       <h1>Budget</h1>
       <p>Total estimé : {{ fmtCurrency(totals().estimated) }}</p>
     </div>
+    @if (auth.can('budget', 'edit')) {
     <button class="btn primary" type="button" (click)="addingCategory = true">
       <app-icon name="plus" /> Ajouter un poste
     </button>
+    }
   </header>
 
   <article class="total-panel">
@@ -38,7 +40,7 @@
       <article class="budget-card">
         <header (click)="toggleCategory(category.id)">
           <app-icon class="chevron" [class.closed]="!open" name="chevron" />
-          @if (editingCategoryNameFor === category.id) {
+          @if (auth.can('budget', 'edit') && editingCategoryNameFor === category.id) {
             <input
               class="small-input budget-name-input"
               appAutofocus
@@ -49,12 +51,14 @@
             <button class="btn secondary small" type="button" (click)="$event.stopPropagation(); editingCategoryNameFor = null">Annuler</button>
           } @else {
             <strong>{{ category.name }}</strong>
+            @if (auth.can('budget', 'edit')) {
             <button class="icon-button" type="button" (click)="$event.stopPropagation(); startRenamingCategory(category)" aria-label="Renommer le poste">
               <app-icon name="edit" />
             </button>
+            }
           }
           <span [class.over]="over"><b>{{ fmtCurrency(spent) }}</b> / {{ fmtCurrency(category.estimated) }}</span>
-          @if (editingEstimateFor === category.id) {
+          @if (auth.can('budget', 'edit') && editingEstimateFor === category.id) {
             <input
               class="money-input small-input"
               type="number"
@@ -63,13 +67,17 @@
               (blur)="updateEstimate(category, $any($event.target).value)"
               (keydown.enter)="updateEstimate(category, $any($event.target).value)" />
           } @else {
+            @if (auth.can('budget', 'edit')) {
             <button class="icon-button" type="button" (click)="$event.stopPropagation(); editingEstimateFor = category.id" aria-label="Modifier le budget">
               <app-icon name="edit" />
             </button>
+            }
           }
+          @if (auth.can('budget', 'edit')) {
           <button class="icon-button" type="button" (click)="$event.stopPropagation(); startAddingItem(category.id)" aria-label="Ajouter une dépense">
             <app-icon name="plus" />
           </button>
+          }
           <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteCategory(category)" aria-label="Supprimer le poste">
             <app-icon name="trash" />
           </button>
@@ -84,7 +92,7 @@
             <div class="budget-items">
               @for (item of category.items; track item.id) {
                 <div>
-                  @if (editingItemId === item.id) {
+                  @if (auth.can('budget', 'edit') && editingItemId === item.id) {
                     <div class="inline-form budget-item-edit">
                       <input appAutofocus [(ngModel)]="itemEditForm.label" placeholder="Description" />
                       <input class="money-input small-input" type="number" [(ngModel)]="itemEditForm.amount" placeholder="Montant (€)" />
@@ -98,19 +106,21 @@
                       <time>{{ fmtDate(item.date) }}</time>
                     }
                     <strong>{{ fmtCurrency(item.amount) }}</strong>
+                    @if (auth.can('budget', 'edit')) {
                     <button class="icon-button" type="button" (click)="startEditingItem(item)" aria-label="Modifier la dépense">
                       <app-icon name="edit" />
                     </button>
                     <button class="icon-button danger" type="button" (click)="deleteItem(item.id)" aria-label="Supprimer la dépense">
                       <app-icon name="trash" />
                     </button>
+                    }
                   }
                 </div>
               }
             </div>
           }
 
-          @if (addingItemFor === category.id) {
+          @if (auth.can('budget', 'edit') && addingItemFor === category.id) {
             <div class="inline-form add-item-form">
               <input appAutofocus [(ngModel)]="itemForm.label" placeholder="Description de la dépense" />
               <input class="money-input" type="number" [(ngModel)]="itemForm.amount" placeholder="Montant (€)" />

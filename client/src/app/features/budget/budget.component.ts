@@ -9,6 +9,7 @@ import { IconComponent } from '../../shared/icon.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
 import { AutofocusDirective } from '../../shared/autofocus.directive';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-budget',
@@ -20,6 +21,7 @@ export class BudgetComponent {
   readonly store = inject(WeddingStore);
   private readonly budgetApi = inject(BudgetApiService);
   private readonly toast = inject(ToastService);
+  readonly auth = inject(AuthService);
   readonly fmtCurrency = fmtCurrency;
   readonly fmtDate = fmtDate;
 
@@ -55,6 +57,7 @@ export class BudgetComponent {
   }
 
   async addCategory(): Promise<void> {
+    if (!this.auth.can('budget', 'edit')) return;
     const name = this.categoryForm.name.trim();
     if (!name) return;
     try {
@@ -68,6 +71,7 @@ export class BudgetComponent {
   }
 
   async updateEstimate(category: BudgetCategory, value: number | string): Promise<void> {
+    if (!this.auth.can('budget', 'edit')) return;
     try {
       const budget = await this.budgetApi.updateCategory({ ...category, estimated: Number(value) || 0 });
       this.store.replaceBudget(budget);
@@ -78,11 +82,13 @@ export class BudgetComponent {
   }
 
   startRenamingCategory(category: BudgetCategory): void {
+    if (!this.auth.can('budget', 'edit')) return;
     this.editingCategoryNameFor = category.id;
     this.categoryNameDraft = category.name;
   }
 
   async renameCategory(category: BudgetCategory): Promise<void> {
+    if (!this.auth.can('budget', 'edit')) return;
     const name = this.categoryNameDraft.trim();
     if (!name) return;
     try {
@@ -96,6 +102,7 @@ export class BudgetComponent {
   }
 
   requestDeleteCategory(category: BudgetCategory): void {
+    if (!this.auth.can('budget', 'edit')) return;
     this.categoryPendingDeletion = category;
   }
 
@@ -120,6 +127,7 @@ export class BudgetComponent {
   }
 
   async addItem(categoryId: string): Promise<void> {
+    if (!this.auth.can('budget', 'edit')) return;
     const label = this.itemForm.label.trim();
     if (!label || !this.itemForm.amount) return;
     try {
@@ -137,11 +145,13 @@ export class BudgetComponent {
   }
 
   startAddingItem(categoryId: string): void {
+    if (!this.auth.can('budget', 'edit')) return;
     this.expanded = { ...this.expanded, [categoryId]: true };
     this.addingItemFor = this.addingItemFor === categoryId ? null : categoryId;
   }
 
   startEditingItem(item: BudgetItem): void {
+    if (!this.auth.can('budget', 'edit')) return;
     this.editingItemId = item.id;
     this.itemEditForm = { label: item.label, amount: item.amount, date: item.date };
   }
@@ -152,6 +162,7 @@ export class BudgetComponent {
   }
 
   async saveItem(item: BudgetItem): Promise<void> {
+    if (!this.auth.can('budget', 'edit')) return;
     const label = this.itemEditForm.label.trim();
     if (!label) return;
     try {
@@ -169,6 +180,7 @@ export class BudgetComponent {
   }
 
   async deleteItem(id: string): Promise<void> {
+    if (!this.auth.can('budget', 'edit')) return;
     try {
       const budget = await this.budgetApi.deleteItem(id);
       this.store.replaceBudget(budget);

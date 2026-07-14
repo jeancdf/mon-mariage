@@ -12,6 +12,7 @@ export interface EventConfiguration {
   weddingPlace: string;
   preparationStart: string;
   dailyStart: string;
+  timeZone: string;
 }
 
 @Injectable()
@@ -25,7 +26,11 @@ export class EventConfigService {
       weddingPlace: this.config.get<string>('WEDDING_PLACE', 'Escayrac'),
       preparationStart: addDays(weddingDate, -56),
       dailyStart: addDays(weddingDate, -7),
+      timeZone: this.getTimeZone(),
     };
   }
-}
 
+  getTimeZone(): string {
+    return this.config.get<string>('TIMEZONE', 'Europe/Paris');
+  }
+}

@@ -16,6 +16,9 @@ export const expandRecurrenceDates = (
   recurrence?: RecurrenceInput,
 ): string[] => {
   if (!recurrence || recurrence.type === 'none') return [startDate];
+  if (recurrence.untilDate && !/^\d{4}-\d{2}-\d{2}$/.test(recurrence.untilDate)) {
+    throw new BadRequestException('Date de fin de répétition invalide.');
+  }
   const until = recurrence.untilDate && recurrence.untilDate < windowEnd ? recurrence.untilDate : windowEnd;
   if (until < startDate) throw new BadRequestException('La fin de répétition précède la première occurrence.');
   const weekdays = new Set((recurrence.weekdays ?? []).filter(value => Number.isInteger(value) && value >= 0 && value <= 6));
@@ -30,4 +33,3 @@ export const expandRecurrenceDates = (
   }
   return dates;
 };
-

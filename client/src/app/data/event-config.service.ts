@@ -7,6 +7,7 @@ export interface EventConfiguration {
   weddingPlace: string;
   preparationStart: string;
   dailyStart: string;
+  timeZone: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -34,4 +35,3 @@ export class EventConfigService {
       .format(new Date(`${date}T12:00:00`)) : '';
   }
 }
-

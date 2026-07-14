@@ -84,7 +84,7 @@ export class FinalWeeksComponent {
       buckets.push({ key: `day-${day}`, label: day ? `D−${day}` : 'Jour J', start: date, end: date, tasks: [], daily: true });
     }
     for (const task of hub.tasks) {
-      const date = task.scheduledAt.slice(0, 10);
+      const date = this.toInputDateTime(task.scheduledAt).slice(0, 10);
       const bucket = buckets.find(item => date >= item.start && date <= item.end);
       if (bucket) bucket.tasks.push(task);
     }

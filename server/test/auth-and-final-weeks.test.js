@@ -5,6 +5,7 @@ const { AccountsService, normalizeEmail, profileForOrganizationRole } = require(
 const { PasswordService } = require('../dist/auth/password.service.js');
 const { addDays } = require('../dist/event-config/event-config.service.js');
 const { expandRecurrenceDates, isDateInWindow } = require('../dist/final-weeks/final-weeks.utils.js');
+const { FinalWeeksService } = require('../dist/final-weeks/final-weeks.service.js');
 
 const config = values => ({
   get(key, fallback) {
@@ -141,16 +142,92 @@ describe('server-side sessions and CSRF', () => {
     assert.equal(resolved.id, 'session-1');
   });
 
-  it('rejects expired and revoked sessions', async () => {
+  it('rejects expired sessions and revokes them server-side', async () => {
+    let saved = null;
     const sessions = {
       ...emptyRepository(),
-      findOne: async () => null,
+      findOne: async () => ({
+        id: 'expired', expiresAt: new Date(Date.now() - 1000), revokedAt: null,
+        account: { id: 'account-1', status: 'active' },
+      }),
+      save: async value => { saved = value; return value; },
     };
     const service = new AccountsService(
       emptyRepository(), sessions, emptyRepository(), emptyRepository(), emptyRepository(),
       new PasswordService(), config({ SESSION_SECRET: 'e'.repeat(32) }),
     );
     assert.equal(await service.resolveSession('mm_session=unknown'), null);
+    assert.ok(saved.revokedAt instanceof Date);
+  });
+});
+
+describe('operational data for a 20-40 person household', () => {
+  const eventConfig = {
+    getConfiguration: () => ({
+      weddingDate: '2027-07-16', weddingPlace: 'Escayrac', preparationStart: '2027-05-21',
+      dailyStart: '2027-07-09', timeZone: 'Europe/Paris',
+    }),
+    getTimeZone: () => 'Europe/Paris',
+  };
+
+  it('combines presence windows and explicit meal selections for headcounts', () => {
+    const service = new FinalWeeksService(
+      emptyRepository(), emptyRepository(), emptyRepository(), emptyRepository(), emptyRepository(),
+      emptyRepository(), emptyRepository(), emptyRepository(), eventConfig,
+    );
+    const people = Array.from({ length: 40 }, (_, index) => ({
+      id: `person-${index}`,
+      arrivalAt: '2027-07-11T16:00:00.000Z',
+      departureAt: index < 35 ? '2027-07-15T20:00:00.000Z' : '2027-07-12T09:00:00.000Z',
+      mealSelections: { '2027-07-12': index < 30 ? ['lunch', 'dinner'] : ['dinner'] },
+    }));
+
+    assert.equal(service.mealHeadcount(people, '2027-07-12', 'lunch'), 30);
+    assert.equal(service.mealHeadcount(people, '2027-07-12', 'dinner'), 35);
+  });
+
+  it('materializes repeated work as separate tasks with multiple assignees', async () => {
+    const tasks = [];
+    const assignments = [];
+    const tasksRepository = {
+      ...emptyRepository(),
+      create: value => ({ ...value }),
+      save: async value => {
+        const saved = { id: `task-${tasks.length + 1}`, ...value };
+        tasks.push(saved);
+        return saved;
+      },
+    };
+    const assigneesRepository = {
+      ...emptyRepository(),
+      delete: async () => undefined,
+      insert: async rows => { assignments.push(...rows); },
+    };
+    const accountsRepository = {
+      ...emptyRepository(),
+      find: async () => [{ id: 'account-1', status: 'active' }, { id: 'account-2', status: 'active' }],
+    };
+    const service = new FinalWeeksService(
+      emptyRepository(), emptyRepository(), emptyRepository(), tasksRepository, assigneesRepository,
+      emptyRepository(), accountsRepository, emptyRepository(), eventConfig,
+    );
+
+    await service.createTasks(
+      { id: 'organizer', isOrganizer: true },
+      {
+        title: 'Préparer la maison',
+        category: 'cleaning',
+        scheduledAt: '2027-07-12T07:00:00.000Z',
+        assigneeIds: ['account-1', 'account-2'],
+        recurrence: { type: 'daily', untilDate: '2027-07-14' },
+      },
+    );
+
+    assert.equal(tasks.length, 3);
+    assert.equal(new Set(tasks.map(task => task.id)).size, 3);
+    assert.equal(new Set(tasks.map(task => task.recurrenceGroupId)).size, 1);
+    assert.equal(assignments.length, 6);
+    assert.deepEqual(new Set(assignments.map(item => item.accountId)), new Set(['account-1', 'account-2']));
   });
 });
 
@@ -177,4 +254,3 @@ describe('eight-week calendar and recurrence expansion', () => {
     assert.throws(() => expandRecurrenceDates('2027-07-09', '2027-07-16', { type: 'weekdays', weekdays: [] }));
   });
 });
-

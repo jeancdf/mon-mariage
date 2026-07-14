@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
@@ -8,7 +9,7 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideHttpClient(), provideRouter(routes)],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes)],
     }).compileComponents();
   });
 
@@ -18,15 +19,22 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render the wedding planner dashboard', async () => {
+  it('should protect the wedding planner dashboard when unauthenticated', async () => {
     const fixture = TestBed.createComponent(App);
     const router = TestBed.inject(Router);
+    const http = TestBed.inject(HttpTestingController);
 
-    await router.navigateByUrl('/dashboard');
+    const navigation = router.navigateByUrl('/dashboard');
+    http.expectOne('/api/auth/me').flush(
+      { message: 'Authentification requise.' },
+      { status: 401, statusText: 'Unauthorized' },
+    );
+    await navigation;
     fixture.detectChanges();
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Tableau de bord');
+    expect(compiled.querySelector('h1')?.textContent).toContain('Se connecter');
+    http.verify();
   });
 });
