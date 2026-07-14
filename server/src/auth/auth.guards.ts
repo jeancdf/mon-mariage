@@ -1,6 +1,5 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
 import { AccountsService } from './accounts.service';
 import { ORGANIZER_ONLY_KEY, PERMISSION_KEY, PUBLIC_ROUTE_KEY } from './auth.decorators';
 import type { AuthenticatedRequest, PermissionLevel, SectionKey } from './auth.types';

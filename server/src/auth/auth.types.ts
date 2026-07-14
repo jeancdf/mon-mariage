@@ -1,4 +1,3 @@
-import type { Request } from 'express';
 import type { AccountEntity } from './entities/account.entity';
 import type { SessionEntity } from './entities/session.entity';
 
@@ -25,8 +24,15 @@ export type AccessProfileKey =
 
 export type AccountStatus = 'pending' | 'active' | 'disabled';
 
-export interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest {
+  headers: Record<string, string | string[] | undefined>;
+  method: string;
+  ip?: string;
   account: AccountEntity;
   session: SessionEntity;
 }
 
+export interface CookieResponse {
+  cookie(name: string, value: string, options: Record<string, unknown>): void;
+  clearCookie(name: string, options: Record<string, unknown>): void;
+}

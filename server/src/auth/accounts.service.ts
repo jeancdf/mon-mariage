@@ -12,14 +12,13 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { IsNull, Repository } from 'typeorm';
-import type { Response } from 'express';
 import { GuestEntity, OrganizationRole } from '../guests/guest.entity';
 import { PasswordService } from './password.service';
 import { AccessProfileEntity } from './entities/access-profile.entity';
 import { AccountEntity } from './entities/account.entity';
 import { PermissionEntity } from './entities/permission.entity';
 import { SessionEntity } from './entities/session.entity';
-import { AccessProfileKey, SECTION_KEYS, SectionKey } from './auth.types';
+import { AccessProfileKey, CookieResponse, SECTION_KEYS, SectionKey } from './auth.types';
 
 const COOKIE_NAME = 'mm_session';
 const SESSION_DURATION_MS = 12 * 60 * 60 * 1000;
@@ -107,7 +106,7 @@ export class AccountsService implements OnModuleInit {
     return this.accountsRepository.save(account);
   }
 
-  async createSession(account: AccountEntity, response: Response, userAgent: string): Promise<{ csrfToken: string }> {
+  async createSession(account: AccountEntity, response: CookieResponse, userAgent: string): Promise<{ csrfToken: string }> {
     const token = randomBytes(32).toString('base64url');
     const csrfToken = randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
@@ -163,13 +162,13 @@ export class AccountsService implements OnModuleInit {
     return this.safeEqual(session.csrfTokenHash, this.hashCsrfToken(token));
   }
 
-  async logout(session: SessionEntity, response: Response): Promise<void> {
+  async logout(session: SessionEntity, response: CookieResponse): Promise<void> {
     session.revokedAt = new Date();
     await this.sessionsRepository.save(session);
     this.clearCookie(response);
   }
 
-  clearCookie(response: Response): void {
+  clearCookie(response: CookieResponse): void {
     response.clearCookie(COOKIE_NAME, {
       httpOnly: true,
       secure: this.config.get<string>('NODE_ENV') === 'production',

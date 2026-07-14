@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Put, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req } from '@nestjs/common';
 import { RequirePermission } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import type { MealKind, MealSelections } from './entities/presence.entity';
@@ -84,4 +84,3 @@ export class FinalWeeksController {
     return { success: true };
   }
 }
-
