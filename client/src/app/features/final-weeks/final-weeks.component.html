@@ -79,10 +79,12 @@
                     type="button"
                     class="gantt-task"
                     [class.selected]="selectedTaskId() === item.task.id"
+                    [class.compact]="item.width < 4"
                     [class.done]="item.task.status === 'done'"
                     [class.cancelled]="item.task.status === 'cancelled'"
                     [attr.data-category]="item.task.category"
                     [attr.title]="item.task.title + ' · ' + taskTime(item.task)"
+                    [attr.aria-label]="item.task.title + ', ' + taskTime(item.task)"
                     [style.left.%]="item.left"
                     [style.width.%]="item.width"
                     [style.top.px]="27 + item.lane * 24"
@@ -153,7 +155,7 @@
             <span class="status-pill" [class.done]="task.status === 'done'">{{ statusLabel(task.status) }}</span>
           </header>
           <div class="selected-task-meta">
-            <strong>{{ formatDate(task.scheduledAt, true) }} · {{ taskTime(task) }}</strong>
+            <strong>{{ formatDate(task.scheduledAt) }} · {{ taskTime(task) }}</strong>
             <span>{{ task.assigneeIds.length ? assigneeNames(task) : 'Aucun responsable' }}</span>
           </div>
           @if (task.notes) { <p>{{ task.notes }}</p> }

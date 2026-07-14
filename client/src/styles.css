@@ -3202,8 +3202,10 @@ textarea {
   min-height: 54px;
   border-bottom: 1px solid var(--border);
   background-color: var(--surface-alt);
-  background-image: linear-gradient(to right, transparent calc(100% - 1px), var(--border) calc(100% - 1px));
-  background-size: 12.5% 100%;
+  background-image:
+    linear-gradient(to right, transparent calc(100% - 1px), var(--border) calc(100% - 1px)),
+    linear-gradient(to right, transparent calc(100% - 1px), color-mix(in srgb, var(--border) 45%, transparent) calc(100% - 1px));
+  background-size: 12.5% 100%, 3.125% 100%;
 }
 
 .gantt-presence {
@@ -3220,12 +3222,12 @@ textarea {
   position: absolute;
   z-index: 2;
   display: flex;
-  min-width: 48px;
+  min-width: 8px;
   height: 19px;
   align-items: center;
   gap: 5px;
   overflow: hidden;
-  padding: 0 7px;
+  padding: 0 5px;
   border: 1px solid color-mix(in srgb, #7657c8 72%, #0000);
   border-radius: 5px;
   background: #7657c8;
@@ -3246,6 +3248,15 @@ textarea {
 .gantt-task small {
   color: rgb(255 255 255 / 76%);
   font-size: 8px;
+}
+
+.gantt-task.compact {
+  padding: 0;
+}
+
+.gantt-task.compact span,
+.gantt-task.compact small {
+  display: none;
 }
 
 .gantt-task:hover,
