@@ -44,7 +44,7 @@
             @if (task.status !== 'done' && task.status !== 'cancelled') {
               <div class="hub-list-row">
                 <div><strong>{{ task.title }}</strong><small>{{ formatDate(task.scheduledAt, true) }} · {{ categoryLabel(task.category) }}</small></div>
-                <span class="status-pill" [class.done]="task.status === 'done'">{{ statusLabel(task.status) }}</span>
+                <span class="status-pill">{{ statusLabel(task.status) }}</span>
               </div>
             }
           } @empty { <p class="empty-state">Aucune responsabilité pour le moment.</p> }
