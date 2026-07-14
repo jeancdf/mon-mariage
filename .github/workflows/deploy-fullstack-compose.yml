@@ -74,7 +74,10 @@ jobs:
             fi
           }
 
+          set_env_value FRONTEND_HOST_PORT 9003
           set_env_value BACKEND_HOST_PORT 3007
+          set_env_value PUBLIC_DOMAIN "mon-mariage.duckdns.org"
+          set_env_value CLIENT_ORIGIN "https://mon-mariage.duckdns.org"
           set_env_value DEPLOY_SHA "${DEPLOY_SHA}"
           set_env_value DEPLOY_VERSION "${DEPLOY_VERSION}"
           set_env_value DEPLOYED_AT "${DEPLOYED_AT}"
@@ -155,3 +158,13 @@ jobs:
           printf '%s' "${DEPLOY_METADATA}" | grep "\"version\":${DEPLOY_VERSION}" >/dev/null
           printf '%s' "${DEPLOY_METADATA}" | grep "\"deployedAt\":\"${DEPLOYED_AT}\"" >/dev/null
           EOF
+
+      - name: Public HTTPS healthcheck
+        run: |
+          set -a
+          . ./.env.production
+          set +a
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors \
+            "https://${PUBLIC_DOMAIN}/" >/dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors \
+            "https://${PUBLIC_DOMAIN}/api/health" >/dev/null

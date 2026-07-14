@@ -9,6 +9,7 @@ async function bootstrap() {
   const port = Number(config.get<string>('PORT', '3000'));
 
   app.setGlobalPrefix('api');
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   app.enableCors({
     origin: clientOrigin,

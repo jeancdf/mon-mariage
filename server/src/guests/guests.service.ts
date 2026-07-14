@@ -5,6 +5,7 @@ import { In, Not, Repository } from 'typeorm';
 import { RoomGuestEntity } from '../housing/room-guest.entity';
 import { TableGuestEntity } from '../seating/table-guest.entity';
 import { GuestEntity, Kid } from './guest.entity';
+import { AccountsService, normalizeEmail } from '../auth/accounts.service';
 
 type GuestInput = Omit<GuestEntity, 'id' | 'kids'> & { id?: string; kids?: Partial<Kid>[] };
 
@@ -17,6 +18,7 @@ export class GuestsService {
     private readonly roomAssignmentsRepository: Repository<RoomGuestEntity>,
     @InjectRepository(TableGuestEntity)
     private readonly tableAssignmentsRepository: Repository<TableGuestEntity>,
+    private readonly accountsService: AccountsService,
   ) {}
 
   async findAll(): Promise<GuestEntity[]> {
@@ -27,8 +29,11 @@ export class GuestsService {
   }
 
   async create(rawGuest: GuestInput): Promise<GuestEntity> {
+    await this.accountsService.assertGuestAccountEmail(rawGuest.email, undefined, rawGuest.organizationRole ?? 'other');
     const guest = this.guestsRepository.create(this.normalizeGuest(rawGuest));
-    return this.guestsRepository.save(guest);
+    const savedGuest = await this.guestsRepository.save(guest);
+    await this.accountsService.syncGuestAccount(savedGuest);
+    return savedGuest;
   }
 
   async update(id: string, rawGuest: Partial<GuestInput>): Promise<GuestEntity> {
@@ -37,11 +42,18 @@ export class GuestsService {
       throw new NotFoundException('Guest not found');
     }
 
+    await this.accountsService.assertGuestAccountEmail(
+      rawGuest.email ?? existing.email,
+      id,
+      rawGuest.organizationRole ?? existing.organizationRole,
+    );
+
     const merged = this.guestsRepository.merge(existing, this.normalizeGuest({
       ...existing,
       ...rawGuest,
     }));
     const savedGuest = await this.guestsRepository.save(merged);
+    await this.accountsService.syncGuestAccount(savedGuest);
     const validPersonIds = new Set(this.guestPersonIds(savedGuest));
     const removedPersonIds = this.guestPersonIds(existing).filter(personId => !validPersonIds.has(personId));
     if (removedPersonIds.length) {
@@ -61,6 +73,7 @@ export class GuestsService {
       throw new NotFoundException('Guest not found');
     }
     await this.deleteAssignmentsForGuestIds(this.guestPersonIds(existing));
+    await this.accountsService.reconcileGuestAccounts(await this.guestsRepository.find());
   }
 
   async replaceAll(rawGuests: GuestInput[]): Promise<GuestEntity[]> {
@@ -74,9 +87,18 @@ export class GuestsService {
       return [];
     }
 
+    const duplicateEligibleEmails = guests
+      .filter(guest => ['parent', 'sibling', 'witness'].includes(guest.organizationRole) && guest.email)
+      .map(guest => guest.email)
+      .filter((email, index, values) => values.indexOf(email) !== index);
+    if (duplicateEligibleEmails.length) {
+      throw new Error(`Duplicate account email in import: ${duplicateEligibleEmails[0]}`);
+    }
+
     await this.guestsRepository.insert(guests);
     const savedGuests = await this.findAll();
     await this.deleteAssignmentsExcept(savedGuests.flatMap(guest => this.guestPersonIds(guest)));
+    await this.accountsService.reconcileGuestAccounts(savedGuests);
     return savedGuests;
   }
 
@@ -118,6 +140,8 @@ export class GuestsService {
     return {
       firstName: String(guest.firstName ?? '').trim(),
       lastName: String(guest.lastName ?? '').trim(),
+      email: normalizeEmail(guest.email),
+      organizationRole: guest.organizationRole ?? 'other',
       category: guest.category ?? 'amis',
       rsvp: guest.rsvp ?? 'pending',
       hasPlusOne: Boolean(guest.hasPlusOne),

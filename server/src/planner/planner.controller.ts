@@ -1,8 +1,10 @@
 import { Body, Controller, Get, Put } from '@nestjs/common';
 import { PlannerState } from './planner-state.entity';
 import { PlannerService } from './planner.service';
+import { OrganizerOnly } from '../auth/auth.decorators';
 
 @Controller('planner')
+@OrganizerOnly()
 export class PlannerController {
   constructor(private readonly plannerService: PlannerService) {}
 

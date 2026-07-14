@@ -7,9 +7,11 @@ import { TodosModule } from '../todos/todos.module';
 import { VendorsModule } from '../vendors/vendors.module';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
+import { EventConfigModule } from '../event-config/event-config.module';
+import { FinalWeeksModule } from '../final-weeks/final-weeks.module';
 
 @Module({
-  imports: [GuestsModule, HousingModule, SeatingModule, BudgetModule, TodosModule, VendorsModule],
+  imports: [GuestsModule, HousingModule, SeatingModule, BudgetModule, TodosModule, VendorsModule, EventConfigModule, FinalWeeksModule],
   controllers: [DashboardController],
   providers: [DashboardService],
 })

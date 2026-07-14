@@ -11,6 +11,9 @@ import { PlannerModule } from './planner/planner.module';
 import { SeatingModule } from './seating/seating.module';
 import { TodosModule } from './todos/todos.module';
 import { VendorsModule } from './vendors/vendors.module';
+import { AuthModule } from './auth/auth.module';
+import { EventConfigModule } from './event-config/event-config.module';
+import { FinalWeeksModule } from './final-weeks/final-weeks.module';
 
 @Module({
   imports: [
@@ -32,6 +35,9 @@ import { VendorsModule } from './vendors/vendors.module';
         ssl: config.get<string>('DB_SSL', 'false') === 'true' ? { rejectUnauthorized: false } : false,
       }),
     }),
+    AuthModule,
+    EventConfigModule,
+    FinalWeeksModule,
     GuestsModule,
     HousingModule,
     SeatingModule,

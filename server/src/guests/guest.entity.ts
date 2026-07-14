@@ -8,6 +8,7 @@ export type GuestCategory =
   | 'temoins'
   | 'enfants';
 export type EventKey = 'rehearsal' | 'ceremony' | 'dinner';
+export type OrganizationRole = 'parent' | 'sibling' | 'witness' | 'friend_cousin' | 'other';
 
 export interface Kid {
   id: string;
@@ -25,6 +26,12 @@ export class GuestEntity {
 
   @Column({ type: 'text', default: '' })
   lastName!: string;
+
+  @Column({ type: 'text', default: '' })
+  email!: string;
+
+  @Column({ type: 'text', default: 'other' })
+  organizationRole!: OrganizationRole;
 
   @Column({ type: 'text' })
   category!: GuestCategory;

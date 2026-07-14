@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { BudgetService } from '../budget/budget.service';
 import { GuestsService } from '../guests/guests.service';
 import { HousingService } from '../housing/housing.service';
 import { SeatingService } from '../seating/seating.service';
 import { TodosService } from '../todos/todos.service';
 import { VendorsService } from '../vendors/vendors.service';
+import { EventConfigService } from '../event-config/event-config.service';
+import { FinalWeeksService } from '../final-weeks/final-weeks.service';
 
 export interface DashboardSummary {
   guests: {
@@ -37,6 +38,7 @@ export interface DashboardSummary {
     totalCommitted: number;
   };
   daysRemaining: number;
+  finalWeeks: Record<string, unknown>;
 }
 
 @Injectable()
@@ -48,7 +50,8 @@ export class DashboardService {
     private readonly budgetService: BudgetService,
     private readonly todosService: TodosService,
     private readonly vendorsService: VendorsService,
-    private readonly configService: ConfigService,
+    private readonly eventConfig: EventConfigService,
+    private readonly finalWeeksService: FinalWeeksService,
   ) {}
 
   async getSummary(): Promise<DashboardSummary> {
@@ -96,7 +99,8 @@ export class DashboardService {
       .filter(vendor => vendor.status !== 'ecarte')
       .reduce((sum, vendor) => sum + (vendor.priceFinal || vendor.priceEstimate || 0), 0);
 
-    const weddingDate = this.configService.get<string>('WEDDING_DATE', '2027-07-16');
+    const weddingDate = this.eventConfig.getConfiguration().weddingDate;
+    const finalWeeks = await this.finalWeeksService.getDashboardSummary();
 
     return {
       guests: {
@@ -128,6 +132,7 @@ export class DashboardService {
         totalCommitted: vendorTotalCommitted,
       },
       daysRemaining: Math.ceil((new Date(weddingDate).getTime() - Date.now()) / 86_400_000),
+      finalWeeks,
     };
   }
 }

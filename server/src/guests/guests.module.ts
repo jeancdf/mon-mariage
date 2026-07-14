@@ -5,9 +5,10 @@ import { GuestsController } from './guests.controller';
 import { GuestsService } from './guests.service';
 import { RoomGuestEntity } from '../housing/room-guest.entity';
 import { TableGuestEntity } from '../seating/table-guest.entity';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([GuestEntity, RoomGuestEntity, TableGuestEntity])],
+  imports: [AuthModule, TypeOrmModule.forFeature([GuestEntity, RoomGuestEntity, TableGuestEntity])],
   controllers: [GuestsController],
   providers: [GuestsService],
   exports: [GuestsService],
