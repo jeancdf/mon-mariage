@@ -1,5 +1,6 @@
 import { AssigneeId, EventKey, Guest, GuestCategory, Rsvp, ThemeKey } from '../data/types';
 import { CATS, EVENT_LABELS, RSVP_LABELS } from '../data/seed';
+import type { SectionKey } from '../auth/auth.types';
 
 export interface ThemeDef {
   bg: string;
@@ -53,22 +54,19 @@ export const THEMES: Record<ThemeKey, ThemeDef> = {
   },
 };
 
-export type PageId = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todos' | 'vendors';
+export type PageId = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todos' | 'vendors' | 'final_weeks';
 export type IconName = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todo' | 'vendors' | 'plus' | 'x' | 'edit' | 'trash' | 'bed' | 'chevron' | 'check';
-export type PagePath = '/dashboard' | '/invites' | '/prestataires' | '/hebergement' | '/plan-de-table' | '/budget' | '/a-faire';
+export type PagePath = '/dashboard' | '/invites' | '/prestataires' | '/hebergement' | '/plan-de-table' | '/budget' | '/a-faire' | '/dernieres-semaines';
 
-export const WEDDING_DATE_ISO = '2027-07-16';
-export const WEDDING_DATE_LABEL = '16 juillet 2027';
-export const WEDDING_PLACE = 'Escayrac';
-
-export const NAV_ITEMS: { id: PageId; label: string; icon: IconName; path: PagePath }[] = [
-  { id: 'dashboard', label: "Vue d'ensemble", icon: 'dashboard', path: '/dashboard' },
-  { id: 'guests', label: 'Invités', icon: 'guests', path: '/invites' },
-  { id: 'vendors', label: 'Prestataires', icon: 'vendors', path: '/prestataires' },
-  { id: 'housing', label: 'Hébergement', icon: 'housing', path: '/hebergement' },
-  { id: 'seating', label: 'Plan de table', icon: 'seating', path: '/plan-de-table' },
-  { id: 'budget', label: 'Budget', icon: 'budget', path: '/budget' },
-  { id: 'todos', label: 'À faire', icon: 'todo', path: '/a-faire' },
+export const NAV_ITEMS: { id: PageId; label: string; icon: IconName; path: PagePath; section: SectionKey }[] = [
+  { id: 'dashboard', label: "Vue d'ensemble", icon: 'dashboard', path: '/dashboard', section: 'dashboard' },
+  { id: 'guests', label: 'Invités', icon: 'guests', path: '/invites', section: 'guests' },
+  { id: 'vendors', label: 'Prestataires', icon: 'vendors', path: '/prestataires', section: 'vendors' },
+  { id: 'housing', label: 'Hébergement', icon: 'housing', path: '/hebergement', section: 'housing' },
+  { id: 'seating', label: 'Plan de table', icon: 'seating', path: '/plan-de-table', section: 'seating' },
+  { id: 'budget', label: 'Budget', icon: 'budget', path: '/budget', section: 'budget' },
+  { id: 'todos', label: 'À faire', icon: 'todo', path: '/a-faire', section: 'todos' },
+  { id: 'final_weeks', label: 'Dernières semaines', icon: 'todo', path: '/dernieres-semaines', section: 'final_weeks' },
 ];
 
 export const THEME_KEYS: ThemeKey[] = ['blanc', 'nuit', 'ivoire'];
@@ -173,6 +171,8 @@ export const emptyGuest = (): Guest => ({
   id: Math.random().toString(36).slice(2, 9),
   firstName: '',
   lastName: '',
+  email: '',
+  organizationRole: 'other',
   category: 'amis',
   rsvp: 'pending',
   hasPlusOne: false,

@@ -1,6 +1,6 @@
 import { Component, DOCUMENT, computed, effect, inject, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ThemeKey } from '../data/types';
 import { BudgetApiService } from '../data/budget-api.service';
 import { GuestApiService } from '../data/guest-api.service';
@@ -12,7 +12,9 @@ import { VendorsApiService } from '../data/vendors-api.service';
 import { IconComponent } from '../shared/icon.component';
 import { ToastComponent } from '../shared/toast.component';
 import { ToastService } from '../shared/toast.service';
-import { NAV_ITEMS, THEMES, THEME_KEYS, WEDDING_DATE_LABEL, WEDDING_PLACE } from '../shared/wedding-utils';
+import { NAV_ITEMS, THEMES, THEME_KEYS } from '../shared/wedding-utils';
+import { AuthService } from '../auth/auth.service';
+import { EventConfigService } from '../data/event-config.service';
 
 interface DeploymentMetadata {
   readonly deployedAt: string;
@@ -37,23 +39,26 @@ export class WeddingShellComponent {
   private readonly document = inject(DOCUMENT);
   private readonly title = inject(Title);
   private readonly toast = inject(ToastService);
+  readonly auth = inject(AuthService);
+  readonly eventConfig = inject(EventConfigService);
+  private readonly router = inject(Router);
   private readonly guestApi = inject(GuestApiService);
   private readonly housingApi = inject(HousingApiService);
   private readonly seatingApi = inject(SeatingApiService);
   private readonly budgetApi = inject(BudgetApiService);
   private readonly todosApi = inject(TodosApiService);
   private readonly vendorsApi = inject(VendorsApiService);
-  readonly navItems = NAV_ITEMS;
+  readonly navItems = computed(() => NAV_ITEMS.filter(item => this.auth.can(item.section)));
   readonly themeKeys = THEME_KEYS;
   readonly themes = THEMES;
-  readonly weddingDateLabel = WEDDING_DATE_LABEL;
-  readonly weddingPlace = WEDDING_PLACE;
+  readonly weddingDateLabel = computed(() => this.eventConfig.dateLabel());
+  readonly weddingPlace = computed(() => this.eventConfig.configuration()?.weddingPlace ?? '');
   readonly deploymentMetadata = signal<DeploymentMetadata | null>(null);
 
   constructor() {
     void this.loadInitialData();
+    void this.loadEventConfiguration();
     void this.loadDeploymentMetadata();
-    this.title.setTitle(`Mariage · ${WEDDING_PLACE} · ${WEDDING_DATE_LABEL}`);
     // Theme variables live on <html> so elements CDK appends to <body>
     // (drag previews, overlays) inherit them too.
     effect(() => {
@@ -73,6 +78,11 @@ export class WeddingShellComponent {
 
   setTheme(theme: ThemeKey): void {
     this.store.setTheme(theme);
+  }
+
+  async logout(): Promise<void> {
+    await this.auth.logout();
+    await this.router.navigateByUrl('/connexion');
   }
 
   readonly deployedAtLabel = computed(() => {
@@ -110,25 +120,29 @@ export class WeddingShellComponent {
     try {
       // allSettled, not all: one failed request must not blank the five others.
       // A failed section keeps its seed data (frontend-only development included).
-      const [guests, houses, tables, budget, todos, vendors] = await Promise.allSettled([
-        this.guestApi.loadGuests(),
-        this.housingApi.loadHousing(),
-        this.seatingApi.loadTables(),
-        this.budgetApi.loadBudget(),
-        this.todosApi.loadTodos(),
-        this.vendorsApi.loadVendors(),
-      ]);
-      if (guests.status === 'fulfilled') this.store.replaceGuests(guests.value);
-      if (houses.status === 'fulfilled') this.store.replaceHouses(houses.value);
-      if (tables.status === 'fulfilled') this.store.replaceTables(tables.value);
-      if (budget.status === 'fulfilled') this.store.replaceBudget(budget.value);
-      if (todos.status === 'fulfilled') this.store.replaceTodos(todos.value);
-      if (vendors.status === 'fulfilled') this.store.replaceVendors(vendors.value);
-      if ([guests, houses, tables, budget, todos, vendors].some(result => result.status === 'rejected')) {
+      const requests = [
+        this.auth.can('guests') ? this.guestApi.loadGuests().then(value => this.store.replaceGuests(value)) : Promise.resolve(),
+        this.auth.can('housing') ? this.housingApi.loadHousing().then(value => this.store.replaceHouses(value)) : Promise.resolve(),
+        this.auth.can('seating') ? this.seatingApi.loadTables().then(value => this.store.replaceTables(value)) : Promise.resolve(),
+        this.auth.can('budget') ? this.budgetApi.loadBudget().then(value => this.store.replaceBudget(value)) : Promise.resolve(),
+        this.auth.can('todos') ? this.todosApi.loadTodos().then(value => this.store.replaceTodos(value)) : Promise.resolve(),
+        this.auth.can('vendors') ? this.vendorsApi.loadVendors().then(value => this.store.replaceVendors(value)) : Promise.resolve(),
+      ];
+      const results = await Promise.allSettled(requests);
+      if (results.some(result => result.status === 'rejected')) {
         this.toast.error("Certaines données n'ont pas pu être chargées. Rechargez la page pour réessayer.");
       }
     } finally {
       this.store.markLoaded();
+    }
+  }
+
+  private async loadEventConfiguration(): Promise<void> {
+    try {
+      const config = await this.eventConfig.load();
+      this.title.setTitle(`Mariage · ${config.weddingPlace} · ${this.eventConfig.dateLabel()}`);
+    } catch {
+      this.toast.error("Impossible de charger la configuration de l'événement.");
     }
   }
 }

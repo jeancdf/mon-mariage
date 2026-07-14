@@ -2,11 +2,11 @@
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-title">Mariage</div>
-      <div class="brand-subtitle">{{ weddingDateLabel }} · {{ weddingPlace }}</div>
+      <div class="brand-subtitle">{{ weddingDateLabel() }} · {{ weddingPlace() }}</div>
     </div>
 
     <nav class="nav-list" aria-label="Sections du planning">
-      @for (item of navItems; track item.id) {
+      @for (item of navItems(); track item.id) {
         <a
           class="nav-item"
           [routerLink]="item.path"
@@ -17,6 +17,13 @@
         </a>
       }
     </nav>
+
+    @if (auth.isOrganizer()) {
+      <a class="nav-item admin-link" routerLink="/administration" routerLinkActive="active">
+        <app-icon name="guests" />
+        <span>Administration</span>
+      </a>
+    }
 
     <div class="theme-picker">
       <div class="eyebrow">Thème</div>
@@ -37,6 +44,11 @@
     <div class="sidebar-total">
       <div class="sidebar-count">{{ store.confirmedCount() }}</div>
       <div>invités confirmés</div>
+    </div>
+
+    <div class="account-panel">
+      <span>{{ auth.account()?.email }}</span>
+      <button type="button" class="btn ghost small" (click)="logout()">Déconnexion</button>
     </div>
 
     @if (deploymentMetadata(); as deployment) {
