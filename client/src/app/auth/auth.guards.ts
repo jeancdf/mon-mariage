@@ -20,7 +20,7 @@ export const permissionGuard: CanActivateFn = async route => {
   if (auth.can(section)) return true;
   if (auth.can('final_weeks')) return router.createUrlTree(['/dernieres-semaines']);
   if (auth.can('dashboard')) return router.createUrlTree(['/dashboard']);
-  return router.createUrlTree(['/connexion']);
+  return router.createUrlTree(['/aucun-acces']);
 };
 
 export const organizerGuard: CanActivateFn = async () => {
@@ -29,4 +29,3 @@ export const organizerGuard: CanActivateFn = async () => {
   await auth.initialize();
   return auth.isOrganizer() ? true : router.createUrlTree(['/dernieres-semaines']);
 };
-

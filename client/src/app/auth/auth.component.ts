@@ -47,7 +47,8 @@ export class AuthComponent {
   }
 
   private defaultDestination(): string {
-    return this.auth.can('dashboard') ? '/dashboard' : '/dernieres-semaines';
+    if (this.auth.can('dashboard')) return '/dashboard';
+    if (this.auth.can('final_weeks')) return '/dernieres-semaines';
+    return '/aucun-acces';
   }
 }
-

@@ -9,6 +9,7 @@ import { SeatingComponent } from './features/seating/seating.component';
 import { TodosComponent } from './features/todos/todos.component';
 import { VendorsComponent } from './features/vendors/vendors.component';
 import { WeddingShellComponent } from './wedding-shell/wedding-shell.component';
+import { AccessDeniedComponent } from './auth/access-denied.component';
 
 export const routes: Routes = [
   { path: 'connexion', component: AuthComponent, data: { mode: 'login' } },
@@ -19,6 +20,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'aucun-acces', component: AccessDeniedComponent },
       { path: 'dashboard', component: DashboardComponent, canActivate: [permissionGuard], data: { section: 'dashboard' } },
       { path: 'invites', component: GuestsComponent, canActivate: [permissionGuard], data: { section: 'guests' } },
       { path: 'prestataires', component: VendorsComponent, canActivate: [permissionGuard], data: { section: 'vendors' } },
