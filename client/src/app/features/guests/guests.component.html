@@ -80,6 +80,9 @@
           <tr>
             <td>
               <strong>{{ guest.firstName }} {{ guest.lastName }}</strong>
+              @if (guest.email) {
+                <small>{{ guest.email }}</small>
+              }
               @if (guest.hasPlusOne) {
                 <span class="muted">+1{{ guest.plusOneName ? ' (' + guest.plusOneName + ')' : '' }}</span>
               }

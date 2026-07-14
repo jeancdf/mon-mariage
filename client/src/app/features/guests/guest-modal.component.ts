@@ -2,7 +2,7 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
 import { FormsModule } from '@angular/forms';
 import { EventKey, Guest, Kid } from '../../data/types';
 import { gid } from '../../data/seed';
-import { CATEGORY_OPTIONS, cloneGuest, emptyGuest, EVENT_OPTIONS, RSVP_OPTIONS } from '../../shared/wedding-utils';
+import { CATEGORY_OPTIONS, cloneGuest, emptyGuest, EVENT_OPTIONS, ORGANIZATION_ROLE_OPTIONS, RSVP_OPTIONS } from '../../shared/wedding-utils';
 import { IconComponent } from '../../shared/icon.component';
 
 @Component({
@@ -18,6 +18,7 @@ export class GuestModalComponent {
   readonly categoryOptions = CATEGORY_OPTIONS;
   readonly rsvpOptions = RSVP_OPTIONS;
   readonly eventOptions = EVENT_OPTIONS;
+  readonly organizationRoleOptions = ORGANIZATION_ROLE_OPTIONS;
   form: Guest = emptyGuest();
   isEditing = false;
 

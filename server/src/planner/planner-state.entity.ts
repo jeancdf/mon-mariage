@@ -11,6 +11,7 @@ export type EventKey = 'rehearsal' | 'ceremony' | 'dinner';
 export type BedType = 'double' | 'single';
 export type AssigneeId = 'marie' | 'elle' | 'famille' | 'prestataire';
 export type ThemeKey = 'blanc' | 'nuit' | 'ivoire';
+export type OrganizationRole = 'parent' | 'sibling' | 'witness' | 'friend_cousin' | 'other';
 
 export interface Kid {
   id: string;
@@ -22,6 +23,8 @@ export interface Guest {
   id: string;
   firstName: string;
   lastName: string;
+  email: string;
+  organizationRole: OrganizationRole;
   category: GuestCategory;
   rsvp: Rsvp;
   hasPlusOne: boolean;

@@ -146,6 +146,8 @@ export class GuestsComponent {
       const rows = this.store.guests().map(guest => ({
         Prénom: guest.firstName,
         Nom: guest.lastName,
+        'Adresse e-mail': guest.email,
+        'Rôle organisation': guest.organizationRole,
         Catégorie: this.cats[guest.category].label,
         RSVP: this.rsvpLabels[guest.rsvp],
         '+1 (nom)': guest.hasPlusOne ? guest.plusOneName : '',

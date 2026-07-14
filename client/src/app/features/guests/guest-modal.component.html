@@ -17,6 +17,19 @@
         <input [(ngModel)]="form.lastName" />
       </label>
       <label class="field">
+        <span>Adresse e-mail</span>
+        <input type="email" [(ngModel)]="form.email" autocomplete="off" placeholder="prenom@exemple.fr" />
+      </label>
+      <label class="field">
+        <span>Rôle dans l’organisation</span>
+        <select [(ngModel)]="form.organizationRole">
+          @for (option of organizationRoleOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+        <small>Parents, fratrie et témoins obtiennent automatiquement un compte en attente si un e-mail est renseigné.</small>
+      </label>
+      <label class="field">
         <span>Catégorie</span>
         <select [(ngModel)]="form.category">
           @for (option of categoryOptions; track option.value) {

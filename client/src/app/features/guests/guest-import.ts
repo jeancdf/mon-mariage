@@ -1,4 +1,4 @@
-import { EventKey, Guest, GuestCategory, Kid, Rsvp } from '../../data/types';
+import { EventKey, Guest, GuestCategory, Kid, OrganizationRole, Rsvp } from '../../data/types';
 import { EVENT_LABELS, RSVP_LABELS, gid } from '../../data/seed';
 
 export interface GuestImportResult {
@@ -75,6 +75,8 @@ const parseSheetRows = (
   const eventsCol = findColumnIndex(header, ['événements', 'evenements']);
   const transportCol = findColumnIndex(header, ['transport']);
   const notesCol = findColumnIndex(header, ['notes']);
+  const emailCol = findColumnIndex(header, ['adresse e-mail', 'email', 'e-mail', 'mail']);
+  const organizationRoleCol = findColumnIndex(header, ['rôle organisation', 'role organisation', 'organisation']);
   const ownerCategory = getOwnerCategory(sheetName);
   const hasSeparateNameColumns = firstNameCol >= 0 && lastNameCol >= 0 && firstNameCol !== lastNameCol;
 
@@ -107,6 +109,8 @@ const parseSheetRows = (
       id: gid(),
       firstName: name.firstName,
       lastName: name.lastName,
+      email: getCellText(row[emailCol]).toLowerCase(),
+      organizationRole: parseOrganizationRole(getCellText(row[organizationRoleCol]) || relation, category),
       category,
       rsvp: parseRsvp(getCellText(row[rsvpCol])),
       hasPlusOne: Boolean(plusOneName),
@@ -180,6 +184,15 @@ const parseRsvp = (source: string): Rsvp => {
     if (normalized === normalize(label) || normalized === value) return value as Rsvp;
   }
   return 'pending';
+};
+
+const parseOrganizationRole = (source: string, category: GuestCategory): OrganizationRole => {
+  const normalized = normalize(source);
+  if (normalized.includes('parent') || normalized.includes('pere') || normalized.includes('mere')) return 'parent';
+  if (normalized.includes('fratrie') || normalized.includes('frere') || normalized.includes('soeur')) return 'sibling';
+  if (normalized.includes('temoin') || category === 'temoins') return 'witness';
+  if (normalized.includes('ami') || normalized.includes('cousin')) return 'friend_cousin';
+  return 'other';
 };
 
 const parseEvents = (source: string): EventKey[] => {

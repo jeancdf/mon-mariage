@@ -1,4 +1,4 @@
-import { AssigneeId, EventKey, Guest, GuestCategory, Rsvp, ThemeKey } from '../data/types';
+import { AssigneeId, EventKey, Guest, GuestCategory, OrganizationRole, Rsvp, ThemeKey } from '../data/types';
 import { CATS, EVENT_LABELS, RSVP_LABELS } from '../data/seed';
 import type { SectionKey } from '../auth/auth.types';
 
@@ -81,6 +81,14 @@ export const RSVP_OPTIONS = (Object.keys(RSVP_LABELS) as Rsvp[]).map(value => ({
   value,
   label: RSVP_LABELS[value],
 }));
+
+export const ORGANIZATION_ROLE_OPTIONS: { value: OrganizationRole; label: string }[] = [
+  { value: 'parent', label: 'Parent' },
+  { value: 'sibling', label: 'Fratrie' },
+  { value: 'witness', label: 'Témoin' },
+  { value: 'friend_cousin', label: 'Ami / Cousin' },
+  { value: 'other', label: 'Autre' },
+];
 
 export const EVENT_OPTIONS = (Object.keys(EVENT_LABELS) as EventKey[]).map(value => ({
   value,
