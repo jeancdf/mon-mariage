@@ -1,7 +1,7 @@
 <section class="page page-dashboard">
   <header class="page-header split">
     <div>
-      <div class="script-note">{{ weddingDateLabel }} · {{ weddingPlace }}, Lot</div>
+      <div class="script-note">{{ eventConfig.dateLabel() }} · {{ eventConfig.configuration()?.weddingPlace }}</div>
       <h1>Tableau de bord</h1>
     </div>
     <div class="countdown">
@@ -54,6 +54,14 @@
       <span>{{ fmtCurrency(s.vendors.totalCommitted) }} engagés</span>
     </a>
   </div>
+
+  <a class="panel final-weeks-summary" routerLink="/dernieres-semaines">
+    <div><div class="eyebrow">Dernières semaines</div><strong>Centre d’opérations</strong></div>
+    <div class="summary-metric"><strong>{{ s.finalWeeks.currentlyPresent }}</strong><span>présents</span></div>
+    <div class="summary-metric"><strong>{{ s.finalWeeks.todayMeals.lunch }} / {{ s.finalWeeks.todayMeals.dinner }}</strong><span>déjeuner / dîner</span></div>
+    <div class="summary-metric"><strong>{{ s.finalWeeks.unfinished }}</strong><span>à terminer</span></div>
+    <div class="summary-metric" [class.over]="s.finalWeeks.unassigned"><strong>{{ s.finalWeeks.unassigned }}</strong><span>sans responsable</span></div>
+  </a>
 
   <div class="two-column">
     <article class="panel">

@@ -2,7 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DashboardApiService, DashboardSummary } from '../../data/dashboard-api.service';
 import { ToastService } from '../../shared/toast.service';
-import { fmtCurrency, WEDDING_DATE_LABEL, WEDDING_PLACE } from '../../shared/wedding-utils';
+import { fmtCurrency } from '../../shared/wedding-utils';
+import { EventConfigService } from '../../data/event-config.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -13,13 +14,13 @@ import { fmtCurrency, WEDDING_DATE_LABEL, WEDDING_PLACE } from '../../shared/wed
 export class DashboardComponent {
   private readonly dashboardApi = inject(DashboardApiService);
   private readonly toast = inject(ToastService);
+  readonly eventConfig = inject(EventConfigService);
   readonly fmtCurrency = fmtCurrency;
-  readonly weddingDateLabel = WEDDING_DATE_LABEL;
-  readonly weddingPlace = WEDDING_PLACE;
   readonly summary = signal<DashboardSummary | null>(null);
 
   constructor() {
     void this.loadSummary();
+    void this.eventConfig.load().catch(() => undefined);
   }
 
   percent(value: number, total: number): number {

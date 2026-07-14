@@ -32,6 +32,14 @@ export interface DashboardSummary {
     totalCommitted: number;
   };
   daysRemaining: number;
+  finalWeeks: {
+    currentlyPresent: number;
+    todayMeals: { breakfast: number; lunch: number; dinner: number };
+    unfinished: number;
+    unassigned: number;
+    overdue: number;
+    completion: number;
+  };
 }
 
 @Injectable({ providedIn: 'root' })
