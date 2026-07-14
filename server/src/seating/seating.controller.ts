@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
-import { Table } from '../planner/planner-state.entity';
 import { SeatingService } from './seating.service';
 import { RequirePermission } from '../auth/auth.decorators';
+import { Table, TableShape } from './seating.types';
 
 @Controller('seating')
 @RequirePermission('seating')
@@ -15,7 +15,9 @@ export class SeatingController {
 
   @Post('tables')
   @RequirePermission('seating', 'edit')
-  createTable(@Body() body: { name: string; seats: number }): Promise<Table[]> {
+  createTable(
+    @Body() body: { name: string; seats: number; shape?: TableShape; x?: number; y?: number },
+  ): Promise<Table[]> {
     return this.seatingService.createTable(body);
   }
 
@@ -33,8 +35,11 @@ export class SeatingController {
 
   @Put('assignments/:guestId')
   @RequirePermission('seating', 'edit')
-  assignGuest(@Param('guestId') guestId: string, @Body() body: { tableId: string | null }): Promise<Table[]> {
-    return this.seatingService.assignGuest(guestId, body.tableId);
+  assignGuest(
+    @Param('guestId') guestId: string,
+    @Body() body: { tableId: string | null; seat?: number | null },
+  ): Promise<Table[]> {
+    return this.seatingService.assignGuest(guestId, body.tableId, body.seat);
   }
 
   @Delete('assignments/:guestId')

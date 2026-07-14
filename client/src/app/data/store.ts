@@ -70,7 +70,7 @@ export class WeddingStore {
     })));
     this.tables.update(tables => tables.map(table => ({
       ...table,
-      guestIds: table.guestIds.filter(id => validGuestIds.has(id)),
+      assignments: table.assignments.filter(assignment => validGuestIds.has(assignment.guestId)),
     })));
   }
   updateGuest(g: Guest) {
@@ -101,7 +101,10 @@ export class WeddingStore {
       ...h,
       rooms: h.rooms.map(r => ({ ...r, guestIds: r.guestIds.filter(x => x !== id) })),
     })));
-    this.tables.update(ts => ts.map(t => ({ ...t, guestIds: t.guestIds.filter(x => x !== id) })));
+    this.tables.update(ts => ts.map(t => ({
+      ...t,
+      assignments: t.assignments.filter(a => a.guestId !== id),
+    })));
   }
 
   // ── Houses & rooms ────────────────────────────────────────────────
@@ -146,17 +149,63 @@ export class WeddingStore {
   deleteTable(id: string) {
     this.tables.update(arr => arr.filter(x => x.id !== id));
   }
-  assignGuestTable(guestId: string, tableId: string | null) {
+  /** Optimistic seat assignment mirroring the server: swap with the occupant, or bump them to a free seat. */
+  assignGuestTable(guestId: string, tableId: string | null, seat: number | null = null) {
     this.tables.update(arr => {
-      const cleared = arr.map(t => ({ ...t, guestIds: t.guestIds.filter(id => id !== guestId) }));
+      let previous: { tableId: string; seat: number } | null = null;
+      for (const t of arr) {
+        const found = t.assignments.find(a => a.guestId === guestId);
+        if (found) previous = { tableId: t.id, seat: found.seat };
+      }
+      const cleared = arr.map(t => ({
+        ...t,
+        assignments: t.assignments.filter(a => a.guestId !== guestId),
+      }));
       if (!tableId) return cleared;
-      return cleared.map(t => t.id === tableId
-        ? { ...t, guestIds: [...t.guestIds, guestId] } : t);
+      const target = cleared.find(t => t.id === tableId);
+      if (!target) return cleared;
+      const taken = new Set(target.assignments.map(a => a.seat));
+      const firstFree = () => {
+        for (let s = 0; s < target.seats; s += 1) if (!taken.has(s)) return s;
+        return null;
+      };
+      const targetSeat = seat !== null && seat >= 0 && seat < target.seats ? seat : firstFree();
+      if (targetSeat === null) return arr;
+      const occupant = target.assignments.find(a => a.seat === targetSeat);
+      if (occupant) {
+        if (previous) {
+          const dest = cleared.find(t => t.id === previous!.tableId);
+          if (dest) {
+            dest.assignments = dest.assignments.filter(a => a.guestId !== occupant.guestId);
+            dest.assignments = [...dest.assignments, { guestId: occupant.guestId, seat: previous.seat }];
+          }
+          if (previous.tableId !== target.id) {
+            target.assignments = target.assignments.filter(a => a.guestId !== occupant.guestId);
+          }
+        } else {
+          taken.delete(targetSeat);
+          const fallback = (() => {
+            for (let s = 0; s < target.seats; s += 1) if (s !== targetSeat && !taken.has(s)) return s;
+            return null;
+          })();
+          if (fallback === null) return arr;
+          target.assignments = target.assignments.map(a =>
+            a.guestId === occupant.guestId ? { ...a, seat: fallback } : a);
+        }
+      }
+      target.assignments = [
+        ...target.assignments.filter(a => a.guestId !== guestId && a.seat !== targetSeat),
+        { guestId, seat: targetSeat },
+      ];
+      return cleared.map(t => ({ ...t }));
     });
   }
   removeGuestTable(tableId: string, guestId: string) {
     this.tables.update(arr => arr.map(t => t.id === tableId
-      ? { ...t, guestIds: t.guestIds.filter(id => id !== guestId) } : t));
+      ? { ...t, assignments: t.assignments.filter(a => a.guestId !== guestId) } : t));
+  }
+  updateTableGeometry(id: string, patch: Partial<Pick<Table, 'x' | 'y' | 'rotation'>>) {
+    this.tables.update(arr => arr.map(t => t.id === id ? { ...t, ...patch } : t));
   }
 
   // ── Todos ─────────────────────────────────────────────────────────
@@ -262,7 +311,7 @@ export class WeddingStore {
     const validGuestIds = this.validGuestIds();
     return tables.map(table => ({
       ...table,
-      guestIds: table.guestIds.filter(id => validGuestIds.has(id)),
+      assignments: table.assignments.filter(assignment => validGuestIds.has(assignment.guestId)),
     }));
   }
 }

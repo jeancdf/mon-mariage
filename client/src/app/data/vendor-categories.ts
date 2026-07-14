@@ -37,7 +37,7 @@ export const VENDOR_CATEGORIES: VendorCategoryDef[] = [
       { key: 'maxGuests', label: 'Maximum invités', type: 'number', default: 0 },
       { key: 'tastingDate', label: 'Date dégustation', type: 'date', default: '' },
       { key: 'cocktailIncluded', label: 'Cocktail inclus', type: 'boolean', default: false },
-      { key: 'vinHonneurIncluded', label: "Vin d'honneur inclus", type: 'boolean', default: false },
+      { key: 'brunchIncluded', label: 'Brunch inclus', type: 'boolean', default: false },
       { key: 'weddingCakeIncluded', label: 'Pièce montée incluse', type: 'boolean', default: false },
       { key: 'childMenu', label: 'Menu enfant', type: 'boolean', default: false },
       { key: 'vegetarianOption', label: 'Option végétarienne', type: 'boolean', default: false },

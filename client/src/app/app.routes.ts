@@ -1,20 +1,43 @@
 import { Routes } from '@angular/router';
+import { AuthComponent } from './auth/auth.component';
+import { authGuard, organizerGuard, permissionGuard } from './auth/auth.guards';
+import { BudgetComponent } from './features/budget/budget.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { GuestsComponent } from './features/guests/guests.component';
-import { VendorsComponent } from './features/vendors/vendors.component';
 import { HousingComponent } from './features/housing/housing.component';
 import { SeatingComponent } from './features/seating/seating.component';
-import { BudgetComponent } from './features/budget/budget.component';
 import { TodosComponent } from './features/todos/todos.component';
+import { VendorsComponent } from './features/vendors/vendors.component';
+import { WeddingShellComponent } from './wedding-shell/wedding-shell.component';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-  { path: 'dashboard', component: DashboardComponent },
-  { path: 'invites', component: GuestsComponent },
-  { path: 'prestataires', component: VendorsComponent },
-  { path: 'hebergement', component: HousingComponent },
-  { path: 'plan-de-table', component: SeatingComponent },
-  { path: 'budget', component: BudgetComponent },
-  { path: 'a-faire', component: TodosComponent },
+  { path: 'connexion', component: AuthComponent, data: { mode: 'login' } },
+  { path: 'activer', component: AuthComponent, data: { mode: 'claim' } },
+  {
+    path: '',
+    component: WeddingShellComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'dashboard', component: DashboardComponent, canActivate: [permissionGuard], data: { section: 'dashboard' } },
+      { path: 'invites', component: GuestsComponent, canActivate: [permissionGuard], data: { section: 'guests' } },
+      { path: 'prestataires', component: VendorsComponent, canActivate: [permissionGuard], data: { section: 'vendors' } },
+      { path: 'hebergement', component: HousingComponent, canActivate: [permissionGuard], data: { section: 'housing' } },
+      { path: 'plan-de-table', component: SeatingComponent, canActivate: [permissionGuard], data: { section: 'seating' } },
+      { path: 'budget', component: BudgetComponent, canActivate: [permissionGuard], data: { section: 'budget' } },
+      { path: 'a-faire', component: TodosComponent, canActivate: [permissionGuard], data: { section: 'todos' } },
+      {
+        path: 'dernieres-semaines',
+        loadComponent: () => import('./features/final-weeks/final-weeks.component').then(module => module.FinalWeeksComponent),
+        canActivate: [permissionGuard],
+        data: { section: 'final_weeks' },
+      },
+      {
+        path: 'administration',
+        loadComponent: () => import('./features/admin/admin.component').then(module => module.AdminComponent),
+        canActivate: [organizerGuard],
+      },
+    ],
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

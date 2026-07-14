@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
-import { WeddingShellComponent } from './wedding-shell/wedding-shell.component';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  imports: [WeddingShellComponent],
+  imports: [RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

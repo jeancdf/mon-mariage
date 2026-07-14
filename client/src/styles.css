@@ -263,12 +263,14 @@ button {
 }
 
 .guest-sidebar-list.cdk-drop-list-receiving .guest-sidebar-dropzone,
-.guest-sidebar-list:has(.cdk-drag-placeholder.room-guest) .guest-sidebar-dropzone {
+.guest-sidebar-list:has(.cdk-drag-placeholder.room-guest) .guest-sidebar-dropzone,
+.guest-sidebar-list:has(.cdk-drag-placeholder.floor-seat-guest) .guest-sidebar-dropzone {
   display: block;
 }
 
 .guest-sidebar-list.cdk-drop-list-receiving,
-.guest-sidebar-list:has(.cdk-drag-placeholder.room-guest) {
+.guest-sidebar-list:has(.cdk-drag-placeholder.room-guest),
+.guest-sidebar-list:has(.cdk-drag-placeholder.floor-seat-guest) {
   background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 
@@ -707,7 +709,6 @@ input::placeholder {
 .notice,
 .collapsible,
 .table-card,
-.seating-card,
 .total-panel,
 .budget-card {
   border: 1px solid var(--border);
@@ -1818,7 +1819,6 @@ td small {
 }
 
 .room-card header strong,
-.seating-card header strong,
 .budget-card header strong {
   flex: 1;
   font-size: 14px;
@@ -1831,7 +1831,6 @@ td small {
 }
 
 .room-card header span,
-.seating-card header span,
 .budget-card header span {
   color: var(--muted);
   font-size: 12px;
@@ -1878,81 +1877,368 @@ td small {
   min-width: 150px;
 }
 
-.table-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-  gap: 12px;
+/* ── Plan de salle ─────────────────────────────────────────────── */
+
+.floor-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.seating-card {
-  padding: 16px 18px;
+.floor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.zoom-controls .icon-button {
+  font-size: 14px;
+}
+
+.zoom-level {
+  min-width: 46px;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.floor-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 340px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.floor-scroll {
+  height: 100%;
+  overflow: auto;
+}
+
+.floor-canvas {
+  position: relative;
+}
+
+.floor-plane {
+  position: relative;
+  transform-origin: 0 0;
+  background-image: radial-gradient(color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1.5px);
+  background-size: 44px 44px;
+  background-position: 22px 22px;
+}
+
+.floor-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--muted);
+}
+
+.floor-empty p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.floor-empty p:first-child {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 24px;
+  font-style: italic;
+}
+
+.floor-table {
+  position: absolute;
+  width: 0;
+  height: 0;
+  cursor: grab;
+}
+
+.floor-table:hover {
+  z-index: 20;
+}
+
+.floor-table.dragging {
+  z-index: 30;
+  cursor: grabbing;
+}
+
+.floor-table-rotor {
+  position: absolute;
+}
+
+.floor-table-dropzone {
+  position: absolute;
+  pointer-events: none;
+}
+
+.floor-table-dropzone .table-shape,
+.floor-table-dropzone .floor-seat,
+.floor-table-dropzone .floor-seat-guest {
+  pointer-events: auto;
+}
+
+.table-shape {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--border);
+  background: var(--surface-alt);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transform: translate(-50%, -50%);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.seating-card.cdk-drop-list-receiving {
+.table-shape.round {
+  border-radius: 50%;
+}
+
+.table-shape.rect {
+  border-radius: 12px;
+}
+
+.floor-table:hover .table-shape {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
+.floor-table.dragging .table-shape {
   border-color: var(--accent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
 }
 
-.seating-card:has(.cdk-drag-placeholder) {
+.table-shape.cdk-drop-list-receiving,
+.table-shape:has(.cdk-drag-placeholder) {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
-.seating-card header {
-  gap: 8px;
-  margin-bottom: 12px;
+.table-shape .cdk-drag-placeholder,
+.floor-seat .cdk-drag-placeholder {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.table-edit-form {
-  margin-bottom: 12px;
+.table-shape-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  max-width: 100%;
+  padding: 4px 8px;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.12s;
 }
 
-.table-edit-form input:first-child {
-  flex: 1;
-  min-width: 140px;
+.floor-plane:not(.guest-dragging) .floor-table:hover .table-shape-label,
+.floor-table:focus-within .table-shape-label {
+  opacity: 0;
 }
 
-.seating-card .full {
+.table-name {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--text);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-count {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.table-count.full {
   color: #15803d;
   font-weight: 600;
 }
 
-.seat-dots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  margin-bottom: 10px;
-}
-
-.seat-dot {
+.floor-seat {
+  position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 1.5px dashed var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
+}
+
+.floor-seat.occupied {
+  border-style: solid;
+}
+
+.floor-plane.guest-dragging .floor-seat:not(.occupied) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+
+.floor-seat.cdk-drop-list-receiving,
+.floor-seat:has(.cdk-drag-placeholder) {
+  border-color: var(--accent);
+  border-style: solid;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.floor-seat.neighbor.occupied {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.floor-seat.hovered {
+  z-index: 5;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.floor-seat-number {
+  color: var(--muted);
+  font-size: 8px;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.floor-seat-guest {
+  position: absolute;
+  top: -1.5px;
+  left: -1.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
   border: 1.5px solid var(--border);
   border-radius: 50%;
-  background: transparent;
-  color: var(--border);
-  font-size: 7.5px;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.seat-dot.occupied {
-  border-color: var(--accent);
   background: var(--surface-alt);
   color: var(--text);
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: grab;
 }
 
-.table-guests {
+/* CDK parks the original drag element off-screen; it must not cover the other seat drop zones. */
+.floor-seat-guest.cdk-drag-dragging {
+  pointer-events: none;
+}
+
+.floor-seat-guest[data-cat='famille-moi'] { background: rgba(37, 99, 235, 0.2); border-color: rgba(37, 99, 235, 0.45); color: #1d4ed8; }
+.floor-seat-guest[data-cat='famille-elle'] { background: rgba(236, 72, 153, 0.2); border-color: rgba(236, 72, 153, 0.45); color: #be185d; }
+.floor-seat-guest[data-cat='amis'] { background: rgba(13, 148, 136, 0.2); border-color: rgba(13, 148, 136, 0.45); color: #0f766e; }
+.floor-seat-guest[data-cat='temoins'] { background: rgba(139, 92, 246, 0.22); border-color: rgba(139, 92, 246, 0.5); color: #6d28d9; }
+.floor-seat-guest[data-cat='enfants'] { background: rgba(249, 115, 22, 0.2); border-color: rgba(249, 115, 22, 0.45); color: #c2410c; }
+
+.cdk-drag-preview.floor-seat-guest {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.floor-seat-initials {
+  pointer-events: none;
+}
+
+.floor-seat-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.floor-seat-guest:hover .floor-seat-remove {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 6px;
 }
 
-.table-guests .room-guest {
-  flex: 0 1 auto;
+.floor-table-actions {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+
+.floor-plane:not(.guest-dragging) .floor-table:hover .floor-table-actions,
+.floor-table-actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.floor-suggestion {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 40;
+  margin: 0;
+  max-width: min(92%, 480px);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  transform: translateX(-50%);
+}
+
+.neighbor-readout {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 40;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  color: var(--muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.neighbor-readout strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .total-panel {
@@ -2217,6 +2503,12 @@ td small {
   .split-pane-main {
     overflow: visible;
     padding: 24px 18px 28px;
+  }
+
+  .floor-main .floor-viewport {
+    flex: none;
+    height: 62vh;
+    min-height: 260px;
   }
 
   .guest-sidebar {

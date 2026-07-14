@@ -85,6 +85,11 @@ services:
       retries: 5
 
 networks:
+  # qr_caddy (qr-code project) joins this network to proxy
+  # mon-mariage.duckdns.org -> mon-mariage-frontend-1:80. Renaming the
+  # project, this network, or the frontend service breaks the reverse proxy.
+  default:
+    name: mon-mariage_default
   public_proxy:
     external: true
     name: qr-code_app_net
