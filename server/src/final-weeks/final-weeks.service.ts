@@ -28,6 +28,7 @@ interface TaskInput {
   notes?: string;
   category?: OperationalTaskCategory;
   scheduledAt?: string;
+  endsAt?: string | null;
   status?: OperationalTaskStatus;
   assigneeIds?: string[];
   recurrence?: RecurrenceInput;
@@ -144,6 +145,11 @@ export class FinalWeeksService {
     const scheduledAt = this.requiredDate(input.scheduledAt);
     const datePart = this.localDate(scheduledAt);
     this.assertDate(datePart);
+    const endsAt = this.optionalDate(input.endsAt);
+    const duration = endsAt ? endsAt.getTime() - scheduledAt.getTime() : null;
+    if (duration !== null && duration <= 0) {
+      throw new BadRequestException("L'heure de fin doit être postérieure à l'heure de début.");
+    }
     const config = this.eventConfig.getConfiguration();
     const dates = expandRecurrenceDates(datePart, config.weddingDate, input.recurrence);
     if (!dates.length) throw new BadRequestException('Aucune occurrence ne correspond aux jours sélectionnés.');
@@ -152,11 +158,15 @@ export class FinalWeeksService {
     const assigneeIds = this.uniqueIds(input.assigneeIds);
     await this.assertAccountsExist(assigneeIds);
     for (const date of dates) {
+      const occurrenceStart = this.zonedDateTime(date, time.hour, time.minute, time.second);
+      const occurrenceEnd = duration === null ? null : new Date(occurrenceStart.getTime() + duration);
+      if (occurrenceEnd) this.assertDate(this.localDate(occurrenceEnd));
       const task = await this.tasksRepository.save(this.tasksRepository.create({
         title,
         notes: String(input.notes ?? '').trim(),
         category: TASK_CATEGORIES.includes(input.category as OperationalTaskCategory) ? input.category! : 'other',
-        scheduledAt: this.zonedDateTime(date, time.hour, time.minute, time.second),
+        scheduledAt: occurrenceStart,
+        endsAt: occurrenceEnd,
         status: 'todo',
         recurrenceGroupId,
         createdByAccountId: account.id,
@@ -171,7 +181,7 @@ export class FinalWeeksService {
     const assigned = task.assignees.some(assignee => assignee.accountId === account.id);
     if (!account.isOrganizer && !assigned) throw new ForbiddenException("Cette responsabilité ne vous est pas affectée.");
     if (!account.isOrganizer) {
-      const forbiddenFields = ['title', 'category', 'scheduledAt', 'assigneeIds', 'recurrence']
+      const forbiddenFields = ['title', 'category', 'scheduledAt', 'endsAt', 'assigneeIds', 'recurrence']
         .filter(field => field in input);
       if (forbiddenFields.length) throw new ForbiddenException('Vous pouvez seulement mettre à jour le statut et les notes.');
     }
@@ -188,10 +198,24 @@ export class FinalWeeksService {
       if (!TASK_STATUSES.includes(input.status)) throw new BadRequestException('Statut invalide.');
       task.status = input.status;
     }
+    const previousScheduledAt = task.scheduledAt;
+    const previousDuration = task.endsAt ? task.endsAt.getTime() - previousScheduledAt.getTime() : null;
     if (input.scheduledAt) {
       const scheduledAt = this.requiredDate(input.scheduledAt);
       this.assertDate(this.localDate(scheduledAt));
       task.scheduledAt = scheduledAt;
+      if (!("endsAt" in input) && previousDuration !== null) {
+        task.endsAt = new Date(scheduledAt.getTime() + previousDuration);
+      }
+    }
+    if ('endsAt' in input) {
+      task.endsAt = this.optionalDate(input.endsAt);
+    }
+    if (task.endsAt) {
+      this.assertDate(this.localDate(task.endsAt));
+      if (task.endsAt <= task.scheduledAt) {
+        throw new BadRequestException("L'heure de fin doit être postérieure à l'heure de début.");
+      }
     }
     await this.tasksRepository.save(task);
     if (account.isOrganizer && Array.isArray(input.assigneeIds)) {
@@ -261,6 +285,7 @@ export class FinalWeeksService {
       notes: task.notes,
       category: task.category,
       scheduledAt: task.scheduledAt.toISOString(),
+      endsAt: task.endsAt?.toISOString() ?? null,
       status: task.status,
       recurrenceGroupId: task.recurrenceGroupId,
       assigneeIds: (task.assignees ?? []).map(assignee => assignee.accountId),

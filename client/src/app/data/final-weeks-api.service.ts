@@ -36,6 +36,7 @@ export interface FinalWeeksTask {
   notes: string;
   category: TaskCategory;
   scheduledAt: string;
+  endsAt: string | null;
   status: TaskStatus;
   recurrenceGroupId: string | null;
   assigneeIds: string[];
@@ -69,6 +70,7 @@ export interface TaskPayload {
   notes?: string;
   category?: TaskCategory;
   scheduledAt?: string;
+  endsAt?: string | null;
   status?: TaskStatus;
   assigneeIds?: string[];
   recurrence?: { type: 'none' | 'daily' | 'weekdays'; weekdays?: number[]; untilDate?: string };
@@ -110,4 +112,3 @@ export class FinalWeeksApiService {
     await firstValueFrom(this.http.delete(`/api/final-weeks/tasks/${taskId}`));
   }
 }
-

@@ -5,6 +5,7 @@ import { SeatingApiService } from '../../data/seating-api.service';
 import { Table } from '../../data/types';
 import { WeddingStore } from '../../data/store';
 import { SeatingComponent } from './seating.component';
+import { AuthService } from '../../auth/auth.service';
 
 const table = (assignments: Table['assignments'], id = 'table-1', seats = 10): Table => ({
   id,
@@ -28,16 +29,21 @@ describe('SeatingComponent', () => {
       providers: [
         provideHttpClient(),
         { provide: SeatingApiService, useValue: { assignGuest } },
+        { provide: AuthService, useValue: { can: () => true } },
       ],
     });
   });
 
   it('refuses the central drop zone when the table is full', () => {
     const component = TestBed.runInInjectionContext(() => new SeatingComponent());
-    const currentTable = table([
-      { guestId: 'guest-1', seat: 0 },
-      { guestId: 'guest-2', seat: 1 },
-    ], 'table-1', 2);
+    const currentTable = table(
+      [
+        { guestId: 'guest-1', seat: 0 },
+        { guestId: 'guest-2', seat: 1 },
+      ],
+      'table-1',
+      2,
+    );
     const drag = { data: 'guest-1' } as CdkDrag<string>;
 
     expect(component.tableEnterPredicate(currentTable)(drag)).toBe(false);
@@ -46,14 +52,22 @@ describe('SeatingComponent', () => {
   it('allows a seated guest to target an occupied seat at another full table', () => {
     const component = TestBed.runInInjectionContext(() => new SeatingComponent());
     const source = table([{ guestId: 'guest-1', seat: 0 }]);
-    const target = table([
-      { guestId: 'guest-2', seat: 0 },
-      { guestId: 'guest-3', seat: 1 },
-    ], 'table-2', 2);
+    const target = table(
+      [
+        { guestId: 'guest-2', seat: 0 },
+        { guestId: 'guest-3', seat: 1 },
+      ],
+      'table-2',
+      2,
+    );
     component.store.tables.set([source, target]);
 
-    expect(component.seatEnterPredicate(target, 0)({ data: 'guest-1' } as CdkDrag<string>)).toBe(true);
-    expect(component.seatEnterPredicate(target, 0)({ data: 'unplaced' } as CdkDrag<string>)).toBe(false);
+    expect(component.seatEnterPredicate(target, 0)({ data: 'guest-1' } as CdkDrag<string>)).toBe(
+      true,
+    );
+    expect(component.seatEnterPredicate(target, 0)({ data: 'unplaced' } as CdkDrag<string>)).toBe(
+      false,
+    );
   });
 
   it('places a guest on the explicit seat target without using drop coordinates', async () => {
@@ -98,17 +112,21 @@ describe('WeddingStore table seating', () => {
 
   it('swaps guests between occupied seats on the same table', () => {
     const store = new WeddingStore();
-    store.tables.set([table([
-      { guestId: 'guest-1', seat: 0 },
-      { guestId: 'guest-2', seat: 1 },
-    ])]);
+    store.tables.set([
+      table([
+        { guestId: 'guest-1', seat: 0 },
+        { guestId: 'guest-2', seat: 1 },
+      ]),
+    ]);
 
     store.assignGuestTable('guest-1', 'table-1', 1);
 
-    expect(store.tables()[0].assignments).toEqual(expect.arrayContaining([
-      { guestId: 'guest-1', seat: 1 },
-      { guestId: 'guest-2', seat: 0 },
-    ]));
+    expect(store.tables()[0].assignments).toEqual(
+      expect.arrayContaining([
+        { guestId: 'guest-1', seat: 1 },
+        { guestId: 'guest-2', seat: 0 },
+      ]),
+    );
   });
 
   it('swaps guests between two full tables', () => {

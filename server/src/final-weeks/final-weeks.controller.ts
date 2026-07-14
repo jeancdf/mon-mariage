@@ -48,6 +48,7 @@ export class FinalWeeksController {
       notes?: string;
       category?: OperationalTaskCategory;
       scheduledAt?: string;
+      endsAt?: string | null;
       assigneeIds?: string[];
       recurrence?: RecurrenceInput;
     },
@@ -66,6 +67,7 @@ export class FinalWeeksController {
       notes?: string;
       category?: OperationalTaskCategory;
       scheduledAt?: string;
+      endsAt?: string | null;
       status?: OperationalTaskStatus;
       assigneeIds?: string[];
     },

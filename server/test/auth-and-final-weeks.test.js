@@ -218,6 +218,7 @@ describe('operational data for a 20-40 person household', () => {
         title: 'Préparer la maison',
         category: 'cleaning',
         scheduledAt: '2027-07-12T07:00:00.000Z',
+        endsAt: '2027-07-12T09:00:00.000Z',
         assigneeIds: ['account-1', 'account-2'],
         recurrence: { type: 'daily', untilDate: '2027-07-14' },
       },
@@ -226,6 +227,7 @@ describe('operational data for a 20-40 person household', () => {
     assert.equal(tasks.length, 3);
     assert.equal(new Set(tasks.map(task => task.id)).size, 3);
     assert.equal(new Set(tasks.map(task => task.recurrenceGroupId)).size, 1);
+    assert.ok(tasks.every(task => task.endsAt.getTime() - task.scheduledAt.getTime() === 2 * 60 * 60 * 1000));
     assert.equal(assignments.length, 6);
     assert.deepEqual(new Set(assignments.map(item => item.accountId)), new Set(['account-1', 'account-2']));
   });

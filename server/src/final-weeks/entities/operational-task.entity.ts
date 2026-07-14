@@ -21,6 +21,9 @@ export class OperationalTaskEntity {
   @Column({ type: 'timestamptz' })
   scheduledAt!: Date;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  endsAt!: Date | null;
+
   @Column({ type: 'text', default: 'todo' })
   status!: OperationalTaskStatus;
 
@@ -39,4 +42,3 @@ export class OperationalTaskEntity {
   @UpdateDateColumn()
   updatedAt!: Date;
 }
-

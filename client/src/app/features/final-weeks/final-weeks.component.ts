@@ -16,16 +16,35 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { IconComponent } from '../../shared/icon.component';
 import { ToastService } from '../../shared/toast.service';
 
-type HubTab = 'overview' | 'timeline' | 'people' | 'meals' | 'tasks';
-
-interface TimelineBucket {
-  key: string;
+interface GanttDay {
+  date: string;
   label: string;
-  start: string;
-  end: string;
-  tasks: FinalWeeksTask[];
-  daily: boolean;
+  detail: string;
 }
+
+interface GanttTaskItem {
+  task: FinalWeeksTask;
+  left: number;
+  width: number;
+  lane: number;
+}
+
+interface GanttRange {
+  left: number;
+  width: number;
+}
+
+interface GanttRow {
+  id: string;
+  name: string;
+  subtitle: string;
+  person: FinalWeeksPerson | null;
+  tasks: GanttTaskItem[];
+  presence: GanttRange | null;
+  trackHeight: number;
+}
+
+const DEFAULT_TASK_DURATION = 2 * 60 * 60 * 1000;
 
 const MEALS: Array<{ value: MealKind; label: string }> = [
   { value: 'breakfast', label: 'Petit-déjeuner' },
@@ -56,8 +75,10 @@ export class FinalWeeksComponent {
   readonly hub = signal<FinalWeeksHub | null>(null);
   readonly loading = signal(true);
   readonly saving = signal(false);
-  readonly activeTab = signal<HubTab>('overview');
   readonly selectedDate = signal('');
+  readonly selectedPersonId = signal<string | null>(null);
+  readonly selectedTaskId = signal<string | null>(null);
+  readonly showTaskForm = signal(false);
   readonly meals = MEALS;
   readonly categories = CATEGORIES;
   readonly weekdays = [
@@ -69,30 +90,107 @@ export class FinalWeeksComponent {
   editingTaskId: string | null = null;
   taskForm = this.emptyTaskForm();
 
-  readonly timelineBuckets = computed(() => {
+  readonly ganttDays = computed<GanttDay[]>(() => {
     const hub = this.hub();
     if (!hub) return [];
-    const buckets: TimelineBucket[] = [];
-    for (let week = 8; week >= 2; week -= 1) {
-      const offset = (8 - week) * 7;
-      const start = this.addDays(hub.config.preparationStart, offset);
-      const end = this.addDays(start, 6);
-      buckets.push({ key: `week-${week}`, label: `Semaine D−${week * 7} à D−${week * 7 - 6}`, start, end, tasks: [], daily: false });
+    const days: GanttDay[] = [];
+    for (let offset = 0; offset <= 7; offset += 1) {
+      const date = this.addDays(hub.config.dailyStart, offset);
+      days.push({
+        date,
+        label: offset === 7 ? 'Jour J' : `J−${7 - offset}`,
+        detail: this.shortDate(date),
+      });
     }
-    for (let day = 7; day >= 0; day -= 1) {
-      const date = this.addDays(hub.config.weddingDate, -day);
-      buckets.push({ key: `day-${day}`, label: day ? `D−${day}` : 'Jour J', start: date, end: date, tasks: [], daily: true });
-    }
-    for (const task of hub.tasks) {
-      const date = this.toInputDateTime(task.scheduledAt).slice(0, 10);
-      const bucket = buckets.find(item => date >= item.start && date <= item.end);
-      if (bucket) bucket.tasks.push(task);
-    }
-    return buckets;
+    return days;
   });
 
-  readonly taskList = computed(() => [...(this.hub()?.tasks ?? [])]
-    .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt)));
+  readonly ganttRows = computed<GanttRow[]>(() => {
+    const hub = this.hub();
+    if (!hub) return [];
+    const start = new Date(`${hub.config.dailyStart}T00:00:00`).getTime();
+    const end = new Date(`${this.addDays(hub.config.weddingDate, 1)}T00:00:00`).getTime();
+    const visibleTasks = hub.tasks
+      .filter(task => {
+        const taskStart = new Date(task.scheduledAt).getTime();
+        const taskEnd = task.endsAt ? new Date(task.endsAt).getTime() : taskStart + DEFAULT_TASK_DURATION;
+        return taskStart < end && taskEnd > start;
+      })
+      .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
+
+    const createRow = (
+      id: string,
+      name: string,
+      subtitle: string,
+      person: FinalWeeksPerson | null,
+      tasks: FinalWeeksTask[],
+    ): GanttRow => {
+      const laneEnds: number[] = [];
+      const items = tasks.map(task => {
+        const taskStart = new Date(task.scheduledAt).getTime();
+        const taskEnd = task.endsAt ? new Date(task.endsAt).getTime() : taskStart + DEFAULT_TASK_DURATION;
+        let lane = laneEnds.findIndex(laneEnd => laneEnd <= taskStart);
+        if (lane === -1) lane = laneEnds.length;
+        laneEnds[lane] = taskEnd;
+        const clippedStart = Math.max(start, taskStart);
+        const clippedEnd = Math.min(end, taskEnd);
+        return {
+          task,
+          left: ((clippedStart - start) / (end - start)) * 100,
+          width: ((clippedEnd - clippedStart) / (end - start)) * 100,
+          lane,
+        };
+      });
+      return {
+        id,
+        name,
+        subtitle,
+        person,
+        tasks: items,
+        presence: person ? this.ganttPresence(person, start, end) : null,
+        trackHeight: Math.max(54, 34 + laneEnds.length * 24),
+      };
+    };
+
+    const rows: GanttRow[] = [];
+    const unassigned = visibleTasks.filter(task => task.assigneeIds.length === 0);
+    if (unassigned.length) {
+      rows.push(createRow('unassigned', 'Non affecté', 'À répartir', null, unassigned));
+    }
+
+    const representedAccountIds = new Set<string>();
+    for (const person of hub.people) {
+      const accountId = person.account?.id ?? null;
+      if (accountId) representedAccountIds.add(accountId);
+      rows.push(createRow(
+        `person-${person.id}`,
+        `${person.firstName} ${person.lastName}`.trim(),
+        person.room ? `${person.room.houseName} · ${person.room.name}` : person.account ? 'Aucun lit attribué' : 'Sans compte',
+        person,
+        accountId ? visibleTasks.filter(task => task.assigneeIds.includes(accountId)) : [],
+      ));
+    }
+
+    for (const account of hub.accounts.filter(item => !representedAccountIds.has(item.id))) {
+      rows.push(createRow(
+        `account-${account.id}`,
+        account.name,
+        'Compte organisateur',
+        null,
+        visibleTasks.filter(task => task.assigneeIds.includes(account.id)),
+      ));
+    }
+    return rows;
+  });
+
+  readonly selectedPerson = computed(() => this.hub()?.people.find(person => person.id === this.selectedPersonId()) ?? null);
+  readonly selectedTask = computed(() => this.hub()?.tasks.find(task => task.id === this.selectedTaskId()) ?? null);
+  readonly earlierTasks = computed(() => {
+    const hub = this.hub();
+    return hub ? hub.tasks
+      .filter(task => this.toInputDateTime(task.scheduledAt).slice(0, 10) < hub.config.dailyStart)
+      .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt)) : [];
+  });
 
   constructor() {
     void this.reload();
@@ -102,8 +200,15 @@ export class FinalWeeksComponent {
     try {
       const hub = await this.api.load();
       this.hub.set(hub);
-      if (!this.selectedDate()) this.selectedDate.set(this.clampDate(hub.config.today, hub));
-      if (!this.taskForm.scheduledAt) this.taskForm.scheduledAt = `${hub.config.preparationStart}T09:00`;
+      this.selectedDate.set(this.clampDate(this.selectedDate() || hub.config.today, hub.config.dailyStart, hub.config.weddingDate));
+      const selectedPersonExists = hub.people.some(person => person.id === this.selectedPersonId());
+      if (!selectedPersonExists && !this.selectedTaskId()) {
+        const ownPerson = hub.people.find(person => person.id === this.auth.account()?.guestId);
+        this.selectedPersonId.set((ownPerson ?? hub.people[0])?.id ?? null);
+      }
+      if (this.selectedTaskId() && !hub.tasks.some(task => task.id === this.selectedTaskId())) {
+        this.selectedTaskId.set(null);
+      }
     } catch {
       this.toast.error("Impossible de charger le centre d'opérations.");
     } finally {
@@ -122,11 +227,41 @@ export class FinalWeeksComponent {
       : { weekday: 'short', day: 'numeric', month: 'short' }).format(value);
   }
 
+  shortDate(date: string): string {
+    return new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric' }).format(new Date(`${date}T12:00:00`));
+  }
+
+  taskTime(task: FinalWeeksTask): string {
+    const start = new Date(task.scheduledAt);
+    const end = task.endsAt ? new Date(task.endsAt) : new Date(start.getTime() + DEFAULT_TASK_DURATION);
+    const time = (value: Date) => new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(value);
+    return `${time(start)}–${time(end)}`;
+  }
+
   toInputDateTime(value: string | null): string {
     if (!value) return '';
     const date = new Date(value);
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
     return local.toISOString().slice(0, 16);
+  }
+
+  selectDay(date: string): void {
+    this.selectedDate.set(date);
+  }
+
+  selectPerson(person: FinalWeeksPerson): void {
+    this.selectedPersonId.set(person.id);
+    this.selectedTaskId.set(null);
+    this.showTaskForm.set(false);
+  }
+
+  selectTask(task: FinalWeeksTask): void {
+    this.selectedTaskId.set(task.id);
+    this.selectedPersonId.set(null);
+    this.showTaskForm.set(false);
+    const date = this.toInputDateTime(task.scheduledAt).slice(0, 10);
+    const hub = this.hub();
+    if (hub && date >= hub.config.dailyStart && date <= hub.config.weddingDate) this.selectedDate.set(date);
   }
 
   updateDateTime(person: FinalWeeksPerson, field: 'arrivalAt' | 'departureAt', value: string): void {
@@ -204,6 +339,22 @@ export class FinalWeeksComponent {
     }
   }
 
+  openNewTask(): void {
+    const hub = this.hub();
+    if (!hub) return;
+    this.editingTaskId = null;
+    const start = `${this.selectedDate() || hub.config.dailyStart}T09:00`;
+    this.taskForm = {
+      ...this.emptyTaskForm(),
+      scheduledAt: start,
+      endsAt: this.addHoursToInput(start, 2),
+      untilDate: hub.config.weddingDate,
+    };
+    this.selectedTaskId.set(null);
+    this.selectedPersonId.set(null);
+    this.showTaskForm.set(true);
+  }
+
   toggleTaskAssignee(accountId: string): void {
     this.taskForm.assigneeIds = this.taskForm.assigneeIds.includes(accountId)
       ? this.taskForm.assigneeIds.filter(id => id !== accountId)
@@ -218,33 +369,44 @@ export class FinalWeeksComponent {
 
   editTask(task: FinalWeeksTask): void {
     this.editingTaskId = task.id;
+    const scheduledAt = this.toInputDateTime(task.scheduledAt);
     this.taskForm = {
       title: task.title,
       notes: task.notes,
       category: task.category,
-      scheduledAt: this.toInputDateTime(task.scheduledAt),
+      scheduledAt,
+      endsAt: this.toInputDateTime(task.endsAt) || this.addHoursToInput(scheduledAt, 2),
       assigneeIds: [...task.assigneeIds],
       recurrenceType: 'none',
       weekdays: [],
       untilDate: this.hub()?.config.weddingDate ?? '',
     };
-    this.activeTab.set('tasks');
+    this.showTaskForm.set(true);
   }
 
   cancelTaskEdit(): void {
     this.editingTaskId = null;
     this.taskForm = this.emptyTaskForm();
-    const hub = this.hub();
-    if (hub) this.taskForm.scheduledAt = `${hub.config.preparationStart}T09:00`;
+    this.showTaskForm.set(false);
+  }
+
+  taskFormValid(): boolean {
+    return Boolean(
+      this.taskForm.title.trim()
+      && this.taskForm.scheduledAt
+      && this.taskForm.endsAt
+      && new Date(this.taskForm.endsAt) > new Date(this.taskForm.scheduledAt),
+    );
   }
 
   async submitTask(): Promise<void> {
-    if (!this.taskForm.title.trim() || !this.taskForm.scheduledAt) return;
+    if (!this.taskFormValid()) return;
     const payload: TaskPayload = {
       title: this.taskForm.title,
       notes: this.taskForm.notes,
       category: this.taskForm.category,
       scheduledAt: new Date(this.taskForm.scheduledAt).toISOString(),
+      endsAt: new Date(this.taskForm.endsAt).toISOString(),
       assigneeIds: this.taskForm.assigneeIds,
     };
     if (!this.editingTaskId) {
@@ -293,6 +455,8 @@ export class FinalWeeksComponent {
     if (!task) return;
     try {
       await this.api.deleteTask(task.id);
+      this.selectedTaskId.set(null);
+      this.cancelTaskEdit();
       await this.reload();
     } catch {
       this.toast.error('Impossible de supprimer cette responsabilité.');
@@ -315,17 +479,30 @@ export class FinalWeeksComponent {
     return ({ todo: 'À faire', in_progress: 'En cours', done: 'Terminée', cancelled: 'Annulée' })[status];
   }
 
-  private presentOnDate(person: FinalWeeksPerson, date: string, kind: MealKind = 'lunch'): boolean {
-    const hour = kind === 'breakfast' ? 8 : kind === 'lunch' ? 13 : 20;
-    const midday = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
-    const arrival = person.arrivalAt ? new Date(person.arrivalAt) : null;
-    const departure = person.departureAt ? new Date(person.departureAt) : null;
-    return Boolean(arrival || departure) && (!arrival || arrival <= midday) && (!departure || departure >= midday);
+  private ganttPresence(person: FinalWeeksPerson, start: number, end: number): GanttRange | null {
+    if (!person.arrivalAt && !person.departureAt) return null;
+    const arrival = person.arrivalAt ? new Date(person.arrivalAt).getTime() : start;
+    const departure = person.departureAt ? new Date(person.departureAt).getTime() : end;
+    const clippedStart = Math.max(start, arrival);
+    const clippedEnd = Math.min(end, departure);
+    if (clippedEnd <= clippedStart) return null;
+    return {
+      left: ((clippedStart - start) / (end - start)) * 100,
+      width: ((clippedEnd - clippedStart) / (end - start)) * 100,
+    };
   }
 
-  private clampDate(date: string, hub: FinalWeeksHub): string {
-    if (date < hub.config.preparationStart) return hub.config.preparationStart;
-    if (date > hub.config.weddingDate) return hub.config.weddingDate;
+  private presentOnDate(person: FinalWeeksPerson, date: string, kind: MealKind = 'lunch'): boolean {
+    const hour = kind === 'breakfast' ? 8 : kind === 'lunch' ? 13 : 20;
+    const at = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
+    const arrival = person.arrivalAt ? new Date(person.arrivalAt) : null;
+    const departure = person.departureAt ? new Date(person.departureAt) : null;
+    return Boolean(arrival || departure) && (!arrival || arrival <= at) && (!departure || departure >= at);
+  }
+
+  private clampDate(date: string, min: string, max: string): string {
+    if (date < min) return min;
+    if (date > max) return max;
     return date;
   }
 
@@ -335,9 +512,16 @@ export class FinalWeeksComponent {
     return value.toISOString().slice(0, 10);
   }
 
+  private addHoursToInput(value: string, hours: number): string {
+    const date = new Date(value);
+    date.setHours(date.getHours() + hours);
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+    return local.toISOString().slice(0, 16);
+  }
+
   private emptyTaskForm() {
     return {
-      title: '', notes: '', category: 'other' as TaskCategory, scheduledAt: '', assigneeIds: [] as string[],
+      title: '', notes: '', category: 'other' as TaskCategory, scheduledAt: '', endsAt: '', assigneeIds: [] as string[],
       recurrenceType: 'none' as 'none' | 'daily' | 'weekdays', weekdays: [] as number[], untilDate: '',
     };
   }

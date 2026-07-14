@@ -1,15 +1,29 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
+import { AuthService } from './auth/auth.service';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes)],
+      providers: [
+        provideHttpClient(),
+        provideRouter(routes),
+        {
+          provide: AuthService,
+          useValue: {
+            initialize: async () => undefined,
+            authenticated: signal(false),
+            isOrganizer: signal(false),
+            account: signal(null),
+            can: () => false,
+          },
+        },
+      ],
     }).compileComponents();
   });
 
@@ -22,19 +36,11 @@ describe('App', () => {
   it('should protect the wedding planner dashboard when unauthenticated', async () => {
     const fixture = TestBed.createComponent(App);
     const router = TestBed.inject(Router);
-    const http = TestBed.inject(HttpTestingController);
-
-    const navigation = router.navigateByUrl('/dashboard');
-    http.expectOne('/api/auth/me').flush(
-      { message: 'Authentification requise.' },
-      { status: 401, statusText: 'Unauthorized' },
-    );
-    await navigation;
+    await router.navigateByUrl('/dashboard');
     fixture.detectChanges();
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('h1')?.textContent).toContain('Se connecter');
-    http.verify();
   });
 });
