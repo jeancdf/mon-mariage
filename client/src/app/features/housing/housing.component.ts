@@ -10,6 +10,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
 import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
 import { AutofocusDirective } from '../../shared/autofocus.directive';
+import { AuthService } from '../../auth/auth.service';
 
 interface RoomFormState {
   name: string;
@@ -34,6 +35,7 @@ export class HousingComponent {
   readonly store = inject(WeddingStore);
   private readonly housingApi = inject(HousingApiService);
   private readonly toast = inject(ToastService);
+  readonly auth = inject(AuthService);
   expanded: Record<string, boolean> = { h1: true, h2: true, h3: true };
   addingHouse = false;
   houseName = '';
@@ -127,6 +129,7 @@ export class HousingComponent {
   }
 
   private async moveGuest(guestId: string, room: Room | null): Promise<void> {
+    if (!this.auth.can('housing', 'edit')) return;
     const snapshot = this.store.houses();
     this.store.assignGuestRoom(guestId, room ? this.houseIdOf(room.id) : null, room?.id ?? null);
     try {
@@ -173,6 +176,7 @@ export class HousingComponent {
   }
 
   async addHouse(): Promise<void> {
+    if (!this.auth.can('housing', 'edit')) return;
     const name = this.houseName.trim();
     if (!name) return;
     try {
@@ -186,6 +190,7 @@ export class HousingComponent {
   }
 
   requestDeleteHouse(house: House): void {
+    if (!this.auth.can('housing', 'edit')) return;
     this.housePendingDeletion = house;
   }
 
@@ -210,6 +215,7 @@ export class HousingComponent {
   }
 
   async addRoom(houseId: string): Promise<void> {
+    if (!this.auth.can('housing', 'edit')) return;
     const name = this.roomForm.name.trim();
     if (!name) return;
     try {
@@ -227,6 +233,7 @@ export class HousingComponent {
   }
 
   startEditingRoom(room: Room): void {
+    if (!this.auth.can('housing', 'edit')) return;
     this.editingRoomId = room.id;
     this.editRoomForm = { name: room.name, bedType: room.bedType, beds: room.beds };
   }
@@ -237,6 +244,7 @@ export class HousingComponent {
   }
 
   async saveRoom(room: Room): Promise<void> {
+    if (!this.auth.can('housing', 'edit')) return;
     const name = this.editRoomForm.name.trim();
     if (!name) return;
     const beds = this.normalizeBeds(this.editRoomForm.beds);
@@ -254,6 +262,7 @@ export class HousingComponent {
   }
 
   requestDeleteRoom(room: Room): void {
+    if (!this.auth.can('housing', 'edit')) return;
     this.roomPendingDeletion = room;
   }
 

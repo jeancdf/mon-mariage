@@ -36,8 +36,8 @@ export class AuthController {
 
   @Public()
   @Get('setup')
-  setupStatus(): { configured: boolean } {
-    return { configured: true };
+  setupStatus(): Promise<{ configured: boolean }> {
+    return this.accountsService.setupStatus();
   }
 
   @Get('me')
@@ -66,4 +66,3 @@ export class AuthController {
     return { success: true };
   }
 }
-

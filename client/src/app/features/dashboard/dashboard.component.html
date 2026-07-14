@@ -18,6 +18,7 @@
     <article class="panel">Chargement du tableau de bord...</article>
   } @else {
   <div class="stat-grid">
+    @if (auth.can('guests')) {
     <a class="stat-card" routerLink="/invites">
       <div class="eyebrow">Invités</div>
       <strong>{{ s.guests.total }}</strong>
@@ -28,33 +29,45 @@
       <strong>{{ s.guests.confirmed }}</strong>
       <span>{{ percent(s.guests.confirmed, s.guests.total) }}% du total</span>
     </a>
+    }
+    @if (auth.can('housing')) {
     <a class="stat-card" routerLink="/hebergement">
       <div class="eyebrow">Hébergement</div>
       <strong>{{ s.housing.occupiedBeds }}/{{ s.housing.totalBeds }}</strong>
       <span>places occupées</span>
     </a>
+    }
+    @if (auth.can('seating')) {
     <a class="stat-card" routerLink="/plan-de-table">
       <div class="eyebrow">Plan de table</div>
       <strong>{{ s.seating.seated }}/{{ s.seating.totalSeats }}</strong>
       <span>invités placés</span>
     </a>
+    }
+    @if (auth.can('budget')) {
     <a class="stat-card" routerLink="/budget">
       <div class="eyebrow">Budget engagé</div>
       <strong>{{ fmtCurrency(s.budget.totalSpent) }}</strong>
       <span>sur {{ fmtCurrency(s.budget.totalEstimated) }}</span>
     </a>
+    }
+    @if (auth.can('todos')) {
     <a class="stat-card" routerLink="/a-faire">
       <div class="eyebrow">À faire</div>
       <strong>{{ s.todos.done }}/{{ s.todos.total }}</strong>
       <span>tâches complétées</span>
     </a>
+    }
+    @if (auth.can('vendors')) {
     <a class="stat-card" routerLink="/prestataires">
       <div class="eyebrow">Prestataires</div>
       <strong>{{ s.vendors.reserved }}/{{ s.vendors.count }}</strong>
       <span>{{ fmtCurrency(s.vendors.totalCommitted) }} engagés</span>
     </a>
+    }
   </div>
 
+  @if (auth.can('final_weeks')) {
   <a class="panel final-weeks-summary" routerLink="/dernieres-semaines">
     <div><div class="eyebrow">Dernières semaines</div><strong>Centre d’opérations</strong></div>
     <div class="summary-metric"><strong>{{ s.finalWeeks.currentlyPresent }}</strong><span>présents</span></div>
@@ -62,8 +75,10 @@
     <div class="summary-metric"><strong>{{ s.finalWeeks.unfinished }}</strong><span>à terminer</span></div>
     <div class="summary-metric" [class.over]="s.finalWeeks.unassigned"><strong>{{ s.finalWeeks.unassigned }}</strong><span>sans responsable</span></div>
   </a>
+  }
 
   <div class="two-column">
+    @if (auth.can('guests')) {
     <article class="panel">
       <div class="eyebrow panel-title">Répartition RSVP</div>
       @for (row of [
@@ -80,7 +95,9 @@
         </div>
       }
     </article>
+    }
 
+    @if (auth.can('budget')) {
     <article class="panel">
       <div class="eyebrow panel-title">Budget par poste</div>
       @for (category of s.budget.categories.slice(0, 5); track category.id) {
@@ -99,6 +116,7 @@
         <p class="dashboard-more">+ {{ s.budget.categories.length - 5 }} autres postes</p>
       }
     </article>
+    }
   </div>
   }
 </section>

@@ -9,6 +9,7 @@ import { IconComponent } from '../../shared/icon.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
 import { AutofocusDirective } from '../../shared/autofocus.directive';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-todos',
@@ -20,6 +21,7 @@ export class TodosComponent {
   readonly store = inject(WeddingStore);
   private readonly todosApi = inject(TodosApiService);
   private readonly toast = inject(ToastService);
+  readonly auth = inject(AuthService);
   readonly assignees = ASSIGNEES;
   readonly assigneeOptions = ASSIGNEE_OPTIONS;
   readonly fmtShortDate = fmtShortDate;
@@ -69,6 +71,7 @@ export class TodosComponent {
   }
 
   async addGroup(): Promise<void> {
+    if (!this.auth.can('todos', 'edit')) return;
     const title = this.groupName.trim();
     if (!title) return;
     try {
@@ -82,6 +85,7 @@ export class TodosComponent {
   }
 
   startEditingGroup(group: TodoGroup): void {
+    if (!this.auth.can('todos', 'edit')) return;
     this.editingGroupId = group.id;
     this.groupTitleDraft = group.title;
   }
@@ -92,6 +96,7 @@ export class TodosComponent {
   }
 
   async saveGroupTitle(group: TodoGroup): Promise<void> {
+    if (!this.auth.can('todos', 'edit')) return;
     const title = this.groupTitleDraft.trim();
     if (!title) return;
     try {
@@ -104,6 +109,7 @@ export class TodosComponent {
   }
 
   requestDeleteGroup(group: TodoGroup): void {
+    if (!this.auth.can('todos', 'edit')) return;
     this.groupPendingDeletion = group;
   }
 
@@ -128,6 +134,7 @@ export class TodosComponent {
   }
 
   async toggleDone(_groupId: string, task: Task): Promise<void> {
+    if (!this.auth.can('todos', 'edit')) return;
     try {
       const todos = await this.todosApi.updateTask({ ...task, done: !task.done });
       this.store.replaceTodos(todos);
@@ -137,6 +144,7 @@ export class TodosComponent {
   }
 
   async updateAssignee(_groupId: string, task: Task, assignee: AssigneeId): Promise<void> {
+    if (!this.auth.can('todos', 'edit')) return;
     try {
       const todos = await this.todosApi.updateTask({ ...task, assignee });
       this.store.replaceTodos(todos);
@@ -146,6 +154,7 @@ export class TodosComponent {
   }
 
   startEditingTask(task: Task): void {
+    if (!this.auth.can('todos', 'edit')) return;
     this.editingTaskId = task.id;
     this.taskLabelDraft = task.label;
   }
@@ -156,6 +165,7 @@ export class TodosComponent {
   }
 
   async saveTaskLabel(task: Task): Promise<void> {
+    if (!this.auth.can('todos', 'edit')) return;
     const label = this.taskLabelDraft.trim();
     if (!label) return;
     try {
@@ -168,6 +178,7 @@ export class TodosComponent {
   }
 
   async addTask(groupId: string): Promise<void> {
+    if (!this.auth.can('todos', 'edit')) return;
     const label = this.taskForm.label.trim();
     if (!label) return;
     try {
@@ -186,6 +197,7 @@ export class TodosComponent {
   }
 
   async deleteTask(id: string): Promise<void> {
+    if (!this.auth.can('todos', 'edit')) return;
     try {
       const todos = await this.todosApi.deleteTask(id);
       this.store.replaceTodos(todos);

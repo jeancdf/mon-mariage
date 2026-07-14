@@ -5,6 +5,7 @@
       <p>{{ store.guestCount() }} invités · {{ store.confirmedCount() }} confirmés · {{ store.pendingCount() }} en attente</p>
     </div>
     <div class="row-actions">
+      @if (auth.can('guests', 'edit')) {
       <button class="btn secondary" type="button" [disabled]="isImporting" (click)="openImportPicker()">
         {{ isImporting ? 'Import...' : 'Importer Excel' }}
       </button>
@@ -14,6 +15,7 @@
       <button class="btn primary" type="button" (click)="openAdd()">
         <app-icon name="plus" /> Ajouter
       </button>
+      }
     </div>
   </header>
 
@@ -98,6 +100,7 @@
                 [class.pending]="guest.rsvp === 'pending'"
                 [class.declined]="guest.rsvp === 'declined'"
                 [ngModel]="guest.rsvp"
+                [disabled]="!auth.can('guests', 'edit')"
                 (ngModelChange)="updateRsvp(guest, $event)">
                 @for (option of rsvpOptions; track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
@@ -124,6 +127,7 @@
             </td>
             <td class="muted guest-col-transport">{{ guest.transport || '-' }}</td>
             <td>
+              @if (auth.can('guests', 'edit')) {
               <div class="row-actions">
                 <button class="icon-button" type="button" (click)="editingGuest = guest" aria-label="Modifier">
                   <app-icon name="edit" />
@@ -132,6 +136,7 @@
                   <app-icon name="trash" />
                 </button>
               </div>
+              }
             </td>
           </tr>
         } @empty {

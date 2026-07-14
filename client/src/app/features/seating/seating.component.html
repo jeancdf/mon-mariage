@@ -3,6 +3,7 @@
     label="Non placés"
     [guests]="unplacedGuests()"
     [loading]="!store.loaded()"
+    [dragDisabled]="!auth.can('seating', 'edit')"
     (guestDropped)="removeGuest($event)"
     (dragStarted)="onDragStarted()"
     (dragEnded)="onDragEnded()" />
@@ -19,9 +20,11 @@
           <button class="zoom-level" type="button" (click)="resetZoom()" title="Revenir à 100 %">{{ (zoom() * 100).toFixed(0) }} %</button>
           <button class="icon-button" type="button" (click)="zoomIn()" aria-label="Augmenter le zoom">+</button>
         </div>
+        @if (auth.can('seating', 'edit')) {
         <button class="btn primary" type="button" (click)="addingTable = true; cancelEditing()">
           <app-icon name="plus" /> Ajouter une table
         </button>
+        }
       </div>
     </header>
 
@@ -110,6 +113,7 @@
                       [style.height.px]="layout.height"
                       cdkDropList
                       cdkDropListSortingDisabled
+                      [cdkDropListDisabled]="!auth.can('seating', 'edit')"
                       [cdkDropListData]="table"
                       [cdkDropListEnterPredicate]="tableEnterPredicate(table)"
                       (cdkDropListDropped)="onTableDrop($event, table)">
@@ -132,6 +136,7 @@
                         [style.top.px]="spot.y"
                         cdkDropList
                         cdkDropListSortingDisabled
+                        [cdkDropListDisabled]="!auth.can('seating', 'edit')"
                         [cdkDropListData]="table"
                         [cdkDropListEnterPredicate]="seatEnterPredicate(table, spot.index)"
                         (cdkDropListDropped)="onSeatDrop($event, table, spot.index)">
@@ -142,17 +147,20 @@
                             [style.transform]="'rotate(' + (-table.rotation) + 'deg)'"
                             [attr.title]="guestTitle(guest)"
                             cdkDrag
+                            [cdkDragDisabled]="!auth.can('seating', 'edit')"
                             [cdkDragData]="guest.id"
                             (cdkDragStarted)="onDragStarted()"
                             (cdkDragEnded)="onDragEnded()"
                             (mouseenter)="hoveredSeat.set({ tableId: table.id, seat: spot.index })"
                             (mouseleave)="hoveredSeat.set(null)">
                             <span class="floor-seat-initials">{{ initials(guest) }}</span>
+                            @if (auth.can('seating', 'edit')) {
                             <button
                               class="floor-seat-remove"
                               type="button"
                               (click)="$event.stopPropagation(); removeGuest(guest.id)"
                               [attr.aria-label]="'Retirer ' + guestTitle(guest)">×</button>
+                            }
                           </div>
                         } @else {
                           <span class="floor-seat-number" [style.transform]="'rotate(' + (-table.rotation) + 'deg)'">{{ spot.index + 1 }}</span>
@@ -162,6 +170,7 @@
                   </div>
                 </div>
 
+                @if (auth.can('seating', 'edit')) {
                 <div class="floor-table-actions">
                   <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditing(table)" aria-label="Modifier la table">
                     <app-icon name="edit" [size]="12" />
@@ -171,6 +180,7 @@
                     <app-icon name="trash" [size]="12" />
                   </button>
                 </div>
+                }
               </div>
             }
           </div>

@@ -10,6 +10,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
 import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
 import { AutofocusDirective } from '../../shared/autofocus.directive';
+import { AuthService } from '../../auth/auth.service';
 
 export const FLOOR_WIDTH = 1400;
 export const FLOOR_HEIGHT = 900;
@@ -66,6 +67,7 @@ export class SeatingComponent {
   readonly store = inject(WeddingStore);
   private readonly seatingApi = inject(SeatingApiService);
   private readonly toast = inject(ToastService);
+  readonly auth = inject(AuthService);
 
   readonly floorWidth = FLOOR_WIDTH;
   readonly floorHeight = FLOOR_HEIGHT;
@@ -233,6 +235,7 @@ export class SeatingComponent {
   // ── Table dragging (free positioning) ─────────────────────────────
 
   onTablePointerDown(event: PointerEvent, table: Table): void {
+    if (!this.auth.can('seating', 'edit')) return;
     if (event.button !== 0) return;
     const target = event.target as HTMLElement;
     if (target.closest('.floor-seat, .floor-table-actions, button, input, select')) return;
@@ -279,6 +282,7 @@ export class SeatingComponent {
   }
 
   async rotateTable(table: Table): Promise<void> {
+    if (!this.auth.can('seating', 'edit')) return;
     const rotation = (table.rotation + 45) % 360;
     const snapshot = this.store.tables();
     this.store.updateTableGeometry(table.id, { rotation });
@@ -337,6 +341,7 @@ export class SeatingComponent {
   }
 
   private async placeGuest(guestId: string, tableId: string | null, seat: number | null): Promise<void> {
+    if (!this.auth.can('seating', 'edit')) return;
     this.hoveredSeat.set(null);
     const snapshot = this.store.tables();
     this.store.assignGuestTable(guestId, tableId, seat);
@@ -390,6 +395,7 @@ export class SeatingComponent {
   // ── Table CRUD ────────────────────────────────────────────────────
 
   async addTable(): Promise<void> {
+    if (!this.auth.can('seating', 'edit')) return;
     const name = this.tableForm.name.trim();
     if (!name) return;
     const seats = this.normalizeSeats(this.tableForm.seats);
@@ -424,6 +430,7 @@ export class SeatingComponent {
   }
 
   startEditing(table: Table): void {
+    if (!this.auth.can('seating', 'edit')) return;
     this.editingTableId = table.id;
     this.editTableForm = { name: table.name, seats: table.seats };
     this.addingTable = false;
@@ -435,6 +442,7 @@ export class SeatingComponent {
   }
 
   async saveTable(): Promise<void> {
+    if (!this.auth.can('seating', 'edit')) return;
     const id = this.editingTableId;
     if (!id) return;
     const name = this.editTableForm.name.trim();
@@ -454,6 +462,7 @@ export class SeatingComponent {
   }
 
   requestDeleteTable(table: Table): void {
+    if (!this.auth.can('seating', 'edit')) return;
     this.tablePendingDeletion = table;
   }
 

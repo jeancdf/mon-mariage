@@ -7,6 +7,8 @@ import { TodosService } from '../todos/todos.service';
 import { VendorsService } from '../vendors/vendors.service';
 import { EventConfigService } from '../event-config/event-config.service';
 import { FinalWeeksService } from '../final-weeks/final-weeks.service';
+import { AccountEntity } from '../auth/entities/account.entity';
+import type { SectionKey } from '../auth/auth.types';
 
 export interface DashboardSummary {
   guests: {
@@ -54,14 +56,16 @@ export class DashboardService {
     private readonly finalWeeksService: FinalWeeksService,
   ) {}
 
-  async getSummary(): Promise<DashboardSummary> {
+  async getSummary(account: AccountEntity): Promise<DashboardSummary> {
+    const canView = (section: SectionKey): boolean => account.isOrganizer
+      || Boolean(account.profile?.permissions?.find(permission => permission.section === section)?.canView);
     const [guests, houses, tables, budget, todos, vendors] = await Promise.all([
-      this.guestsService.findAll(),
-      this.housingService.findAll(),
-      this.seatingService.findAll(),
-      this.budgetService.find(),
-      this.todosService.findAll(),
-      this.vendorsService.findAll(),
+      canView('guests') ? this.guestsService.findAll() : Promise.resolve([]),
+      canView('housing') ? this.housingService.findAll() : Promise.resolve([]),
+      canView('seating') ? this.seatingService.findAll() : Promise.resolve([]),
+      canView('budget') ? this.budgetService.find() : Promise.resolve({ categories: [] }),
+      canView('todos') ? this.todosService.findAll() : Promise.resolve([]),
+      canView('vendors') ? this.vendorsService.findAll() : Promise.resolve([]),
     ]);
 
     const guestPartySize = (guest: { hasPlusOne: boolean; kids?: unknown[] }) =>
@@ -100,7 +104,9 @@ export class DashboardService {
       .reduce((sum, vendor) => sum + (vendor.priceFinal || vendor.priceEstimate || 0), 0);
 
     const weddingDate = this.eventConfig.getConfiguration().weddingDate;
-    const finalWeeks = await this.finalWeeksService.getDashboardSummary();
+    const finalWeeks = canView('final_weeks')
+      ? await this.finalWeeksService.getDashboardSummary()
+      : { currentlyPresent: 0, todayMeals: { breakfast: 0, lunch: 0, dinner: 0 }, unfinished: 0, unassigned: 0, overdue: 0, completion: 0 };
 
     return {
       guests: {

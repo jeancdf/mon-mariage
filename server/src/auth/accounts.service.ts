@@ -275,7 +275,10 @@ export class AccountsService implements OnModuleInit {
     if (duplicate && duplicate.guestId !== guest.id) {
       throw new ConflictException('Cette adresse e-mail est déjà utilisée.');
     }
-    let account = await this.accountsRepository.findOne({ where: { guestId } });
+    let account = await this.accountsRepository.createQueryBuilder('account')
+      .addSelect('account.passwordHash')
+      .where('account.guestId = :guestId', { guestId })
+      .getOne();
     if (!account) {
       account = this.accountsRepository.create({
         guestId,
@@ -294,7 +297,10 @@ export class AccountsService implements OnModuleInit {
   }
 
   async setAccountStatus(accountId: string, status: 'pending' | 'active' | 'disabled'): Promise<void> {
-    const account = await this.accountsRepository.findOne({ where: { id: accountId } });
+    const account = await this.accountsRepository.createQueryBuilder('account')
+      .addSelect('account.passwordHash')
+      .where('account.id = :accountId', { accountId })
+      .getOne();
     if (!account) throw new NotFoundException('Compte introuvable.');
     if (account.isOrganizer && status === 'disabled') {
       throw new BadRequestException("Le compte organisateur principal ne peut pas être désactivé.");
@@ -302,6 +308,7 @@ export class AccountsService implements OnModuleInit {
     if (status === 'active' && !account.passwordHash) {
       throw new BadRequestException("Ce compte doit d'abord être activé par son titulaire.");
     }
+    if (status === 'pending') account.passwordHash = null;
     account.status = status;
     await this.accountsRepository.save(account);
     if (status !== 'active') {
@@ -315,6 +322,9 @@ export class AccountsService implements OnModuleInit {
       .where('account.id = :accountId', { accountId })
       .getOne();
     if (!account) throw new NotFoundException('Compte introuvable.');
+    if (account.isOrganizer && !newPassword) {
+      throw new BadRequestException("Le compte organisateur principal ne peut pas être remis en attente.");
+    }
     if (newPassword) {
       account.passwordHash = await this.passwords.hash(newPassword);
       account.status = 'active';
@@ -376,6 +386,11 @@ export class AccountsService implements OnModuleInit {
     return account;
   }
 
+  async setupStatus(): Promise<{ configured: boolean }> {
+    const count = await this.accountsRepository.count({ where: { isOrganizer: true } });
+    return { configured: count > 0 };
+  }
+
   private async accountWithPassword(email: string): Promise<AccountEntity | null> {
     return this.accountsRepository.createQueryBuilder('account')
       .addSelect('account.passwordHash')
@@ -422,6 +437,12 @@ export class AccountsService implements OnModuleInit {
     const required = ['SESSION_SECRET', 'PRIVATE_EVENT_CODE', 'BOOTSTRAP_ORGANIZER_EMAIL', 'BOOTSTRAP_ORGANIZER_PASSWORD'];
     const missing = required.filter(key => !this.config.get<string>(key));
     if (missing.length) throw new Error(`Configuration de sécurité manquante: ${missing.join(', ')}`);
+    if ((this.config.get<string>('SESSION_SECRET') ?? '').length < 32) {
+      throw new Error('SESSION_SECRET doit contenir au moins 32 caractères.');
+    }
+    if ((this.config.get<string>('PRIVATE_EVENT_CODE') ?? '').length < 8) {
+      throw new Error('PRIVATE_EVENT_CODE doit contenir au moins 8 caractères.');
+    }
   }
 
   private hashSessionToken(token: string): string {

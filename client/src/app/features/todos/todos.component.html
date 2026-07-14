@@ -7,9 +7,11 @@
         <span class="mini-progress"><i [style.width.%]="totals().percent"></i></span>
       </p>
     </div>
+    @if (auth.can('todos', 'edit')) {
     <button class="btn primary" type="button" (click)="addingGroup = true">
       <app-icon name="plus" /> Nouveau groupe
     </button>
+    }
   </header>
 
   @if (addingGroup) {
@@ -27,7 +29,7 @@
       <article class="collapsible">
         <header class="collapsible-header" (click)="toggleGroup(group.id)">
           <app-icon class="chevron" [class.closed]="!open" name="chevron" />
-          @if (editingGroupId === group.id) {
+          @if (auth.can('todos', 'edit') && editingGroupId === group.id) {
             <div class="inline-form todo-group-edit" (click)="$event.stopPropagation()">
               <input appAutofocus [(ngModel)]="groupTitleDraft" (keydown.enter)="saveGroupTitle(group)" />
               <button class="btn primary small" type="button" (click)="saveGroupTitle(group)">OK</button>
@@ -35,39 +37,45 @@
             </div>
           } @else {
             <strong>{{ group.title }}</strong>
+            @if (auth.can('todos', 'edit')) {
             <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditingGroup(group)" aria-label="Renommer le groupe">
               <app-icon name="edit" />
             </button>
+            }
           }
           <span>{{ done }}/{{ group.tasks.length }}</span>
           <div class="mini-progress"><i [style.width.%]="group.tasks.length ? (done / group.tasks.length) * 100 : 0"></i></div>
+          @if (auth.can('todos', 'edit')) {
           <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteGroup(group)" aria-label="Supprimer le groupe">
             <app-icon name="trash" />
           </button>
+          }
         </header>
 
         @if (open) {
           <div class="todo-list">
             @for (task of sortedTasks(group.tasks); track task.id) {
               <div class="todo-row">
-                <button class="check-button" type="button" [class.done]="task.done" (click)="toggleDone(group.id, task)" aria-label="Basculer la tâche">
+                <button class="check-button" type="button" [disabled]="!auth.can('todos', 'edit')" [class.done]="task.done" (click)="toggleDone(group.id, task)" aria-label="Basculer la tâche">
                   @if (task.done) {
                     <app-icon name="check" [size]="13" />
                   }
                 </button>
-                @if (editingTaskId === task.id) {
+                @if (auth.can('todos', 'edit') && editingTaskId === task.id) {
                   <div class="inline-form todo-label-edit">
                     <input appAutofocus [(ngModel)]="taskLabelDraft" (keydown.enter)="saveTaskLabel(task)" />
                     <button class="btn primary small" type="button" (click)="saveTaskLabel(task)">OK</button>
                     <button class="btn secondary small" type="button" (click)="cancelEditingTask()">Annuler</button>
                   </div>
                 } @else {
-                  <button class="todo-label" type="button" [class.done]="task.done" (click)="startEditingTask(task)">{{ task.label }}</button>
+                  <button class="todo-label" type="button" [disabled]="!auth.can('todos', 'edit')" [class.done]="task.done" (click)="startEditingTask(task)">{{ task.label }}</button>
+                  @if (auth.can('todos', 'edit')) {
                   <button class="icon-button" type="button" (click)="startEditingTask(task)" aria-label="Modifier la tâche">
                     <app-icon name="edit" />
                   </button>
+                  }
                 }
-                <select [ngModel]="task.assignee" (ngModelChange)="updateAssignee(group.id, task, $event)" [style.color]="assigneeColor(task.assignee)">
+                <select [disabled]="!auth.can('todos', 'edit')" [ngModel]="task.assignee" (ngModelChange)="updateAssignee(group.id, task, $event)" [style.color]="assigneeColor(task.assignee)">
                   @for (assignee of assigneeOptions; track assignee.value) {
                     <option [value]="assignee.value">{{ assignee.label }}</option>
                   }
@@ -75,13 +83,15 @@
                 @if (task.dueDate) {
                   <time [class.overdue]="isOverdue(task)">{{ fmtShortDate(task.dueDate) }}</time>
                 }
+                @if (auth.can('todos', 'edit')) {
                 <button class="icon-button danger" type="button" (click)="deleteTask(task.id)" aria-label="Supprimer la tâche">
                   <app-icon name="trash" />
                 </button>
+                }
               </div>
             }
 
-            @if (addingTaskFor === group.id) {
+            @if (auth.can('todos', 'edit') && addingTaskFor === group.id) {
               <div class="inline-form add-task-form">
                 <input appAutofocus [(ngModel)]="taskForm.label" placeholder="Description de la tâche" (keydown.enter)="addTask(group.id)" />
                 <select [(ngModel)]="taskForm.assignee">
@@ -93,7 +103,7 @@
                 <button class="btn primary small" type="button" (click)="addTask(group.id)">Ajouter</button>
                 <button class="btn secondary small" type="button" (click)="addingTaskFor = null">Annuler</button>
               </div>
-            } @else {
+            } @else if (auth.can('todos', 'edit')) {
               <div class="todo-add-row">
                 <button class="btn ghost small" type="button" (click)="addingTaskFor = group.id">
                   <app-icon name="plus" /> Ajouter une tâche

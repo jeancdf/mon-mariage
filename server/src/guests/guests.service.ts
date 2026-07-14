@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { In, Not, Repository } from 'typeorm';
@@ -84,6 +84,7 @@ export class GuestsService {
     await this.guestsRepository.clear();
     if (!guests.length) {
       await this.deleteAssignmentsExcept([]);
+      await this.accountsService.reconcileGuestAccounts([]);
       return [];
     }
 
@@ -92,7 +93,7 @@ export class GuestsService {
       .map(guest => guest.email)
       .filter((email, index, values) => values.indexOf(email) !== index);
     if (duplicateEligibleEmails.length) {
-      throw new Error(`Duplicate account email in import: ${duplicateEligibleEmails[0]}`);
+      throw new ConflictException(`Adresse e-mail dupliquée dans l'import : ${duplicateEligibleEmails[0]}`);
     }
 
     await this.guestsRepository.insert(guests);

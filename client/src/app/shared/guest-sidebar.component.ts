@@ -41,6 +41,7 @@ interface CategoryOption {
         class="guest-sidebar-list"
         cdkDropList
         cdkDropListSortingDisabled
+        [cdkDropListDisabled]="dragDisabled()"
         [cdkDropListData]="'sidebar'"
         (cdkDropListDropped)="onDrop($event)">
         <div class="guest-sidebar-dropzone">Déposer ici pour retirer</div>
@@ -51,6 +52,7 @@ interface CategoryOption {
           <div
             class="guest-row"
             cdkDrag
+            [cdkDragDisabled]="dragDisabled()"
             [cdkDragData]="guest.id"
             (cdkDragStarted)="dragStarted.emit()"
             (cdkDragEnded)="dragEnded.emit()"
@@ -71,6 +73,7 @@ export class GuestSidebarComponent {
   readonly guests = input.required<GuestPerson[]>();
   readonly label = input('');
   readonly loading = input(false);
+  readonly dragDisabled = input(false);
   readonly guestDropped = output<string>();
   readonly dragStarted = output<void>();
   readonly dragEnded = output<void>();
@@ -102,6 +105,7 @@ export class GuestSidebarComponent {
   }
 
   onDrop(event: CdkDragDrop<string>): void {
+    if (this.dragDisabled()) return;
     if (event.previousContainer === event.container) return;
     this.guestDropped.emit(event.item.data as string);
   }

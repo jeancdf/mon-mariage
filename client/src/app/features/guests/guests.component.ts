@@ -11,6 +11,7 @@ import { parseGuestWorkbook } from './guest-import';
 import { GuestApiService } from '../../data/guest-api.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
+import { AuthService } from '../../auth/auth.service';
 
 type GuestSortKey = 'name' | 'category' | 'rsvp';
 type SortDir = 'asc' | 'desc';
@@ -34,6 +35,7 @@ export class GuestsComponent {
   readonly store = inject(WeddingStore);
   private readonly guestApi = inject(GuestApiService);
   private readonly toast = inject(ToastService);
+  readonly auth = inject(AuthService);
   readonly importInput = viewChild<ElementRef<HTMLInputElement>>('importInput');
   readonly categoryOptions = CATEGORY_OPTIONS;
   readonly rsvpOptions = RSVP_OPTIONS;
@@ -73,6 +75,7 @@ export class GuestsComponent {
   );
 
   openAdd(): void {
+    if (!this.auth.can('guests', 'edit')) return;
     this.isAdding = true;
     this.editingGuest = null;
   }
@@ -97,6 +100,7 @@ export class GuestsComponent {
   }
 
   async saveGuest(guest: Guest): Promise<void> {
+    if (!this.auth.can('guests', 'edit')) return;
     try {
       if (this.editingGuest) {
         const savedGuest = await this.guestApi.updateGuest(guest);
@@ -112,6 +116,7 @@ export class GuestsComponent {
   }
 
   requestDeleteGuest(guest: Guest): void {
+    if (!this.auth.can('guests', 'edit')) return;
     this.guestPendingDeletion = guest;
   }
 
@@ -169,6 +174,7 @@ export class GuestsComponent {
   }
 
   async updateRsvp(guest: Guest, rsvp: Rsvp): Promise<void> {
+    if (!this.auth.can('guests', 'edit')) return;
     if (guest.rsvp === rsvp) return;
     try {
       const savedGuest = await this.guestApi.updateGuest({ ...guest, rsvp });

@@ -4,6 +4,7 @@ import { DashboardApiService, DashboardSummary } from '../../data/dashboard-api.
 import { ToastService } from '../../shared/toast.service';
 import { fmtCurrency } from '../../shared/wedding-utils';
 import { EventConfigService } from '../../data/event-config.service';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -15,6 +16,7 @@ export class DashboardComponent {
   private readonly dashboardApi = inject(DashboardApiService);
   private readonly toast = inject(ToastService);
   readonly eventConfig = inject(EventConfigService);
+  readonly auth = inject(AuthService);
   readonly fmtCurrency = fmtCurrency;
   readonly summary = signal<DashboardSummary | null>(null);
 

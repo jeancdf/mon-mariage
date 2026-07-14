@@ -3,6 +3,7 @@
     label="Sans logement"
     [guests]="unassignedGuests()"
     [loading]="!store.loaded()"
+    [dragDisabled]="!auth.can('housing', 'edit')"
     (guestDropped)="unassignGuest($event)"
     (dragStarted)="onDragStarted()"
     (dragEnded)="onDragEnded()" />
@@ -13,9 +14,11 @@
         <h1>Hébergement</h1>
         <p>{{ totals().occupied }} / {{ totals().totalBeds }} places · {{ unassignedGuests().length }} sans logement · glissez un invité vers une chambre</p>
       </div>
+      @if (auth.can('housing', 'edit')) {
       <button class="btn primary" type="button" (click)="addingHouse = true">
         <app-icon name="plus" /> Ajouter une maison
       </button>
+      }
     </header>
 
     @if (addingHouse) {
@@ -38,9 +41,11 @@
               <span class="status-badge complete">Complète</span>
             }
             <span class="house-count" [class.full]="houseFull">{{ house.rooms.length }} chambre{{ house.rooms.length !== 1 ? 's' : '' }} · {{ houseOccupied(house) }}/{{ houseCapacity(house) }} places</span>
+            @if (auth.can('housing', 'edit')) {
             <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteHouse(house)" aria-label="Supprimer la maison">
               <app-icon name="trash" />
             </button>
+            }
           </header>
 
           @if (open) {
@@ -53,6 +58,7 @@
                     class="room-card"
                     cdkDropList
                     cdkDropListSortingDisabled
+                    [cdkDropListDisabled]="!auth.can('housing', 'edit')"
                     [cdkDropListData]="room"
                     [cdkDropListEnterPredicate]="roomEnterPredicate(room)"
                     [class.full]="full && !editing"
@@ -61,12 +67,14 @@
                       <app-icon name="bed" />
                       <strong>{{ room.name }}</strong>
                       <span class="room-count" [class.full]="full">{{ room.guestIds.length }}/{{ roomCapacity(room) }} · {{ bedLabel(room) }}</span>
+                      @if (auth.can('housing', 'edit')) {
                       <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditingRoom(room)" aria-label="Modifier la chambre">
                         <app-icon name="edit" />
                       </button>
                       <button class="icon-button danger" type="button" (click)="$event.stopPropagation(); requestDeleteRoom(room)" aria-label="Supprimer la chambre">
                         <app-icon name="trash" />
                       </button>
+                      }
                     </header>
 
                     @if (editing) {
@@ -90,13 +98,16 @@
                             <div
                               class="room-guest draggable-chip"
                               cdkDrag
+                              [cdkDragDisabled]="!auth.can('housing', 'edit')"
                               [cdkDragData]="guestId"
                               (cdkDragStarted)="onDragStarted()"
                               (cdkDragEnded)="onDragEnded()">
                               <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isKid ? ' (enfant)' : guest.isPlusOne ? ' (+1)' : '' }}</span>
+                              @if (auth.can('housing', 'edit')) {
                               <button type="button" (click)="$event.stopPropagation(); unassignGuest(guestId)" aria-label="Retirer">
                                 <app-icon name="x" [size]="11" />
                               </button>
+                              }
                             </div>
                           }
                         }
@@ -124,7 +135,7 @@
                 }
               </div>
 
-              @if (addingRoomFor === house.id) {
+              @if (auth.can('housing', 'edit') && addingRoomFor === house.id) {
                 <div class="inline-form room-form" (click)="$event.stopPropagation()">
                   <input appAutofocus [(ngModel)]="roomForm.name" placeholder="Nom de la chambre" />
                   <select [(ngModel)]="roomForm.bedType">
@@ -135,7 +146,7 @@
                   <button class="btn primary small" type="button" (click)="addRoom(house.id)">OK</button>
                   <button class="btn secondary small" type="button" (click)="addingRoomFor = null">✕</button>
                 </div>
-              } @else {
+              } @else if (auth.can('housing', 'edit')) {
                 <button class="btn ghost small" type="button" (click)="addingRoomFor = house.id">
                   <app-icon name="plus" /> Ajouter une chambre
                 </button>
