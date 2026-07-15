@@ -3535,3 +3535,252 @@ textarea {
     grid-template-columns: 1fr auto;
   }
 }
+
+/* Dedicated final-weeks pages */
+.final-weeks-gantt-page {
+  max-width: none;
+}
+
+.final-weeks-subnav {
+  display: flex;
+  gap: 5px;
+  margin: -8px 0 20px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.final-weeks-subnav a {
+  flex: 0 0 auto;
+  padding: 8px 13px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.final-weeks-subnav a:hover,
+.final-weeks-subnav a.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.gantt-summary {
+  max-width: 1080px;
+}
+
+.full-gantt-panel {
+  min-height: calc(100dvh - 285px);
+}
+
+.full-gantt-scroll {
+  max-height: calc(100dvh - 390px);
+  min-height: 330px;
+}
+
+.full-gantt-scroll .gantt-table {
+  min-width: 965px;
+}
+
+.full-gantt-scroll .gantt-grid-row {
+  grid-template-columns: 165px minmax(800px, 1fr);
+}
+
+.gantt-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.gantt-controls > input {
+  width: auto;
+  min-height: 34px;
+  padding: 5px 8px;
+}
+
+.view-switch {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-alt);
+}
+
+.view-switch button {
+  padding: 7px 11px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.view-switch button:last-child {
+  border-right: 0;
+}
+
+.view-switch button.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.gantt-hours {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  height: 53px;
+}
+
+.gantt-hours > span {
+  display: grid;
+  place-content: center start;
+  padding-left: 7px;
+  border-right: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.gantt-hours > span:last-child {
+  border-right: 0;
+}
+
+.gantt-hours strong {
+  font-size: 10px;
+}
+
+.gantt-day-table .gantt-task:not(.compact) {
+  min-width: 36px;
+}
+
+.gantt-selection-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+  max-width: 1080px;
+  padding: 14px 18px;
+}
+
+.gantt-selection-bar > div {
+  display: grid;
+  gap: 3px;
+}
+
+.gantt-selection-bar > div > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.full-task-form {
+  margin-bottom: 18px;
+}
+
+.full-task-form > .btn.primary {
+  margin-top: 14px;
+}
+
+.full-responsibility-list {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.full-page-toolbar > div {
+  display: grid;
+  gap: 3px;
+  text-align: right;
+}
+
+.full-page-toolbar > div span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.presence-page-grid {
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+}
+
+.person-card.person-present {
+  border-color: color-mix(in srgb, #22c55e 35%, var(--border));
+  box-shadow: inset 3px 0 color-mix(in srgb, #22c55e 70%, var(--accent));
+}
+
+.person-account-line {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.person-account-line strong {
+  color: var(--text);
+}
+
+.full-meal-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.full-meal-card {
+  display: flex;
+  min-height: 520px;
+  flex-direction: column;
+}
+
+.full-meal-card .field:last-of-type {
+  flex: 1;
+}
+
+@media (max-width: 1100px) {
+  .full-meal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .full-meal-card {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .final-weeks-subnav {
+    margin-top: -2px;
+  }
+
+  .gantt-controls {
+    width: 100%;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .gantt-controls .gantt-legend {
+    width: 100%;
+  }
+
+  .full-gantt-scroll {
+    max-height: 58vh;
+    min-height: 320px;
+  }
+
+  .full-gantt-scroll .gantt-grid-row {
+    grid-template-columns: 145px minmax(820px, 1fr);
+  }
+
+  .gantt-selection-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .full-page-toolbar > div {
+    text-align: left;
+  }
+
+  .presence-page-grid,
+  .full-responsibility-list {
+    grid-template-columns: 1fr;
+  }
+}

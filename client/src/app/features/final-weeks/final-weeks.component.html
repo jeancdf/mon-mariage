@@ -1,212 +1,243 @@
-<section class="page page-wide final-weeks-page">
+<section class="page page-wide final-weeks-page" [class.final-weeks-gantt-page]="page === 'gantt'">
   <header class="page-header split final-weeks-header">
     <div>
-      <div class="script-note">J−7 → Jour J</div>
-      <h1>Dernière semaine</h1>
-      @if (hub(); as data) {
-        <p>{{ phaseLabel(data.config.phase) }} · {{ data.config.weddingPlace }}</p>
+      @switch (page) {
+        @case ('gantt') {
+          <div class="script-note">J−7 → Jour J</div>
+          <h1>Planning Gantt</h1>
+          <p>Une vue dédiée pour voir qui fait quoi dans le temps.</p>
+        }
+        @case ('tasks') {
+          <div class="script-note">D−56 → Jour J</div>
+          <h1>Tâches des huit semaines</h1>
+          <p>Créer, affecter et suivre toutes les responsabilités opérationnelles.</p>
+        }
+        @case ('presence') {
+          <div class="script-note">Dernière semaine</div>
+          <h1>Présences & hébergement</h1>
+          <p>Arrivées, départs, repas pris sur place et lits attribués.</p>
+        }
+        @case ('meals') {
+          <div class="script-note">Dernière semaine</div>
+          <h1>Repas</h1>
+          <p>Effectifs, menus, notes et cuisiniers pour chaque service.</p>
+        }
       }
     </div>
-    @if (hub(); as data) {
-      <div class="final-weeks-header-actions">
-        <div class="countdown compact">
-          <span>{{ data.summary.completion }}%</span>
-          <div><strong>du travail</strong><strong>terminé</strong></div>
-        </div>
-        @if (auth.isOrganizer()) {
-          <button type="button" class="btn primary" (click)="openNewTask()">Nouvelle responsabilité</button>
-        }
-      </div>
+    @if (page === 'tasks' && auth.isOrganizer()) {
+      <button type="button" class="btn primary" (click)="openNewTask()">Nouvelle responsabilité</button>
     }
   </header>
 
+  <nav class="final-weeks-subnav" aria-label="Gestion des dernières semaines">
+    <a routerLink="/dernieres-semaines/gantt" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Gantt</a>
+    <a routerLink="/dernieres-semaines/taches" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Tâches</a>
+    <a routerLink="/dernieres-semaines/presences" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Présences & hébergement</a>
+    <a routerLink="/dernieres-semaines/repas" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Repas</a>
+  </nav>
+
   @if (loading()) {
-    <article class="panel">Chargement du planning…</article>
+    <article class="panel">Chargement…</article>
   } @else if (hub(); as data) {
-    <div class="command-summary" aria-label="Résumé opérationnel">
-      <div><strong>{{ data.summary.currentlyPresent }}</strong><span>présents maintenant</span></div>
-      <div><strong>{{ data.summary.unfinished }}</strong><span>tâches restantes</span></div>
-      <div [class.alert-summary]="data.summary.unassigned"><strong>{{ data.summary.unassigned }}</strong><span>sans responsable</span></div>
-      <div><strong>{{ data.summary.todayMeals.dinner }}</strong><span>au dîner aujourd’hui</span></div>
-    </div>
-
-    <article class="panel gantt-panel">
-      <header class="gantt-panel-header">
-        <div>
-          <div class="eyebrow">Planning partagé</div>
-          <h2>Qui fait quoi, et quand ?</h2>
-          <p>Cliquez sur un nom pour gérer sa présence, sur un jour pour les repas, ou sur une barre pour le travail.</p>
+    @switch (page) {
+      @case ('gantt') {
+        <div class="command-summary gantt-summary" aria-label="Résumé opérationnel">
+          <div><strong>{{ data.summary.currentlyPresent }}</strong><span>présents maintenant</span></div>
+          <div><strong>{{ data.summary.unfinished }}</strong><span>tâches restantes</span></div>
+          <div [class.alert-summary]="data.summary.unassigned"><strong>{{ data.summary.unassigned }}</strong><span>sans responsable</span></div>
+          <div><strong>{{ data.summary.completion }}%</strong><span>du travail terminé</span></div>
         </div>
-        <div class="gantt-legend" aria-label="Légende">
-          <span><i class="presence-key"></i>Présence</span>
-          <span><i class="task-key"></i>Responsabilité</span>
-          <span><i class="done-key"></i>Terminée</span>
-        </div>
-      </header>
 
-      <div class="gantt-scroll">
-        <div class="gantt-table">
-          <div class="gantt-axis gantt-grid-row">
-            <div class="gantt-person-label axis-label">Personnes</div>
-            <div class="gantt-days">
-              @for (day of ganttDays(); track day.date) {
-                <button type="button" [class.selected]="selectedDate() === day.date" (click)="selectDay(day.date)">
-                  <strong>{{ day.label }}</strong>
-                  <span>{{ day.detail }}</span>
-                </button>
+        <article class="panel gantt-panel full-gantt-panel">
+          <header class="gantt-panel-header">
+            <div>
+              <div class="eyebrow">{{ ganttMode() === 'week' ? 'Vue semaine' : 'Vue journée' }}</div>
+              <h2>{{ ganttRangeLabel() }}</h2>
+              <p>Les personnes sont en Y et le temps en X. La bande claire indique leur présence sur place.</p>
+            </div>
+            <div class="gantt-controls">
+              <div class="view-switch" role="group" aria-label="Échelle du Gantt">
+                <button type="button" [class.active]="ganttMode() === 'week'" (click)="setGanttMode('week')">Semaine</button>
+                <button type="button" [class.active]="ganttMode() === 'day'" (click)="setGanttMode('day')">Journée</button>
+              </div>
+              @if (ganttMode() === 'day') {
+                <input type="date" [min]="data.config.dailyStart" [max]="data.config.weddingDate" [ngModel]="selectedDate()" (ngModelChange)="selectDay($event)" aria-label="Journée affichée" />
+              }
+              <div class="gantt-legend" aria-label="Légende">
+                <span><i class="presence-key"></i>Présence</span>
+                <span><i class="task-key"></i>Responsabilité</span>
+                <span><i class="done-key"></i>Terminée</span>
+              </div>
+            </div>
+          </header>
+
+          <div class="gantt-scroll full-gantt-scroll">
+            <div class="gantt-table" [class.gantt-day-table]="ganttMode() === 'day'">
+              <div class="gantt-axis gantt-grid-row">
+                <div class="gantt-person-label axis-label">Personnes</div>
+                @if (ganttMode() === 'week') {
+                  <div class="gantt-days">
+                    @for (day of ganttDays(); track day.date) {
+                      <button type="button" [class.selected]="selectedDate() === day.date" (click)="openGanttDay(day.date)">
+                        <strong>{{ day.label }}</strong>
+                        <span>{{ day.detail }}</span>
+                      </button>
+                    }
+                  </div>
+                } @else {
+                  <div class="gantt-hours">
+                    @for (hour of ganttHours; track hour) {
+                      <span><strong>{{ hour.toString().padStart(2, '0') }}h</strong></span>
+                    }
+                  </div>
+                }
+              </div>
+
+              @for (row of ganttRows(); track row.id) {
+                <div class="gantt-grid-row gantt-row">
+                  <div class="gantt-person-label" [style.height.px]="row.trackHeight">
+                    <div><strong>{{ row.name }}</strong><span>{{ row.subtitle }}</span></div>
+                  </div>
+                  <div class="gantt-track" [class.day-mode]="ganttMode() === 'day'" [style.height.px]="row.trackHeight">
+                    @if (row.presence; as presence) {
+                      <span class="gantt-presence" [style.left.%]="presence.left" [style.width.%]="presence.width"></span>
+                    }
+                    @for (item of row.tasks; track item.task.id) {
+                      <button
+                        type="button"
+                        class="gantt-task"
+                        [class.selected]="selectedTaskId() === item.task.id"
+                        [class.compact]="item.width < (ganttMode() === 'day' ? 8 : 4)"
+                        [class.done]="item.task.status === 'done'"
+                        [class.cancelled]="item.task.status === 'cancelled'"
+                        [attr.data-category]="item.task.category"
+                        [attr.title]="item.task.title + ' · ' + taskTime(item.task)"
+                        [attr.aria-label]="item.task.title + ', ' + taskTime(item.task)"
+                        [style.left.%]="item.left"
+                        [style.width.%]="item.width"
+                        [style.top.px]="27 + item.lane * 24"
+                        (click)="selectTask(item.task)"
+                      >
+                        <span>{{ item.task.title }}</span>
+                        <small>{{ taskTime(item.task) }}</small>
+                      </button>
+                    }
+                  </div>
+                </div>
+              } @empty {
+                <div class="empty-state gantt-empty">Aucune personne à afficher.</div>
               }
             </div>
           </div>
+        </article>
 
-          @for (row of ganttRows(); track row.id) {
-            <div class="gantt-grid-row gantt-row" [class.selected-row]="row.person?.id === selectedPersonId()">
-              <div class="gantt-person-label" [style.height.px]="row.trackHeight">
-                @if (row.person; as person) {
-                  <button type="button" (click)="selectPerson(person)">
-                    <strong>{{ row.name }}</strong>
-                    <span>{{ row.subtitle }}</span>
-                  </button>
-                } @else {
-                  <div><strong>{{ row.name }}</strong><span>{{ row.subtitle }}</span></div>
-                }
-              </div>
-              <div class="gantt-track" [style.height.px]="row.trackHeight">
-                @if (row.presence; as presence) {
-                  <span class="gantt-presence" [style.left.%]="presence.left" [style.width.%]="presence.width"></span>
-                }
-                @for (item of row.tasks; track item.task.id) {
-                  <button
-                    type="button"
-                    class="gantt-task"
-                    [class.selected]="selectedTaskId() === item.task.id"
-                    [class.compact]="item.width < 4"
-                    [class.done]="item.task.status === 'done'"
-                    [class.cancelled]="item.task.status === 'cancelled'"
-                    [attr.data-category]="item.task.category"
-                    [attr.title]="item.task.title + ' · ' + taskTime(item.task)"
-                    [attr.aria-label]="item.task.title + ', ' + taskTime(item.task)"
-                    [style.left.%]="item.left"
-                    [style.width.%]="item.width"
-                    [style.top.px]="27 + item.lane * 24"
-                    (click)="selectTask(item.task)"
-                  >
-                    <span>{{ item.task.title }}</span>
-                    <small>{{ taskTime(item.task) }}</small>
-                  </button>
-                }
-              </div>
+        @if (selectedTask(); as task) {
+          <article class="panel gantt-selection-bar">
+            <div>
+              <div class="eyebrow">{{ categoryLabel(task.category) }}</div>
+              <strong>{{ task.title }}</strong>
+              <span>{{ formatDate(task.scheduledAt) }} · {{ taskTime(task) }} · {{ task.assigneeIds.length ? assigneeNames(task) : 'Non affectée' }}</span>
             </div>
-          } @empty {
-            <div class="empty-state gantt-empty">Ajoutez les personnes invitées pour construire le planning.</div>
-          }
-        </div>
-      </div>
-
-      @if (earlierTasks().length) {
-        <details class="earlier-milestones">
-          <summary>{{ earlierTasks().length }} jalon{{ earlierTasks().length > 1 ? 's' : '' }} avant J−7</summary>
-          <div class="earlier-milestone-list">
-            @for (task of earlierTasks(); track task.id) {
-              <button type="button" (click)="selectTask(task)">
-                <span><strong>{{ task.title }}</strong><small>{{ formatDate(task.scheduledAt, true) }}</small></span>
-                <span>{{ task.assigneeIds.length ? assigneeNames(task) : 'Non affectée' }}</span>
-              </button>
-            }
-          </div>
-        </details>
+            <span class="status-pill" [class.done]="task.status === 'done'">{{ statusLabel(task.status) }}</span>
+            <a class="btn secondary small" routerLink="/dernieres-semaines/taches">Gérer dans Tâches</a>
+          </article>
+        }
       }
-    </article>
 
-    <div class="operations-context">
-      <article class="panel selection-panel">
+      @case ('tasks') {
+        <div class="command-summary" aria-label="Résumé des tâches">
+          <div><strong>{{ data.summary.unfinished }}</strong><span>tâches restantes</span></div>
+          <div><strong>{{ data.summary.overdue }}</strong><span>en retard</span></div>
+          <div [class.alert-summary]="data.summary.unassigned"><strong>{{ data.summary.unassigned }}</strong><span>sans responsable</span></div>
+          <div><strong>{{ data.summary.completion }}%</strong><span>terminé</span></div>
+        </div>
+
         @if (showTaskForm() && auth.isOrganizer()) {
-          <header class="context-header">
-            <div><div class="eyebrow">{{ editingTaskId ? 'Modifier' : 'Planifier' }}</div><h2>Responsabilité</h2></div>
-            <button type="button" class="btn ghost small" (click)="cancelTaskEdit()">Fermer</button>
-          </header>
-          <div class="form-grid compact-grid task-time-grid">
-            <label class="field"><span>Titre</span><input [(ngModel)]="taskForm.title" placeholder="Ex : Aller chercher les boissons" /></label>
-            <label class="field"><span>Catégorie</span><select [(ngModel)]="taskForm.category">@for (category of categories; track category.value) { <option [value]="category.value">{{ category.label }}</option> }</select></label>
-            <label class="field"><span>Début</span><input type="datetime-local" [min]="data.config.preparationStart + 'T00:00'" [max]="data.config.weddingDate + 'T23:59'" [(ngModel)]="taskForm.scheduledAt" /></label>
-            <label class="field"><span>Fin</span><input type="datetime-local" [min]="taskForm.scheduledAt" [max]="data.config.weddingDate + 'T23:59'" [(ngModel)]="taskForm.endsAt" /></label>
-            <label class="field task-notes-field"><span>Notes</span><input [(ngModel)]="taskForm.notes" placeholder="Informations utiles" /></label>
-          </div>
-          <details class="compact-disclosure" open>
-            <summary>Responsables · {{ taskForm.assigneeIds.length || 'personne' }}</summary>
-            <div class="chip-row">@for (account of data.accounts; track account.id) { <button type="button" class="chip" [class.active]="taskForm.assigneeIds.includes(account.id)" (click)="toggleTaskAssignee(account.id)">{{ account.name }}</button> }</div>
-          </details>
-          @if (!editingTaskId) {
-            <details class="compact-disclosure">
-              <summary>Répéter cette responsabilité</summary>
-              <div class="repeat-panel compact-repeat">
+          <article class="panel responsibility-form full-task-form">
+            <header class="context-header">
+              <div><div class="eyebrow">{{ editingTaskId ? 'Occurrence indépendante' : 'Nouvelle responsabilité' }}</div><h2>{{ editingTaskId ? 'Modifier la tâche' : 'Planifier une tâche' }}</h2></div>
+              <button type="button" class="btn ghost small" (click)="cancelTaskEdit()">Fermer</button>
+            </header>
+            <div class="form-grid task-time-grid">
+              <label class="field"><span>Titre</span><input [(ngModel)]="taskForm.title" placeholder="Ex : Aller chercher les boissons" /></label>
+              <label class="field"><span>Catégorie</span><select [(ngModel)]="taskForm.category">@for (category of categories; track category.value) { <option [value]="category.value">{{ category.label }}</option> }</select></label>
+              <label class="field"><span>Début</span><input type="datetime-local" [min]="data.config.preparationStart + 'T00:00'" [max]="data.config.weddingDate + 'T23:59'" [(ngModel)]="taskForm.scheduledAt" /></label>
+              <label class="field"><span>Fin</span><input type="datetime-local" [min]="taskForm.scheduledAt" [max]="data.config.weddingDate + 'T23:59'" [(ngModel)]="taskForm.endsAt" /></label>
+              <label class="field task-notes-field"><span>Notes</span><input [(ngModel)]="taskForm.notes" placeholder="Informations utiles" /></label>
+            </div>
+            <div class="field"><span>Responsables</span><div class="chip-row">@for (account of data.accounts; track account.id) { <button type="button" class="chip" [class.active]="taskForm.assigneeIds.includes(account.id)" (click)="toggleTaskAssignee(account.id)">{{ account.name }}</button> }</div></div>
+            @if (!editingTaskId) {
+              <div class="repeat-panel">
                 <label class="field compact-field"><span>Répétition</span><select [(ngModel)]="taskForm.recurrenceType"><option value="none">Aucune</option><option value="daily">Tous les jours</option><option value="weekdays">Jours choisis</option></select></label>
                 @if (taskForm.recurrenceType === 'weekdays') { <div class="chip-row">@for (day of weekdays; track day.value) { <button type="button" class="chip" [class.active]="taskForm.weekdays.includes(day.value)" (click)="toggleWeekday(day.value)">{{ day.label }}</button> }</div> }
                 @if (taskForm.recurrenceType !== 'none') { <label class="field compact-field"><span>Jusqu’au</span><input type="date" [max]="data.config.weddingDate" [(ngModel)]="taskForm.untilDate" /></label> }
               </div>
-            </details>
-          }
-          @if (taskForm.scheduledAt && taskForm.endsAt && !taskFormValid()) {
-            <p class="field-error">La fin doit être postérieure au début.</p>
-          }
-          <div class="row-actions"><button type="button" class="btn primary" [disabled]="saving() || !taskFormValid()" (click)="submitTask()">{{ editingTaskId ? 'Enregistrer' : 'Créer la responsabilité' }}</button></div>
-        } @else if (selectedTask(); as task) {
-          <header class="context-header">
-            <div><div class="eyebrow">{{ categoryLabel(task.category) }}</div><h2>{{ task.title }}</h2></div>
-            <span class="status-pill" [class.done]="task.status === 'done'">{{ statusLabel(task.status) }}</span>
-          </header>
-          <div class="selected-task-meta">
-            <strong>{{ formatDate(task.scheduledAt) }} · {{ taskTime(task) }}</strong>
-            <span>{{ task.assigneeIds.length ? assigneeNames(task) : 'Aucun responsable' }}</span>
-          </div>
-          @if (task.notes) { <p>{{ task.notes }}</p> }
-          @if (canUpdateTask(task)) {
-            <div class="row-actions">
-              <button type="button" class="btn secondary small" (click)="updateTaskStatus(task, task.status === 'done' ? 'todo' : 'done')">{{ task.status === 'done' ? 'Rouvrir' : 'Terminer' }}</button>
-              @if (task.status !== 'done') { <button type="button" class="btn ghost small" (click)="updateTaskStatus(task, 'in_progress')">En cours</button> }
-            </div>
-          }
-          @if (auth.isOrganizer()) {
-            <div class="row-actions context-admin-actions">
-              <button type="button" class="btn secondary small" (click)="editTask(task)"><app-icon name="edit" /> Modifier</button>
-              <button type="button" class="btn ghost small danger" (click)="requestDeleteTask(task)"><app-icon name="trash" /> Supprimer</button>
-            </div>
-          }
-        } @else if (selectedPerson(); as person) {
-          <header class="context-header">
-            <div><div class="eyebrow">Présence et repas</div><h2>{{ person.firstName }} {{ person.lastName }}</h2></div>
-            <span class="status-pill">{{ person.account?.status || 'sans compte' }}</span>
-          </header>
-          <p class="person-room">{{ person.room ? person.room.houseName + ' · ' + person.room.name : 'Aucun lit attribué' }}</p>
-          <div class="form-grid compact-grid">
-            <label class="field"><span>Arrivée</span><input type="datetime-local" [disabled]="!canEditPerson(person)" [ngModel]="toInputDateTime(person.arrivalAt)" (ngModelChange)="updateDateTime(person, 'arrivalAt', $event)" /></label>
-            <label class="field"><span>Départ</span><input type="datetime-local" [disabled]="!canEditPerson(person)" [ngModel]="toInputDateTime(person.departureAt)" (ngModelChange)="updateDateTime(person, 'departureAt', $event)" /></label>
-          </div>
-          <div class="field"><span>Repas du {{ formatDate(selectedDate()) }}</span><div class="meal-checks">@for (meal of meals; track meal.value) { <button type="button" class="chip" [disabled]="!canEditPerson(person)" [class.active]="mealSelected(person, meal.value)" (click)="togglePersonMeal(person, meal.value)">{{ meal.label }}</button> }</div></div>
-          @if (canEditPerson(person)) { <button type="button" class="btn primary small" [disabled]="saving()" (click)="savePresence(person)">Enregistrer les horaires</button> }
-        } @else {
-          <div class="context-empty"><div class="eyebrow">Détail</div><h2>Sélectionnez une personne ou une responsabilité</h2><p>Le planning reste lisible : les réglages n’apparaissent qu’au moment utile.</p></div>
+            }
+            @if (taskForm.scheduledAt && taskForm.endsAt && !taskTimesValid()) { <p class="field-error">La fin doit être postérieure au début.</p> }
+            <button type="button" class="btn primary" [disabled]="saving() || !taskFormValid()" (click)="submitTask()">{{ editingTaskId ? 'Enregistrer' : 'Créer la responsabilité' }}</button>
+          </article>
         }
-      </article>
 
-      <article class="panel day-operations-panel">
-        <header class="context-header day-context-header">
-          <div><div class="eyebrow">Repas</div><h2>{{ formatDate(selectedDate()) }}</h2></div>
-          <input type="date" [min]="data.config.dailyStart" [max]="data.config.weddingDate" [ngModel]="selectedDate()" (ngModelChange)="selectDay($event)" />
-        </header>
-        <div class="compact-meals">
-          @for (mealDef of meals; track mealDef.value) {
-            @let meal = mealFor(mealDef.value);
-            <section class="compact-meal-row">
-              <header><strong>{{ mealDef.label }}</strong><span>{{ mealHeadcount(meal.kind) }} pers.</span></header>
-              <input [(ngModel)]="meal.menu" [disabled]="!canEditMeal(meal)" [attr.aria-label]="'Menu du ' + mealDef.label" placeholder="Menu prévu" />
-              <input [(ngModel)]="meal.notes" [disabled]="!canEditMeal(meal)" [attr.aria-label]="'Notes du ' + mealDef.label" placeholder="Note utile" />
-              <details class="meal-cooks"><summary>{{ meal.cookIds.length ? meal.cookIds.length + ' cuisinier(s)' : 'Aucun cuisinier' }}</summary><div class="chip-row">@for (account of data.accounts; track account.id) { <button type="button" class="chip" [disabled]="!auth.isOrganizer()" [class.active]="meal.cookIds.includes(account.id)" (click)="toggleCook(meal, account.id)">{{ account.name }}</button> }</div></details>
-              @if (canEditMeal(meal)) { <button type="button" class="btn secondary small" [disabled]="saving()" (click)="saveMeal(meal)">Enregistrer</button> }
-            </section>
+        <div class="responsibility-list full-responsibility-list">
+          @for (task of taskList(); track task.id) {
+            <article class="panel responsibility-card" [class.done-card]="task.status === 'done'">
+              <header><div><div class="eyebrow">{{ categoryLabel(task.category) }}</div><strong>{{ task.title }}</strong><small>{{ formatDate(task.scheduledAt) }} · {{ taskTime(task) }}</small></div><span class="status-pill" [class.done]="task.status === 'done'">{{ statusLabel(task.status) }}</span></header>
+              @if (task.notes) { <p>{{ task.notes }}</p> }
+              <div class="chip-row">@for (accountId of task.assigneeIds; track accountId) { <span class="chip active">{{ accountName(accountId) }}</span> } @empty { <span class="unassigned-label">Non affectée</span> }</div>
+              @if (canUpdateTask(task)) { <div class="row-actions"><button type="button" class="btn secondary small" (click)="updateTaskStatus(task, task.status === 'done' ? 'todo' : 'done')">{{ task.status === 'done' ? 'Rouvrir' : 'Terminer' }}</button>@if (task.status !== 'done') { <button type="button" class="btn ghost small" (click)="updateTaskStatus(task, 'in_progress')">En cours</button> }</div> }
+              @if (auth.isOrganizer()) { <div class="row-actions card-admin-actions"><button type="button" class="icon-button" aria-label="Modifier" (click)="editTask(task)"><app-icon name="edit" /></button><button type="button" class="icon-button danger" aria-label="Supprimer" (click)="requestDeleteTask(task)"><app-icon name="trash" /></button></div> }
+            </article>
+          } @empty {
+            <article class="panel empty-state">Aucune responsabilité planifiée.</article>
           }
         </div>
-      </article>
-    </div>
+      }
+
+      @case ('presence') {
+        <div class="hub-toolbar full-page-toolbar">
+          <label class="field compact-field"><span>Journée</span><input type="date" [min]="data.config.dailyStart" [max]="data.config.weddingDate" [ngModel]="selectedDate()" (ngModelChange)="selectDay($event)" /></label>
+          <div><strong>{{ formatDate(selectedDate()) }}</strong><span>{{ data.people.length }} personnes suivies</span></div>
+        </div>
+        <div class="people-grid presence-page-grid">
+          @for (person of data.people; track person.id) {
+            <article class="panel person-card" [class.person-present]="isPresentOnSelectedDate(person)">
+              <header>
+                <div><strong>{{ person.firstName }} {{ person.lastName }}</strong><small>{{ person.room ? person.room.houseName + ' · ' + person.room.name : 'Aucun lit attribué' }}</small></div>
+                <span class="status-pill">{{ isPresentOnSelectedDate(person) ? 'Sur place' : 'Absent' }}</span>
+              </header>
+              <div class="form-grid compact-grid">
+                <label class="field"><span>Arrivée</span><input type="datetime-local" [disabled]="!canEditPerson(person)" [ngModel]="toInputDateTime(person.arrivalAt)" (ngModelChange)="updateDateTime(person, 'arrivalAt', $event)" /></label>
+                <label class="field"><span>Départ</span><input type="datetime-local" [disabled]="!canEditPerson(person)" [ngModel]="toInputDateTime(person.departureAt)" (ngModelChange)="updateDateTime(person, 'departureAt', $event)" /></label>
+              </div>
+              <div class="field"><span>Repas pris sur place ce jour</span><div class="meal-checks">@for (meal of meals; track meal.value) { <button type="button" class="chip" [disabled]="!canEditPerson(person)" [class.active]="mealSelected(person, meal.value)" (click)="togglePersonMeal(person, meal.value)">{{ meal.label }}</button> }</div></div>
+              <div class="person-account-line"><span>Compte</span><strong>{{ person.account?.status || 'sans compte' }}</strong></div>
+              @if (canEditPerson(person)) { <button type="button" class="btn secondary small" [disabled]="saving()" (click)="savePresence(person)">Enregistrer les horaires</button> }
+            </article>
+          } @empty {
+            <article class="panel empty-state">Aucune personne à suivre.</article>
+          }
+        </div>
+      }
+
+      @case ('meals') {
+        <div class="hub-toolbar full-page-toolbar">
+          <label class="field compact-field"><span>Journée</span><input type="date" [min]="data.config.dailyStart" [max]="data.config.weddingDate" [ngModel]="selectedDate()" (ngModelChange)="selectDay($event)" /></label>
+          <div><strong>{{ formatDate(selectedDate()) }}</strong><span>Les effectifs viennent des présences déclarées.</span></div>
+        </div>
+        <div class="meal-grid full-meal-grid">
+          @for (mealDef of meals; track mealDef.value) {
+            @let meal = mealFor(mealDef.value);
+            <article class="panel meal-card full-meal-card">
+              <header><div><div class="eyebrow">{{ mealDef.label }}</div><strong>{{ mealHeadcount(meal.kind) }} personne{{ mealHeadcount(meal.kind) > 1 ? 's' : '' }}</strong></div></header>
+              <label class="field"><span>Menu</span><textarea rows="5" [(ngModel)]="meal.menu" [disabled]="!canEditMeal(meal)" placeholder="Menu prévu"></textarea></label>
+              <label class="field"><span>Notes</span><textarea rows="3" [(ngModel)]="meal.notes" [disabled]="!canEditMeal(meal)" placeholder="Allergies, matériel, horaires…"></textarea></label>
+              <div class="field"><span>Cuisiniers</span><div class="chip-row">@for (account of data.accounts; track account.id) { <button type="button" class="chip" [disabled]="!auth.isOrganizer()" [class.active]="meal.cookIds.includes(account.id)" (click)="toggleCook(meal, account.id)">{{ account.name }}</button> }</div></div>
+              @if (canEditMeal(meal)) { <button type="button" class="btn primary" [disabled]="saving()" (click)="saveMeal(meal)">Enregistrer le repas</button> }
+            </article>
+          }
+        </div>
+      }
+    }
   }
 
   @if (taskPendingDeletion; as task) {

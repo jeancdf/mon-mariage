@@ -11,7 +11,7 @@
           class="nav-item"
           [routerLink]="item.path"
           routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: true }">
+          [routerLinkActiveOptions]="{ exact: item.id !== 'final_weeks' }">
           <app-icon [name]="item.icon" />
           <span>{{ item.label }}</span>
         </a>

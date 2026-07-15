@@ -30,9 +30,31 @@ export const routes: Routes = [
       { path: 'a-faire', component: TodosComponent, canActivate: [permissionGuard], data: { section: 'todos' } },
       {
         path: 'dernieres-semaines',
-        loadComponent: () => import('./features/final-weeks/final-weeks.component').then(module => module.FinalWeeksComponent),
         canActivate: [permissionGuard],
         data: { section: 'final_weeks' },
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'gantt' },
+          {
+            path: 'gantt',
+            loadComponent: () => import('./features/final-weeks/final-weeks.component').then(module => module.FinalWeeksComponent),
+            data: { finalWeeksPage: 'gantt' },
+          },
+          {
+            path: 'taches',
+            loadComponent: () => import('./features/final-weeks/final-weeks.component').then(module => module.FinalWeeksComponent),
+            data: { finalWeeksPage: 'tasks' },
+          },
+          {
+            path: 'presences',
+            loadComponent: () => import('./features/final-weeks/final-weeks.component').then(module => module.FinalWeeksComponent),
+            data: { finalWeeksPage: 'presence' },
+          },
+          {
+            path: 'repas',
+            loadComponent: () => import('./features/final-weeks/final-weeks.component').then(module => module.FinalWeeksComponent),
+            data: { finalWeeksPage: 'meals' },
+          },
+        ],
       },
       {
         path: 'administration',

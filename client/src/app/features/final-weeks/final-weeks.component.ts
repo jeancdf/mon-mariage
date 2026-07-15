@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import {
   FinalWeeksApiService,
@@ -44,6 +45,9 @@ interface GanttRow {
   trackHeight: number;
 }
 
+type FinalWeeksPage = 'gantt' | 'tasks' | 'presence' | 'meals';
+type GanttMode = 'week' | 'day';
+
 const DEFAULT_TASK_DURATION = 2 * 60 * 60 * 1000;
 
 const MEALS: Array<{ value: MealKind; label: string }> = [
@@ -64,23 +68,26 @@ const CATEGORIES: Array<{ value: TaskCategory; label: string }> = [
 @Component({
   selector: 'app-final-weeks',
   standalone: true,
-  imports: [FormsModule, IconComponent, ConfirmDialogComponent],
+  imports: [FormsModule, RouterLink, RouterLinkActive, IconComponent, ConfirmDialogComponent],
   templateUrl: './final-weeks.component.html',
 })
 export class FinalWeeksComponent {
   private readonly api = inject(FinalWeeksApiService);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
   readonly auth = inject(AuthService);
+  readonly page = (this.route.snapshot.data['finalWeeksPage'] ?? 'gantt') as FinalWeeksPage;
 
   readonly hub = signal<FinalWeeksHub | null>(null);
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly selectedDate = signal('');
-  readonly selectedPersonId = signal<string | null>(null);
   readonly selectedTaskId = signal<string | null>(null);
   readonly showTaskForm = signal(false);
+  readonly ganttMode = signal<GanttMode>('week');
   readonly meals = MEALS;
   readonly categories = CATEGORIES;
+  readonly ganttHours = [0, 3, 6, 9, 12, 15, 18, 21];
   readonly weekdays = [
     { value: 1, label: 'Lun' }, { value: 2, label: 'Mar' }, { value: 3, label: 'Mer' },
     { value: 4, label: 'Jeu' }, { value: 5, label: 'Ven' }, { value: 6, label: 'Sam' },
@@ -108,8 +115,11 @@ export class FinalWeeksComponent {
   readonly ganttRows = computed<GanttRow[]>(() => {
     const hub = this.hub();
     if (!hub) return [];
-    const start = new Date(`${hub.config.dailyStart}T00:00:00`).getTime();
-    const end = new Date(`${this.addDays(hub.config.weddingDate, 1)}T00:00:00`).getTime();
+    const dayMode = this.ganttMode() === 'day';
+    const rangeStart = dayMode ? this.selectedDate() : hub.config.dailyStart;
+    const rangeEnd = dayMode ? this.addDays(rangeStart, 1) : this.addDays(hub.config.weddingDate, 1);
+    const start = new Date(`${rangeStart}T00:00:00`).getTime();
+    const end = new Date(`${rangeEnd}T00:00:00`).getTime();
     const visibleTasks = hub.tasks
       .filter(task => {
         const taskStart = new Date(task.scheduledAt).getTime();
@@ -183,14 +193,9 @@ export class FinalWeeksComponent {
     return rows;
   });
 
-  readonly selectedPerson = computed(() => this.hub()?.people.find(person => person.id === this.selectedPersonId()) ?? null);
   readonly selectedTask = computed(() => this.hub()?.tasks.find(task => task.id === this.selectedTaskId()) ?? null);
-  readonly earlierTasks = computed(() => {
-    const hub = this.hub();
-    return hub ? hub.tasks
-      .filter(task => this.toInputDateTime(task.scheduledAt).slice(0, 10) < hub.config.dailyStart)
-      .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt)) : [];
-  });
+  readonly taskList = computed(() => [...(this.hub()?.tasks ?? [])]
+    .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt)));
 
   constructor() {
     void this.reload();
@@ -200,12 +205,8 @@ export class FinalWeeksComponent {
     try {
       const hub = await this.api.load();
       this.hub.set(hub);
-      this.selectedDate.set(this.clampDate(this.selectedDate() || hub.config.today, hub.config.dailyStart, hub.config.weddingDate));
-      const selectedPersonExists = hub.people.some(person => person.id === this.selectedPersonId());
-      if (!selectedPersonExists && !this.selectedTaskId()) {
-        const ownPerson = hub.people.find(person => person.id === this.auth.account()?.guestId);
-        this.selectedPersonId.set((ownPerson ?? hub.people[0])?.id ?? null);
-      }
+      const minimumDate = this.page === 'tasks' ? hub.config.preparationStart : hub.config.dailyStart;
+      this.selectedDate.set(this.clampDate(this.selectedDate() || hub.config.today, minimumDate, hub.config.weddingDate));
       if (this.selectedTaskId() && !hub.tasks.some(task => task.id === this.selectedTaskId())) {
         this.selectedTaskId.set(null);
       }
@@ -214,10 +215,6 @@ export class FinalWeeksComponent {
     } finally {
       this.loading.set(false);
     }
-  }
-
-  phaseLabel(phase: FinalWeeksHub['config']['phase']): string {
-    return ({ before: 'Préparation à venir', weekly: 'Jalons hebdomadaires', daily: 'Centre de commandement quotidien', complete: 'Mariage passé' })[phase];
   }
 
   formatDate(date: string, withTime = false): string {
@@ -249,15 +246,25 @@ export class FinalWeeksComponent {
     this.selectedDate.set(date);
   }
 
-  selectPerson(person: FinalWeeksPerson): void {
-    this.selectedPersonId.set(person.id);
-    this.selectedTaskId.set(null);
-    this.showTaskForm.set(false);
+  openGanttDay(date: string): void {
+    this.selectedDate.set(date);
+    this.ganttMode.set('day');
+  }
+
+  setGanttMode(mode: GanttMode): void {
+    this.ganttMode.set(mode);
+  }
+
+  ganttRangeLabel(): string {
+    const hub = this.hub();
+    if (!hub) return '';
+    return this.ganttMode() === 'week'
+      ? `${this.formatDate(hub.config.dailyStart)} → ${this.formatDate(hub.config.weddingDate)}`
+      : this.formatDate(this.selectedDate());
   }
 
   selectTask(task: FinalWeeksTask): void {
     this.selectedTaskId.set(task.id);
-    this.selectedPersonId.set(null);
     this.showTaskForm.set(false);
     const date = this.toInputDateTime(task.scheduledAt).slice(0, 10);
     const hub = this.hub();
@@ -270,6 +277,10 @@ export class FinalWeeksComponent {
 
   canEditPerson(person: FinalWeeksPerson): boolean {
     return this.auth.isOrganizer() || this.auth.account()?.guestId === person.id;
+  }
+
+  isPresentOnSelectedDate(person: FinalWeeksPerson): boolean {
+    return this.presentOnDate(person, this.selectedDate());
   }
 
   mealSelected(person: FinalWeeksPerson, kind: MealKind): boolean {
@@ -351,7 +362,6 @@ export class FinalWeeksComponent {
       untilDate: hub.config.weddingDate,
     };
     this.selectedTaskId.set(null);
-    this.selectedPersonId.set(null);
     this.showTaskForm.set(true);
   }
 
@@ -393,7 +403,13 @@ export class FinalWeeksComponent {
   taskFormValid(): boolean {
     return Boolean(
       this.taskForm.title.trim()
-      && this.taskForm.scheduledAt
+      && this.taskTimesValid(),
+    );
+  }
+
+  taskTimesValid(): boolean {
+    return Boolean(
+      this.taskForm.scheduledAt
       && this.taskForm.endsAt
       && new Date(this.taskForm.endsAt) > new Date(this.taskForm.scheduledAt),
     );
