@@ -39,6 +39,16 @@
     <a class="auth-switch" [routerLink]="isClaim ? '/connexion' : '/activer'">
       {{ isClaim ? 'J’ai déjà activé mon compte' : 'Première connexion ? Activer mon compte' }}
     </a>
+
+    <div class="demo-invite">
+      <div class="demo-invite-label">Vous découvrez ce projet ?</div>
+      <button class="btn secondary demo-button" type="button" [disabled]="demoLoading()" (click)="startDemo()">
+        {{ demoLoading() ? 'Préparation…' : 'Explorer la démonstration' }}
+      </button>
+      <p class="demo-invite-note">
+        Jeu de données fictif, chargé dans votre navigateur. Aucune donnée réelle n’est accessible.
+      </p>
+    </div>
   </section>
 </main>
 

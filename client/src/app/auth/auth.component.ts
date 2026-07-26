@@ -16,6 +16,7 @@ export class AuthComponent {
 
   readonly isClaim = this.route.snapshot.data['mode'] === 'claim';
   readonly loading = signal(false);
+  readonly demoLoading = signal(false);
   email = '';
   password = '';
   passwordConfirmation = '';
@@ -43,6 +44,20 @@ export class AuthComponent {
         : 'Adresse e-mail ou mot de passe incorrect.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  /** Opens the read-anything, break-nothing sandbox used for portfolio visits. */
+  async startDemo(): Promise<void> {
+    this.demoLoading.set(true);
+    this.error = '';
+    try {
+      await this.auth.enterDemo();
+      await this.router.navigateByUrl('/dashboard');
+    } catch {
+      this.error = 'Impossible de démarrer la démonstration.';
+    } finally {
+      this.demoLoading.set(false);
     }
   }
 
