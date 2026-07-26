@@ -28,7 +28,7 @@ export interface DemoDataset {
   profiles: AdminProfile[];
 }
 
-export const DEMO_SECTIONS: SectionKey[] = [
+const DEMO_SECTIONS: SectionKey[] = [
   'dashboard', 'guests', 'vendors', 'housing', 'seating', 'budget', 'todos', 'final_weeks',
 ];
 
@@ -56,7 +56,7 @@ const DAILY_START = shiftDays(WEDDING_DATE, -7);
 const PREPARATION_START = shiftDays(WEDDING_DATE, -56);
 
 /** The eight days rendered by the final-weeks gantt: J−7 through the wedding day. */
-export const DEMO_DAYS: string[] = Array.from({ length: 8 }, (_, offset) => shiftDays(DAILY_START, offset));
+const DEMO_DAYS: string[] = Array.from({ length: 8 }, (_, offset) => shiftDays(DAILY_START, offset));
 
 const demoPermissions = (): Record<SectionKey, SectionPermission> =>
   Object.fromEntries(
@@ -335,14 +335,14 @@ const buildPresences = (): Record<string, DemoPresence> => {
     dg4: { arrivalAt: at(j4, '11:30'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j4, j3, j2, j1, jourJ], allKinds) },
     dg4__plus_one: { arrivalAt: at(j4, '11:30'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j4, j3, j2, j1, jourJ], allKinds) },
     dg5: { arrivalAt: at(j3, '18:45'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j2, j1, jourJ], allKinds) },
-    'dg5__plus_one': { arrivalAt: at(j3, '18:45'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j2, j1, jourJ], allKinds) },
+    dg5__plus_one: { arrivalAt: at(j3, '18:45'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j2, j1, jourJ], allKinds) },
     'dg5-k1': { arrivalAt: at(j3, '18:45'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j2, j1, jourJ], allKinds) },
     dg6: { arrivalAt: at(j6, '09:00'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j6, j5, j4, j3, j2, j1, jourJ], allKinds) },
     dg7: { arrivalAt: at(j2, '14:00'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j2, j1, jourJ], allKinds) },
-    'dg7__plus_one': { arrivalAt: at(j2, '14:00'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j2, j1, jourJ], allKinds) },
+    dg7__plus_one: { arrivalAt: at(j2, '14:00'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j2, j1, jourJ], allKinds) },
     'dg7-k1': { arrivalAt: at(j2, '14:00'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j2, j1, jourJ], allKinds) },
     dg8: { arrivalAt: at(j1, '19:20'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([jourJ], allKinds) },
-    'dg8__plus_one': { arrivalAt: at(j1, '19:20'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([jourJ], allKinds) },
+    dg8__plus_one: { arrivalAt: at(j1, '19:20'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([jourJ], allKinds) },
     dg9: { arrivalAt: at(j3, '12:00'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j3, j2, j1, jourJ], allKinds) },
     dg10: { arrivalAt: at(j1, '15:00'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j1, jourJ], ['lunch', 'dinner']) },
     dg13: { arrivalAt: at(j2, '17:00'), departureAt: at(jourJ, '23:59'), mealSelections: mealsFor([j1, jourJ], allKinds) },
@@ -481,6 +481,3 @@ export const createDemoDataset = (): DemoDataset => ({
   accounts: buildAccounts(),
   profiles: buildProfiles(),
 });
-
-export const DEMO_TODAY = TODAY;
-export const DEMO_WEDDING_DATE = WEDDING_DATE;
