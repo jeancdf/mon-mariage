@@ -13,19 +13,6 @@ export class AuthController {
   constructor(private readonly accountsService: AccountsService) {}
 
   @Public()
-  @Post('claim')
-  async claim(
-    @Body() body: { email?: string; eventCode?: string; password?: string },
-    @Req() request: PublicRequest,
-    @Res({ passthrough: true }) response: CookieResponse,
-  ): Promise<Record<string, unknown>> {
-    const account = await this.accountsService.claim(body.email, body.eventCode, body.password ?? '');
-    const { csrfToken } = await this.accountsService.createSession(account, response, String(request.headers['user-agent'] ?? ''));
-    const hydrated = await this.accountsService.loadAccountForResponse(account.id);
-    return { account: this.accountsService.serializeAccount(hydrated), csrfToken };
-  }
-
-  @Public()
   @Post('login')
   async login(
     @Body() body: { email?: string; password?: string },
@@ -42,6 +29,19 @@ export class AuthController {
   @Get('setup')
   setupStatus(): Promise<{ configured: boolean }> {
     return this.accountsService.setupStatus();
+  }
+
+  @Public()
+  @Post('invitation/verify')
+  verifyInvitation(@Body() body: { token?: string }): Promise<{ valid: true }> {
+    return this.accountsService.verifyInvitation(body.token ?? '');
+  }
+
+  @Public()
+  @Post('invitation/accept')
+  async acceptInvitation(@Body() body: { token?: string; password?: string }): Promise<{ success: true }> {
+    await this.accountsService.acceptInvitation(body.token ?? '', body.password ?? '');
+    return { success: true };
   }
 
   @Get('me')

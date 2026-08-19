@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -19,9 +18,11 @@ import { AccountEntity } from './entities/account.entity';
 import { PermissionEntity } from './entities/permission.entity';
 import { SessionEntity } from './entities/session.entity';
 import { AccessProfileKey, CookieResponse, SECTION_KEYS, SectionKey } from './auth.types';
+import { InvitationMailerService } from './invitation-mailer.service';
 
 const COOKIE_NAME = 'mm_session';
 const SESSION_DURATION_MS = 12 * 60 * 60 * 1000;
+const INVITATION_DURATION_MS = 48 * 60 * 60 * 1000;
 const PROFILE_NAMES: Record<AccessProfileKey, string> = {
   organizer: 'Organisateurs',
   parent: 'Parents',
@@ -71,27 +72,13 @@ export class AccountsService implements OnModuleInit {
     @InjectRepository(GuestEntity) private readonly guestsRepository: Repository<GuestEntity>,
     private readonly passwords: PasswordService,
     private readonly config: ConfigService,
+    private readonly invitationMailer: InvitationMailerService,
   ) {}
 
   async onModuleInit(): Promise<void> {
     this.validateProductionConfiguration();
     await this.seedProfiles();
     await this.ensureBootstrapOrganizer();
-  }
-
-  async claim(emailValue: unknown, eventCode: unknown, password: string): Promise<AccountEntity> {
-    const email = normalizeEmail(emailValue);
-    this.assertUsableEmail(email);
-    if (!this.safeEqual(String(eventCode ?? ''), this.config.get<string>('PRIVATE_EVENT_CODE', 'dev-event-code'))) {
-      throw new ForbiddenException('Code privé incorrect.');
-    }
-    const account = await this.accountWithPassword(email);
-    if (!account || account.status !== 'pending' || account.passwordHash) {
-      throw new BadRequestException("Ce compte ne peut pas être activé.");
-    }
-    account.passwordHash = await this.passwords.hash(password);
-    account.status = 'active';
-    return this.accountsRepository.save(account);
   }
 
   async login(emailValue: unknown, password: string, ip: string): Promise<AccountEntity> {
@@ -104,6 +91,33 @@ export class AccountsService implements OnModuleInit {
     account.lastLoginAt = new Date();
     account.lastLoginIp = String(ip ?? '').slice(0, 200);
     return this.accountsRepository.save(account);
+  }
+
+  async verifyInvitation(token: string): Promise<{ valid: true }> {
+    await this.findAccountByInvitation(token);
+    return { valid: true };
+  }
+
+  async acceptInvitation(token: string, password: string): Promise<void> {
+    if (!this.isInvitationToken(token)) throw new BadRequestException('Invitation invalide ou expirée.');
+    const passwordHash = await this.passwords.hash(password);
+    const result = await this.accountsRepository.createQueryBuilder()
+      .update(AccountEntity)
+      .set({
+        passwordHash,
+        status: 'active',
+        invitationTokenHash: null,
+        invitationExpiresAt: null,
+      })
+      .where('"invitationTokenHash" = :tokenHash', { tokenHash: this.hashInvitationToken(token) })
+      .andWhere('"invitationExpiresAt" > :now', { now: new Date() })
+      .andWhere('status != :disabled', { disabled: 'disabled' })
+      .returning('id')
+      .execute();
+    if (result.affected !== 1 || !result.raw[0]?.id) {
+      throw new BadRequestException('Invitation invalide ou expirée.');
+    }
+    await this.sessionsRepository.update({ accountId: result.raw[0].id, revokedAt: IsNull() }, { revokedAt: new Date() });
   }
 
   async createSession(account: AccountEntity, response: CookieResponse, userAgent: string): Promise<{ csrfToken: string }> {
@@ -267,7 +281,10 @@ export class AccountsService implements OnModuleInit {
 
   async listAccounts(): Promise<Array<Record<string, unknown>>> {
     const [accounts, guests] = await Promise.all([
-      this.accountsRepository.find({ order: { email: 'ASC' } }),
+      this.accountsRepository.createQueryBuilder('account')
+        .addSelect('account.passwordHash')
+        .orderBy('account.email', 'ASC')
+        .getMany(),
       this.guestsRepository.find(),
     ]);
     const guestById = new Map(guests.map(guest => [guest.id, guest]));
@@ -278,6 +295,9 @@ export class AccountsService implements OnModuleInit {
         guestId: account.guestId,
         email: account.email,
         status: account.status,
+        hasPassword: Boolean(account.passwordHash),
+        invitationSentAt: account.invitationSentAt,
+        invitationExpiresAt: account.invitationExpiresAt,
         profileKey: account.profileKey,
         isOrganizer: account.isOrganizer,
         lastLoginAt: account.lastLoginAt,
@@ -286,7 +306,7 @@ export class AccountsService implements OnModuleInit {
     });
   }
 
-  async enableGuestAccount(guestId: string): Promise<AccountEntity> {
+  async enableGuestAccount(guestId: string): Promise<void> {
     const guest = await this.guestsRepository.findOne({ where: { id: guestId } });
     if (!guest) throw new NotFoundException('Invité introuvable.');
     const email = normalizeEmail(guest.email);
@@ -310,13 +330,29 @@ export class AccountsService implements OnModuleInit {
         lastLoginAt: null,
         lastLoginIp: '',
       });
-    } else if (account.status === 'disabled') {
-      account.status = account.passwordHash ? 'active' : 'pending';
+    } else {
+      account.email = email;
+      account.profileKey = profileForOrganizationRole(guest.organizationRole);
+      if (!account.passwordHash) account.status = 'pending';
     }
-    return this.accountsRepository.save(account);
+    account = await this.accountsRepository.save(account);
+    await this.sendInvitation(account, `${guest.firstName} ${guest.lastName}`.trim());
   }
 
-  async setAccountStatus(accountId: string, status: 'pending' | 'active' | 'disabled'): Promise<void> {
+  async inviteAccount(accountId: string): Promise<void> {
+    const account = await this.accountsRepository.createQueryBuilder('account')
+      .addSelect('account.passwordHash')
+      .where('account.id = :accountId', { accountId })
+      .getOne();
+    if (!account || account.isOrganizer) throw new NotFoundException('Compte introuvable.');
+    if (account.status === 'disabled') throw new BadRequestException("Réactivez ce compte avant d'envoyer une invitation.");
+    const guest = account.guestId ? await this.guestsRepository.findOne({ where: { id: account.guestId } }) : null;
+    const name = guest ? `${guest.firstName} ${guest.lastName}`.trim() : account.email;
+    await this.sendInvitation(account, name);
+  }
+
+  async setAccountStatus(accountId: string, status: 'active' | 'disabled'): Promise<void> {
+    if (!['active', 'disabled'].includes(status)) throw new BadRequestException('Statut de compte invalide.');
     const account = await this.accountsRepository.createQueryBuilder('account')
       .addSelect('account.passwordHash')
       .where('account.id = :accountId', { accountId })
@@ -326,34 +362,16 @@ export class AccountsService implements OnModuleInit {
       throw new BadRequestException("Le compte organisateur principal ne peut pas être désactivé.");
     }
     if (status === 'active' && !account.passwordHash) {
-      throw new BadRequestException("Ce compte doit d'abord être activé par son titulaire.");
+      throw new BadRequestException("L'utilisateur doit d'abord créer son mot de passe depuis son invitation.");
     }
-    if (status === 'pending') account.passwordHash = null;
+    if (status === 'disabled' && !account.passwordHash) {
+      throw new BadRequestException("Un compte en attente d'invitation ne peut pas être désactivé.");
+    }
     account.status = status;
     await this.accountsRepository.save(account);
     if (status !== 'active') {
       await this.sessionsRepository.update({ accountId, revokedAt: IsNull() }, { revokedAt: new Date() });
     }
-  }
-
-  async resetAccount(accountId: string, newPassword?: string): Promise<void> {
-    const account = await this.accountsRepository.createQueryBuilder('account')
-      .addSelect('account.passwordHash')
-      .where('account.id = :accountId', { accountId })
-      .getOne();
-    if (!account) throw new NotFoundException('Compte introuvable.');
-    if (account.isOrganizer && !newPassword) {
-      throw new BadRequestException("Le compte organisateur principal ne peut pas être remis en attente.");
-    }
-    if (newPassword) {
-      account.passwordHash = await this.passwords.hash(newPassword);
-      account.status = 'active';
-    } else {
-      account.passwordHash = null;
-      account.status = 'pending';
-    }
-    await this.accountsRepository.save(account);
-    await this.sessionsRepository.update({ accountId, revokedAt: IsNull() }, { revokedAt: new Date() });
   }
 
   async listProfiles(): Promise<AccessProfileEntity[]> {
@@ -454,14 +472,18 @@ export class AccountsService implements OnModuleInit {
 
   private validateProductionConfiguration(): void {
     if (this.config.get<string>('NODE_ENV') !== 'production') return;
-    const required = ['SESSION_SECRET', 'PRIVATE_EVENT_CODE', 'BOOTSTRAP_ORGANIZER_EMAIL', 'BOOTSTRAP_ORGANIZER_PASSWORD'];
+    const required = [
+      'SESSION_SECRET',
+      'BOOTSTRAP_ORGANIZER_EMAIL',
+      'BOOTSTRAP_ORGANIZER_PASSWORD',
+      'PUBLIC_APP_URL',
+      'SMTP_HOST',
+      'MAIL_FROM',
+    ];
     const missing = required.filter(key => !this.config.get<string>(key));
     if (missing.length) throw new Error(`Configuration de sécurité manquante: ${missing.join(', ')}`);
     if ((this.config.get<string>('SESSION_SECRET') ?? '').length < 32) {
       throw new Error('SESSION_SECRET doit contenir au moins 32 caractères.');
-    }
-    if ((this.config.get<string>('PRIVATE_EVENT_CODE') ?? '').length < 8) {
-      throw new Error('PRIVATE_EVENT_CODE doit contenir au moins 8 caractères.');
     }
   }
 
@@ -472,6 +494,38 @@ export class AccountsService implements OnModuleInit {
 
   private hashCsrfToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  private hashInvitationToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async findAccountByInvitation(token: string): Promise<AccountEntity> {
+    if (!this.isInvitationToken(token)) {
+      throw new BadRequestException('Invitation invalide ou expirée.');
+    }
+    const account = await this.accountsRepository.createQueryBuilder('account')
+      .addSelect('account.passwordHash')
+      .addSelect('account.invitationTokenHash')
+      .where('account.invitationTokenHash = :tokenHash', { tokenHash: this.hashInvitationToken(token) })
+      .getOne();
+    if (!account || !account.invitationExpiresAt || account.invitationExpiresAt.getTime() <= Date.now() || account.status === 'disabled') {
+      throw new BadRequestException('Invitation invalide ou expirée.');
+    }
+    return account;
+  }
+
+  private isInvitationToken(token: string): boolean {
+    return /^[A-Za-z0-9_-]{40,100}$/.test(token);
+  }
+
+  private async sendInvitation(account: AccountEntity, name: string): Promise<void> {
+    const token = randomBytes(32).toString('base64url');
+    account.invitationTokenHash = this.hashInvitationToken(token);
+    account.invitationSentAt = new Date();
+    account.invitationExpiresAt = new Date(Date.now() + INVITATION_DURATION_MS);
+    await this.accountsRepository.save(account);
+    await this.invitationMailer.sendAccountInvitation({ email: account.email, name, token });
   }
 
   private csrfTokenForSession(session: SessionEntity): string {

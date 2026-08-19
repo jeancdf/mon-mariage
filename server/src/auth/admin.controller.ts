@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import type { AuthenticatedRequest, AccessProfileKey, SectionKey } from './auth.types';
 import { AccountsService } from './accounts.service';
 import { OrganizerOnly } from './auth.decorators';
@@ -14,7 +14,10 @@ export class AdminController {
   }
 
   @Post('accounts/guests/:guestId')
-  async enableGuest(@Req() request: AuthenticatedRequest, @Param('guestId') guestId: string): Promise<{ success: true }> {
+  async enableGuest(
+    @Req() request: AuthenticatedRequest,
+    @Param('guestId') guestId: string,
+  ): Promise<{ success: true }> {
     await this.accountsService.enableGuestAccount(guestId);
     return { success: true };
   }
@@ -23,19 +26,18 @@ export class AdminController {
   async setStatus(
     @Req() request: AuthenticatedRequest,
     @Param('accountId') accountId: string,
-    @Body() body: { status: 'pending' | 'active' | 'disabled' },
+    @Body() body: { status: 'active' | 'disabled' },
   ): Promise<{ success: true }> {
     await this.accountsService.setAccountStatus(accountId, body.status);
     return { success: true };
   }
 
-  @Post('accounts/:accountId/reset')
-  async reset(
+  @Post('accounts/:accountId/invite')
+  async invite(
     @Req() request: AuthenticatedRequest,
     @Param('accountId') accountId: string,
-    @Body() body: { newPassword?: string },
   ): Promise<{ success: true }> {
-    await this.accountsService.resetAccount(accountId, body.newPassword);
+    await this.accountsService.inviteAccount(accountId);
     return { success: true };
   }
 

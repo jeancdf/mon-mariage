@@ -17,7 +17,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     if (error instanceof HttpErrorResponse && error.status === 401) {
       state.clear();
       const authenticationRequest = request.url.includes('/api/auth/login')
-        || request.url.includes('/api/auth/claim')
+        || request.url.includes('/api/auth/invitation/')
         || request.url.includes('/api/auth/me');
       if (!authenticationRequest) queueMicrotask(() => void router.navigateByUrl('/connexion'));
     }

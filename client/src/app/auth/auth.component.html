@@ -1,44 +1,23 @@
 <main class="auth-page">
   <section class="auth-card">
     <div class="script-note">Mariage · espace privé</div>
-    <h1>{{ isClaim ? 'Activer mon accès' : 'Se connecter' }}</h1>
-    <p class="muted">
-      {{ isClaim
-        ? "Utilisez l'adresse enregistrée par les organisateurs et le code privé de l'événement."
-        : 'Retrouvez le planning et les responsabilités des dernières semaines.' }}
-    </p>
+    <h1>Se connecter</h1>
+    <p class="muted">Les accès sont créés et transmis directement par les organisateurs.</p>
 
     <form (ngSubmit)="submit()">
       <label class="field">
         <span>Adresse e-mail</span>
         <input type="email" name="email" autocomplete="email" [(ngModel)]="email" required autofocus />
       </label>
-      @if (isClaim) {
-        <label class="field">
-          <span>Code privé de l’événement</span>
-          <input type="password" name="eventCode" autocomplete="one-time-code" [(ngModel)]="eventCode" required />
-        </label>
-      }
       <label class="field">
-        <span>{{ isClaim ? 'Nouveau mot de passe' : 'Mot de passe' }}</span>
-        <input type="password" name="password" [attr.autocomplete]="isClaim ? 'new-password' : 'current-password'" [(ngModel)]="password" minlength="12" required />
-        @if (isClaim) { <small>12 caractères minimum</small> }
+        <span>Mot de passe</span>
+        <input type="password" name="password" autocomplete="current-password" [(ngModel)]="password" required />
       </label>
-      @if (isClaim) {
-        <label class="field">
-          <span>Confirmer le mot de passe</span>
-          <input type="password" name="confirmation" autocomplete="new-password" [(ngModel)]="passwordConfirmation" required />
-        </label>
-      }
       @if (error) { <p class="form-error" role="alert">{{ error }}</p> }
       <button class="btn primary auth-submit" type="submit" [disabled]="loading() || !email || !password">
-        {{ loading() ? 'Veuillez patienter…' : (isClaim ? 'Activer mon compte' : 'Se connecter') }}
+        {{ loading() ? 'Veuillez patienter…' : 'Se connecter' }}
       </button>
     </form>
-
-    <a class="auth-switch" [routerLink]="isClaim ? '/connexion' : '/activer'">
-      {{ isClaim ? 'J’ai déjà activé mon compte' : 'Première connexion ? Activer mon compte' }}
-    </a>
   </section>
 </main>
 

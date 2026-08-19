@@ -1,26 +1,117 @@
 <section class="page page-wide admin-page">
-  <header class="page-header"><div class="script-note">Accès et sécurité</div><h1>Administration</h1><p>Comptes nominatifs et droits par profil</p></header>
-  @if (loading()) { <article class="panel">Chargement…</article> } @else {
+  <header class="page-header">
+    <div class="script-note">Accès et sécurité</div>
+    <h1>Administration</h1>
+    <p>Créez les comptes ici : chaque utilisateur recevra un lien personnel pour choisir son mot de passe.</p>
+  </header>
+
+  @if (loading()) {
+    <article class="panel">Chargement…</article>
+  } @else {
     <article class="panel admin-section">
-      <header><div><div class="eyebrow">Comptes</div><h2>Accès préparés</h2></div></header>
-      <div class="table-card"><table><thead><tr><th>Personne</th><th>E-mail</th><th>Profil</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead><tbody>
-        @for (account of accounts(); track account.id) { <tr><td><strong>{{ account.name }}</strong></td><td>{{ account.email }}</td><td>{{ account.profileKey }}</td><td><select [disabled]="account.isOrganizer" [ngModel]="account.status" (ngModelChange)="setStatus(account, $event)"><option value="pending">En attente</option><option value="active">Actif</option><option value="disabled">Désactivé</option></select></td><td>{{ account.lastLoginAt ? (account.lastLoginAt | date:'short') : 'Jamais' }}</td><td>@if (!account.isOrganizer) { <button class="btn ghost small" type="button" (click)="resetPending = account">Réinitialiser</button> }</td></tr> }
-      </tbody></table></div>
-      <div class="unregistered-guests"><div class="eyebrow">Invités avec e-mail sans compte</div><div class="chip-row">@for (guest of store.guests(); track guest.id) { @if (guest.email && !hasAccount(guest.id)) { <button class="chip" type="button" (click)="enableGuest(guest.id)">+ {{ guest.firstName }} {{ guest.lastName }}</button> } }</div></div>
+      <header>
+        <div>
+          <div class="eyebrow">Comptes</div>
+          <h2>Accès internes</h2>
+        </div>
+      </header>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Personne</th>
+              <th>E-mail</th>
+              <th>Profil</th>
+              <th>Statut</th>
+              <th>Dernière connexion</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (account of accounts(); track account.id) {
+              <tr>
+                <td><strong>{{ account.name }}</strong></td>
+                <td>{{ account.email }}</td>
+                <td>{{ account.profileKey }}</td>
+                <td>
+                  <select
+                    [disabled]="account.isOrganizer || account.status === 'pending'"
+                    [ngModel]="account.status"
+                    (ngModelChange)="setStatus(account, $event)"
+                  >
+                    @if (account.status === 'pending') {
+                      <option value="pending" disabled>Mot de passe à définir</option>
+                    }
+                    <option value="active" [disabled]="!account.hasPassword">Actif</option>
+                    <option value="disabled">Désactivé</option>
+                  </select>
+                </td>
+                <td>{{ account.lastLoginAt ? (account.lastLoginAt | date:'short') : 'Jamais' }}</td>
+                <td>
+                  @if (!account.isOrganizer && account.status !== 'disabled') {
+                    <button class="btn ghost small" type="button" [disabled]="invitationPendingId === account.id" (click)="inviteAccount(account)">
+                      {{ invitationPendingId === account.id
+                        ? 'Envoi…'
+                        : (account.invitationSentAt ? 'Renvoyer l’invitation' : (account.hasPassword ? 'Envoyer un lien de nouveau mot de passe' : 'Envoyer l’invitation')) }}
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="unregistered-guests">
+        <div class="eyebrow">Invités avec e-mail sans compte</div>
+        <div class="chip-row">
+          @for (guest of store.guests(); track guest.id) {
+            @if (guest.email && !hasAccount(guest.id)) {
+              <button class="chip" type="button" [disabled]="invitationPendingId === guest.id" (click)="inviteGuest(guest)">
+                {{ invitationPendingId === guest.id ? 'Envoi…' : '+ Créer et inviter' }} {{ guest.firstName }} {{ guest.lastName }}
+              </button>
+            }
+          }
+        </div>
+      </div>
     </article>
 
     <div class="profile-grid">
       @for (profile of profiles(); track profile.key) {
-        <article class="panel profile-card"><header><div class="eyebrow">Profil</div><input [(ngModel)]="profile.name" [disabled]="profile.key === 'organizer'" /></header>
-          <div class="permission-table"><div class="permission-row head"><span>Section</span><span>Voir</span><span>Modifier</span></div>
-            @for (section of sections; track section.key) { @let right = permission(profile, section.key); <div class="permission-row"><span>{{ section.label }}</span><input type="checkbox" [(ngModel)]="right.canView" [disabled]="profile.key === 'organizer'" /><input type="checkbox" [(ngModel)]="right.canEdit" [disabled]="profile.key === 'organizer' || !right.canView" /></div> }
-          </div><button type="button" class="btn primary" (click)="saveProfile(profile)">Enregistrer ce profil</button>
+        <article class="panel profile-card">
+          <header>
+            <div class="eyebrow">Profil</div>
+            <input [(ngModel)]="profile.name" [disabled]="profile.key === 'organizer'" />
+          </header>
+          <div class="permission-table">
+            <div class="permission-row head"><span>Section</span><span>Voir</span><span>Modifier</span></div>
+            @for (section of sections; track section.key) {
+              @let right = permission(profile, section.key);
+              <div class="permission-row">
+                <span>{{ section.label }}</span>
+                <input type="checkbox" [(ngModel)]="right.canView" [disabled]="profile.key === 'organizer'" />
+                <input type="checkbox" [(ngModel)]="right.canEdit" [disabled]="profile.key === 'organizer' || !right.canView" />
+              </div>
+            }
+          </div>
+          <button type="button" class="btn primary" (click)="saveProfile(profile)">Enregistrer ce profil</button>
         </article>
       }
     </div>
 
-    <article class="panel password-panel"><div><div class="eyebrow">Mon compte</div><h2>Changer mon mot de passe</h2></div><div class="inline-form"><input type="password" [(ngModel)]="currentPassword" autocomplete="current-password" placeholder="Mot de passe actuel" /><input type="password" [(ngModel)]="newPassword" autocomplete="new-password" minlength="12" placeholder="Nouveau mot de passe" /><button type="button" class="btn secondary" [disabled]="!currentPassword || newPassword.length < 12" (click)="changePassword()">Modifier</button></div></article>
+    <article class="panel password-panel">
+      <div>
+        <div class="eyebrow">Mon compte</div>
+        <h2>Changer mon mot de passe</h2>
+      </div>
+      <div class="inline-form">
+        <input type="password" [(ngModel)]="currentPassword" autocomplete="current-password" placeholder="Mot de passe actuel" />
+        <input type="password" [(ngModel)]="newPassword" autocomplete="new-password" minlength="12" placeholder="Nouveau mot de passe" />
+        <button type="button" class="btn secondary" [disabled]="!currentPassword || newPassword.length < 12" (click)="changePassword()">Modifier</button>
+      </div>
+    </article>
   }
-  @if (resetPending; as account) { <app-confirm-dialog title="Réinitialiser ce compte ?" [message]="account.name + ' devra réactiver son compte avec le code privé.'" titleId="confirm-reset-account" (cancel)="resetPending = null" (confirm)="confirmReset()" /> }
+
 </section>
 

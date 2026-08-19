@@ -27,8 +27,12 @@ export class AuthService {
     this.applyResponse(await firstValueFrom(this.http.post<AuthResponse>('/api/auth/login', { email, password })));
   }
 
-  async claim(email: string, eventCode: string, password: string): Promise<void> {
-    this.applyResponse(await firstValueFrom(this.http.post<AuthResponse>('/api/auth/claim', { email, eventCode, password })));
+  async verifyInvitation(token: string): Promise<void> {
+    await firstValueFrom(this.http.post('/api/auth/invitation/verify', { token }));
+  }
+
+  async acceptInvitation(token: string, password: string): Promise<void> {
+    await firstValueFrom(this.http.post('/api/auth/invitation/accept', { token, password }));
   }
 
   async logout(): Promise<void> {

@@ -18,6 +18,16 @@ export class AccountEntity {
   @Column({ type: 'text', nullable: true, select: false })
   passwordHash!: string | null;
 
+  @Index({ unique: true })
+  @Column({ type: 'text', nullable: true, select: false })
+  invitationTokenHash!: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  invitationExpiresAt!: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  invitationSentAt!: Date | null;
+
   @Column({ type: 'text', default: 'pending' })
   status!: AccountStatus;
 

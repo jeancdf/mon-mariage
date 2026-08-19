@@ -5,13 +5,13 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { AdminAccount, AdminApiService, AdminProfile } from '../../data/admin-api.service';
 import { WeddingStore } from '../../data/store';
-import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { Guest } from '../../data/types';
 import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [FormsModule, ConfirmDialogComponent, DatePipe],
+  imports: [FormsModule, DatePipe],
   templateUrl: './admin.component.html',
 })
 export class AdminComponent {
@@ -23,7 +23,7 @@ export class AdminComponent {
   readonly accounts = signal<AdminAccount[]>([]);
   readonly profiles = signal<AdminProfile[]>([]);
   readonly loading = signal(true);
-  resetPending: AdminAccount | null = null;
+  invitationPendingId: string | null = null;
   currentPassword = '';
   newPassword = '';
 
@@ -58,23 +58,38 @@ export class AdminComponent {
     } catch { this.toast.error("Impossible d'enregistrer ce profil."); }
   }
 
-  async enableGuest(guestId: string): Promise<void> {
-    try { await this.api.enableGuest(guestId); await this.reload(); this.toast.success('Compte préparé.'); }
-    catch (error: unknown) { const response = error as { error?: { message?: string } }; this.toast.error(response.error?.message ?? 'Impossible de préparer ce compte.'); }
+  async inviteGuest(guest: Guest): Promise<void> {
+    this.invitationPendingId = guest.id;
+    try {
+      await this.api.enableGuest(guest.id);
+      await this.reload();
+      this.toast.success(`Compte créé et invitation envoyée à ${guest.email}.`);
+    } catch (error: unknown) {
+      const response = error as { error?: { message?: string } };
+      this.toast.error(response.error?.message ?? "Impossible d'envoyer l'invitation.");
+    } finally {
+      this.invitationPendingId = null;
+    }
   }
 
-  async setStatus(account: AdminAccount, status: AdminAccount['status']): Promise<void> {
+  async inviteAccount(account: AdminAccount): Promise<void> {
+    this.invitationPendingId = account.id;
+    try {
+      await this.api.invite(account.id);
+      await this.reload();
+      this.toast.success(`Invitation envoyée à ${account.email}.`);
+    } catch (error: unknown) {
+      const response = error as { error?: { message?: string } };
+      this.toast.error(response.error?.message ?? "Impossible d'envoyer l'invitation.");
+    } finally {
+      this.invitationPendingId = null;
+    }
+  }
+
+  async setStatus(account: AdminAccount, status: 'active' | 'disabled'): Promise<void> {
     if (account.status === status) return;
     try { await this.api.setStatus(account.id, status); await this.reload(); }
     catch (error: unknown) { const response = error as { error?: { message?: string } }; this.toast.error(response.error?.message ?? 'Impossible de modifier ce compte.'); }
-  }
-
-  async confirmReset(): Promise<void> {
-    const account = this.resetPending;
-    this.resetPending = null;
-    if (!account) return;
-    try { await this.api.reset(account.id); await this.reload(); this.toast.success('Compte remis en attente d’activation.'); }
-    catch { this.toast.error('Impossible de réinitialiser ce compte.'); }
   }
 
   hasAccount(guestId: string): boolean { return this.accounts().some(account => account.guestId === guestId); }

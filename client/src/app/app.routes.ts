@@ -10,10 +10,12 @@ import { TodosComponent } from './features/todos/todos.component';
 import { VendorsComponent } from './features/vendors/vendors.component';
 import { WeddingShellComponent } from './wedding-shell/wedding-shell.component';
 import { AccessDeniedComponent } from './auth/access-denied.component';
+import { InvitationComponent } from './auth/invitation.component';
 
 export const routes: Routes = [
   { path: 'connexion', component: AuthComponent, data: { mode: 'login' } },
-  { path: 'activer', component: AuthComponent, data: { mode: 'claim' } },
+  { path: 'invitation', component: InvitationComponent },
+  { path: 'activer', redirectTo: 'connexion' },
   {
     path: '',
     component: WeddingShellComponent,
