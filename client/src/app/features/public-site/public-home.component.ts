@@ -65,11 +65,11 @@ export class PublicHomeComponent {
       mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Lac+de+Montcuq',
     },
     {
-      title: 'Vignoble de Cahors',
-      photo: '/lot/vignoble.jpg',
-      driveLabel: '30 min',
-      blurb: 'Les coteaux du malbec autour de Cahors : caves, paysages et dégustations.',
-      mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Vignoble+de+Cahors',
+      title: 'Rocamadour',
+      photo: '/lot/rocamadour.jpg',
+      driveLabel: '1 h 30',
+      blurb: 'Cité médiévale accrochée à la falaise, haut lieu de pèlerinage. Un panorama unique sur le Quercy.',
+      mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Rocamadour',
     },
     {
       title: 'Cahors et le Pont Valentré',
@@ -93,11 +93,11 @@ export class PublicHomeComponent {
       mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Saint-Cirq-Lapopie',
     },
     {
-      title: 'Rocamadour',
-      photo: '/lot/rocamadour.jpg',
-      driveLabel: '1 h 30',
-      blurb: 'Cité médiévale accrochée à la falaise, haut lieu de pèlerinage. Un panorama unique sur le Quercy.',
-      mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Rocamadour',
+      title: 'Vignoble de Cahors',
+      photo: '/lot/vignoble.jpg',
+      driveLabel: '30 min',
+      blurb: 'Les coteaux du malbec autour de Cahors : caves, paysages et dégustations.',
+      mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Vignoble+de+Cahors',
     },
     {
       title: 'Gouffre de Padirac',
