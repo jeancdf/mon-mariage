@@ -1,4 +1,17 @@
-<main class="public-site" [style.--bg]="theme.bg" [style.--surface]="theme.surface" [style.--surface-alt]="theme.surfaceAlt" [style.--border]="theme.border" [style.--text]="theme.text" [style.--muted]="theme.muted" [style.--accent]="theme.accent" [style.--accent-fg]="theme.accentFg">
+<main
+  class="public-site"
+  [class.public-site--nuit]="publicTheme.isDark()"
+  [style.--bg]="publicTheme.theme().bg"
+  [style.--surface]="publicTheme.theme().surface"
+  [style.--surface-alt]="publicTheme.theme().surfaceAlt"
+  [style.--border]="publicTheme.theme().border"
+  [style.--text]="publicTheme.theme().text"
+  [style.--muted]="publicTheme.theme().muted"
+  [style.--accent]="publicTheme.theme().accent"
+  [style.--accent-fg]="publicTheme.theme().accentFg"
+>
+  <app-public-theme-toggle />
+
   <section class="public-hero">
     <p class="script-note">Réponse à l’invitation</p>
     <h1>Votre foyer</h1>

@@ -3,18 +3,20 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EventKey, Rsvp } from '../../data/types';
 import { PublicApiService, PublicRsvpHousehold, PublicRsvpPerson } from '../../data/public-api.service';
-import { EVENT_OPTIONS, THEMES } from '../../shared/wedding-utils';
+import { EVENT_OPTIONS } from '../../shared/wedding-utils';
+import { PublicThemeService } from './public-theme.service';
+import { PublicThemeToggleComponent } from './public-theme-toggle.component';
 
 @Component({
   selector: 'app-rsvp',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PublicThemeToggleComponent],
   templateUrl: './rsvp.component.html',
 })
 export class RsvpComponent {
   private readonly api = inject(PublicApiService);
   private readonly route = inject(ActivatedRoute);
-  readonly theme = THEMES.ivoire;
+  readonly publicTheme = inject(PublicThemeService);
   readonly eventOptions = EVENT_OPTIONS;
   readonly loading = signal(true);
   readonly saving = signal(false);
