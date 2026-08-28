@@ -74,6 +74,15 @@
     </div>
 
     <div class="field">
+      <span>Logement</span>
+      <div class="chip-row">
+        <button class="chip" type="button" [class.active]="!!form.needsHousing" (click)="form.needsHousing = !form.needsHousing">
+          Besoin d’un couchage
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
       <span>Accompagnateur (+1)</span>
       <div class="inline-form">
         <button class="chip" type="button" [class.active]="form.hasPlusOne" (click)="form.hasPlusOne = !form.hasPlusOne">+1</button>

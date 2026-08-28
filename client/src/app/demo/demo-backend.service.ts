@@ -64,6 +64,7 @@ export class DemoBackendService {
       case 'vendors': return this.vendorsRoutes(method, rest, body);
       case 'dashboard': return this.dashboard();
       case 'final-weeks': return this.finalWeeks(method, rest, body);
+      case 'public': return this.publicRoutes(method, rest, body);
       case 'admin': return this.admin(method, rest, body);
       default: throw new DemoHttpError(404, `Route de démonstration inconnue : ${path}`);
     }
@@ -83,6 +84,14 @@ export class DemoBackendService {
     throw new DemoHttpError(404, `Route d’authentification inconnue : ${method} ${rest.join('/')}`);
   }
 
+  private issueInviteToken(): string {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    let binary = '';
+    bytes.forEach(value => { binary += String.fromCharCode(value); });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
   // ── Guests ────────────────────────────────────────────────────────
   private guests(method: string, rest: string[], body: unknown): unknown {
     if (method === 'GET' && rest.length === 0) return this.data.guests;
@@ -99,10 +108,22 @@ export class DemoBackendService {
     }
     if (method === 'PATCH' && rest.length === 1) {
       const existing = this.find(this.data.guests, rest[0], 'Invité introuvable.');
-      const updated = { ...existing, ...(body as Partial<Guest>), id: existing.id };
+      const patch = body as Partial<Guest>;
+      const { inviteToken: _ignoredToken, ...safePatch } = patch;
+      const updated = { ...existing, ...safePatch, id: existing.id, inviteToken: existing.inviteToken };
       this.data.guests = this.data.guests.map(guest => guest.id === updated.id ? updated : guest);
       this.pruneAssignments();
       return updated;
+    }
+    if (method === 'POST' && rest.length === 2 && rest[1] === 'invite-link') {
+      const guest = this.find(this.data.guests, rest[0], 'Invité introuvable.');
+      if (!guest.inviteToken) guest.inviteToken = this.issueInviteToken();
+      return { token: guest.inviteToken, path: '/i/' + guest.inviteToken };
+    }
+    if (method === 'POST' && rest.length === 3 && rest[1] === 'invite-link' && rest[2] === 'regenerate') {
+      const guest = this.find(this.data.guests, rest[0], 'Invité introuvable.');
+      guest.inviteToken = this.issueInviteToken();
+      return { token: guest.inviteToken, path: '/i/' + guest.inviteToken };
     }
     if (method === 'DELETE' && rest.length === 1) {
       this.data.guests = this.data.guests.filter(guest => guest.id !== rest[0]);
@@ -714,6 +735,81 @@ export class DemoBackendService {
     throw new DemoHttpError(404, `Route administration inconnue : ${method} ${rest.join('/')}`);
   }
 
+
+  // ── Public site / RSVP ──────────────────────────────────────────
+  private publicRoutes(method: string, rest: string[], body: unknown): unknown {
+    if (rest[0] === 'site' && method === 'GET') {
+      const config = this.data.eventConfig;
+      const weddingDate = new Date(`${config.weddingDate}T00:00:00`);
+      const todayStart = new Date(`${localDate(new Date())}T00:00:00`);
+      return {
+        coupleNames: config.coupleNames ?? [],
+        weddingDate: config.weddingDate,
+        weddingPlace: config.weddingPlace,
+        timeZone: config.timeZone,
+        daysRemaining: Math.max(0, Math.round((weddingDate.getTime() - todayStart.getTime()) / 86400000)),
+        events: [
+          { key: 'rehearsal', label: 'Répétition' },
+          { key: 'ceremony', label: 'Cérémonie' },
+          { key: 'dinner', label: 'Dîner' },
+        ],
+      };
+    }
+    if (rest[0] === 'rsvp' && rest.length === 2) {
+      const guest = this.data.guests.find(item => item.inviteToken === rest[1]);
+      if (!guest) throw new DemoHttpError(404, 'Invitation introuvable.');
+      if (method === 'GET') return this.toPublicHousehold(guest);
+      if (method === 'PUT') {
+        const payload = body as {
+          people?: { id: string; rsvp: Guest['rsvp'] }[];
+          events?: Guest['events'];
+          dietary?: string;
+          transport?: string;
+          needsHousing?: boolean;
+        };
+        const householdIds = new Set(guestPeople(guest).map(person => person.id));
+        for (const person of payload.people ?? []) {
+          if (!householdIds.has(person.id)) throw new DemoHttpError(400, 'Cette invitation ne concerne pas cette personne.');
+        }
+        const rsvpById = new Map((payload.people ?? []).map(person => [person.id, person.rsvp]));
+        guest.rsvp = rsvpById.get(guest.id) ?? guest.rsvp;
+        if (guest.hasPlusOne) guest.plusOneRsvp = rsvpById.get(`${guest.id}__plus_one`) ?? guest.plusOneRsvp ?? 'pending';
+        guest.kids = guest.kids.map(kid => ({ ...kid, rsvp: rsvpById.get(kid.id) ?? kid.rsvp ?? 'pending' }));
+        if (payload.events) guest.events = payload.events;
+        if (payload.dietary !== undefined) guest.dietary = payload.dietary;
+        if (payload.transport !== undefined) guest.transport = payload.transport;
+        if (payload.needsHousing !== undefined) guest.needsHousing = payload.needsHousing;
+        return this.toPublicHousehold(guest);
+      }
+    }
+    throw new DemoHttpError(404, `Route publique inconnue : ${method} ${rest.join('/')}`);
+  }
+
+  private toPublicHousehold(guest: Guest) {
+    const people: Array<{ id: string; name: string; kind: 'guest' | 'plusOne' | 'kid'; rsvp: Guest['rsvp'] }> = [
+      { id: guest.id, name: `${guest.firstName} ${guest.lastName}`.trim(), kind: 'guest', rsvp: guest.rsvp },
+    ];
+    if (guest.hasPlusOne) {
+      people.push({
+        id: `${guest.id}__plus_one`,
+        name: guest.plusOneName.trim() || 'Accompagnateur',
+        kind: 'plusOne',
+        rsvp: guest.plusOneRsvp ?? 'pending',
+      });
+    }
+    for (const kid of guest.kids) {
+      if (!kid.name.trim()) continue;
+      people.push({ id: kid.id, name: kid.name, kind: 'kid', rsvp: kid.rsvp ?? 'pending' });
+    }
+    return {
+      guestId: guest.id,
+      people,
+      events: guest.events,
+      dietary: guest.dietary,
+      transport: guest.transport,
+      needsHousing: Boolean(guest.needsHousing),
+    };
+  }
   private find<T extends { id: string }>(items: T[], id: string, message: string): T {
     const found = items.find(item => item.id === id);
     if (!found) throw new DemoHttpError(404, message);

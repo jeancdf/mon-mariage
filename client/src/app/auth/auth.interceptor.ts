@@ -16,10 +16,12 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   })).pipe(catchError((error: unknown) => {
     if (error instanceof HttpErrorResponse && error.status === 401) {
       state.clear();
+      const publicRequest = request.url.includes('/api/public/')
+        || request.url.includes('/api/health');
       const authenticationRequest = request.url.includes('/api/auth/login')
         || request.url.includes('/api/auth/claim')
         || request.url.includes('/api/auth/me');
-      if (!authenticationRequest) queueMicrotask(() => void router.navigateByUrl('/connexion'));
+      if (!authenticationRequest && !publicRequest) queueMicrotask(() => void router.navigateByUrl('/connexion'));
     }
     return throwError(() => error);
   }));

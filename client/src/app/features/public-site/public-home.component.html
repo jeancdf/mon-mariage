@@ -1,0 +1,47 @@
+<main class="public-site" [style.--bg]="theme.bg" [style.--surface]="theme.surface" [style.--surface-alt]="theme.surfaceAlt" [style.--border]="theme.border" [style.--text]="theme.text" [style.--muted]="theme.muted" [style.--accent]="theme.accent" [style.--accent-fg]="theme.accentFg">
+  <section class="public-hero">
+    <p class="script-note">{{ site()?.weddingPlace || 'Mariage' }}</p>
+    <h1>{{ coupleLabel() || 'Mariage' }}</h1>
+    @if (dateLabel()) {
+      <p class="public-date">{{ dateLabel() }}</p>
+    }
+    @if (site(); as info) {
+      <div class="countdown public-countdown">
+        <span>{{ info.daysRemaining }}</span>
+        <div>
+          <strong>jours</strong>
+          <strong>restants</strong>
+        </div>
+      </div>
+    }
+  </section>
+
+  @if (loading()) {
+    <p class="muted">Chargement…</p>
+  } @else if (error()) {
+    <p class="form-error" role="alert">{{ error() }}</p>
+  } @else if (site(); as info) {
+    <section class="public-panel">
+      <div class="eyebrow">Le lieu</div>
+      <h2>{{ info.weddingPlace }}</h2>
+      <p>Nous vous attendons à {{ info.weddingPlace }}.</p>
+    </section>
+
+    <section class="public-panel">
+      <div class="eyebrow">Programme</div>
+      <ul class="public-programme">
+        @for (event of info.events; track event.key) {
+          <li>
+            <strong>{{ event.label }}</strong>
+            <span>{{ dateLabel() }} · {{ info.weddingPlace }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <p class="public-rsvp-hint muted">
+    Vous avez reçu un lien d’invitation privé ? Ouvrez-le pour confirmer la présence de votre foyer.
+  </p>
+  <a class="auth-switch" routerLink="/connexion">Espace organisateurs</a>
+</main>

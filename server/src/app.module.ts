@@ -14,6 +14,7 @@ import { VendorsModule } from './vendors/vendors.module';
 import { AuthModule } from './auth/auth.module';
 import { EventConfigModule } from './event-config/event-config.module';
 import { FinalWeeksModule } from './final-weeks/final-weeks.module';
+import { PublicModule } from './public/public.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { FinalWeeksModule } from './final-weeks/final-weeks.module';
     }),
     AuthModule,
     EventConfigModule,
+    PublicModule,
     FinalWeeksModule,
     GuestsModule,
     HousingModule,

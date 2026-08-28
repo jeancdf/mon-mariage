@@ -10,6 +10,7 @@ export interface Kid {
   id: string;
   name: string;
   age: number | string;
+  rsvp?: Rsvp;
 }
 
 export interface Guest {
@@ -22,11 +23,14 @@ export interface Guest {
   rsvp: Rsvp;
   hasPlusOne: boolean;
   plusOneName: string;
+  plusOneRsvp?: Rsvp;
   kids: Kid[];
   dietary: string;
   events: EventKey[];
   transport: string;
+  needsHousing?: boolean;
   notes: string;
+  inviteToken?: string | null;
 }
 
 export interface Room {

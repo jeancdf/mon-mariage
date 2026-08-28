@@ -55,6 +55,8 @@ export class GuestsComponent {
   isImporting = false;
   isExporting = false;
   guestPendingDeletion: Guest | null = null;
+  guestPendingInvite: Guest | null = null;
+  inviteBusyId: string | null = null;
 
   readonly filteredGuests = computed(() => {
     const query = this.search().trim().toLowerCase();
@@ -212,6 +214,50 @@ export class GuestsComponent {
       this.importError = 'Import impossible. Vérifiez le fichier et l’API.';
     } finally {
       this.isImporting = false;
+    }
+  }
+
+
+  async copyInviteLink(guest: Guest): Promise<void> {
+    if (!this.auth.can('guests', 'edit')) return;
+    this.inviteBusyId = guest.id;
+    try {
+      const link = guest.inviteToken
+        ? { token: guest.inviteToken, path: `/i/${guest.inviteToken}` }
+        : await this.guestApi.issueInviteLink(guest.id);
+      this.store.updateGuest({ ...guest, inviteToken: link.token });
+      await navigator.clipboard.writeText(`${window.location.origin}${link.path}`);
+      this.toast.success('Lien d’invitation copié.');
+    } catch {
+      this.toast.error('Impossible de copier le lien d’invitation.');
+    } finally {
+      this.inviteBusyId = null;
+    }
+  }
+
+  requestRegenerateInvite(guest: Guest): void {
+    if (!this.auth.can('guests', 'edit')) return;
+    this.guestPendingInvite = guest;
+  }
+
+  cancelRegenerateInvite(): void {
+    this.guestPendingInvite = null;
+  }
+
+  async confirmRegenerateInvite(): Promise<void> {
+    const guest = this.guestPendingInvite;
+    if (!guest) return;
+    this.guestPendingInvite = null;
+    this.inviteBusyId = guest.id;
+    try {
+      const link = await this.guestApi.regenerateInviteLink(guest.id);
+      this.store.updateGuest({ ...guest, inviteToken: link.token });
+      await navigator.clipboard.writeText(`${window.location.origin}${link.path}`);
+      this.toast.success('Nouveau lien copié. L’ancien ne fonctionne plus.');
+    } catch {
+      this.toast.error('Impossible de régénérer le lien.');
+    } finally {
+      this.inviteBusyId = null;
     }
   }
 

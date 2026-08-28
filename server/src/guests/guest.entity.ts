@@ -14,6 +14,7 @@ export interface Kid {
   id: string;
   name: string;
   age: number | string;
+  rsvp?: Rsvp;
 }
 
 @Entity({ name: 'guests' })
@@ -45,6 +46,9 @@ export class GuestEntity {
   @Column({ type: 'text', default: '' })
   plusOneName!: string;
 
+  @Column({ type: 'text', default: 'pending' })
+  plusOneRsvp!: Rsvp;
+
   @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
   kids!: Kid[];
 
@@ -57,6 +61,15 @@ export class GuestEntity {
   @Column({ type: 'text', default: '' })
   transport!: string;
 
+  @Column({ type: 'boolean', default: false })
+  needsHousing!: boolean;
+
   @Column({ type: 'text', default: '' })
   notes!: string;
+
+  @Column({ type: 'text', unique: true, nullable: true })
+  inviteToken!: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  inviteTokenCreatedAt!: Date | null;
 }

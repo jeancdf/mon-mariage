@@ -8,6 +8,7 @@ export interface EventConfiguration {
   preparationStart: string;
   dailyStart: string;
   timeZone: string;
+  coupleNames: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -21,8 +22,8 @@ export class EventConfigService {
     if (!this.loading) {
       this.loading = firstValueFrom(this.http.get<EventConfiguration>('/api/event-config'))
         .then(config => {
-          this.configuration.set(config);
-          return config;
+          this.configuration.set({ ...config, coupleNames: config.coupleNames ?? [] });
+          return this.configuration()!;
         })
         .finally(() => { this.loading = null; });
     }

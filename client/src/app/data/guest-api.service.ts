@@ -3,6 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { Guest } from './types';
 
+export interface InviteLink {
+  token: string;
+  path: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GuestApiService {
   private readonly http = inject(HttpClient);
@@ -27,5 +32,13 @@ export class GuestApiService {
 
   async deleteGuest(id: string): Promise<void> {
     await firstValueFrom(this.http.delete<{ success: true }>(`/api/guests/${id}`));
+  }
+
+  async issueInviteLink(guestId: string): Promise<InviteLink> {
+    return firstValueFrom(this.http.post<InviteLink>(`/api/guests/${guestId}/invite-link`, {}));
+  }
+
+  async regenerateInviteLink(guestId: string): Promise<InviteLink> {
+    return firstValueFrom(this.http.post<InviteLink>(`/api/guests/${guestId}/invite-link/regenerate`, {}));
   }
 }
