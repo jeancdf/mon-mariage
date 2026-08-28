@@ -4,18 +4,21 @@ import { firstValueFrom } from 'rxjs';
 import { AuthResponse, SectionKey } from './auth.types';
 import { CsrfStateService } from './csrf-state.service';
 import { AuthSessionStateService } from './auth-session-state.service';
+import { DemoModeService } from '../demo/demo-mode.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly csrf = inject(CsrfStateService);
   private readonly state = inject(AuthSessionStateService);
+  private readonly demo = inject(DemoModeService);
   private initialization: Promise<void> | null = null;
 
   readonly account = this.state.account;
   readonly initialized = this.state.initialized;
   readonly authenticated = computed(() => Boolean(this.account()));
   readonly isOrganizer = computed(() => Boolean(this.account()?.isOrganizer));
+  readonly isDemo = this.demo.active;
 
   initialize(): Promise<void> {
     if (this.initialization) return this.initialization;
@@ -35,10 +38,23 @@ export class AuthService {
     await firstValueFrom(this.http.post('/api/auth/invitation/accept', { token, password }));
   }
 
+  /**
+   * Turns on the sandboxed demo dataset and reloads the session from it. The
+   * interceptor answers `/api/auth/me` locally, so the regular guards, shell and
+   * feature pages then run unchanged against fake data.
+   */
+  async enterDemo(): Promise<void> {
+    this.demo.activate();
+    this.initialization = this.loadCurrentAccount();
+    await this.initialization;
+  }
+
   async logout(): Promise<void> {
     try {
       await firstValueFrom(this.http.post('/api/auth/logout', {}));
     } finally {
+      this.demo.deactivate();
+      this.initialization = null;
       this.clear();
     }
   }

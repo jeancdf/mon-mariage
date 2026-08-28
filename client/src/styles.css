@@ -2633,6 +2633,78 @@ td small {
   font-size: 12px;
 }
 
+/* Mode démonstration : entrée depuis la page de connexion et bandeau permanent */
+.demo-invite {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.demo-invite-label {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.demo-button {
+  width: 100%;
+}
+
+.demo-invite-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.demo-banner p {
+  flex: 1;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.demo-banner-tag {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .demo-banner {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .demo-banner p {
+    flex: 1 0 100%;
+    order: 3;
+  }
+}
+
 .account-panel {
   display: grid;
   gap: 7px;

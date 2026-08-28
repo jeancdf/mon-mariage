@@ -15,6 +15,7 @@ export class AuthComponent {
   private readonly router = inject(Router);
 
   readonly loading = signal(false);
+  readonly demoLoading = signal(false);
   email = '';
   password = '';
   error = '';
@@ -33,6 +34,20 @@ export class AuthComponent {
       this.error = response.error?.message ?? 'Adresse e-mail ou mot de passe incorrect.';
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  /** Opens the read-anything, break-nothing sandbox used for portfolio visits. */
+  async startDemo(): Promise<void> {
+    this.demoLoading.set(true);
+    this.error = '';
+    try {
+      await this.auth.enterDemo();
+      await this.router.navigateByUrl('/dashboard');
+    } catch {
+      this.error = 'Impossible de démarrer la démonstration.';
+    } finally {
+      this.demoLoading.set(false);
     }
   }
 

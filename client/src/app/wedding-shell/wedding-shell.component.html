@@ -60,6 +60,16 @@
   </aside>
 
   <main class="main-panel">
+    @if (auth.isDemo()) {
+      <div class="demo-banner" role="status">
+        <span class="demo-banner-tag">Démo</span>
+        <p>
+          Données fictives générées dans votre navigateur. Modifiez librement :
+          tout repart de zéro au rechargement.
+        </p>
+        <button type="button" class="btn ghost small" (click)="logout()">Quitter la démo</button>
+      </div>
+    }
     <router-outlet />
   </main>
 </div>
