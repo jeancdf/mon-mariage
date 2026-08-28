@@ -73,6 +73,13 @@
           </div>
           <div class="public-lot-card-body">
             <h3>{{ spot.title }}</h3>
+            <p class="public-lot-drive">
+              @if (spot.driveLabel === 'sur place') {
+                Depuis l’église, sur place
+              } @else {
+                {{ spot.driveLabel }} en voiture depuis l’église
+              }
+            </p>
             <p>{{ spot.blurb }}</p>
             <a [href]="spot.mapsUrl" target="_blank" rel="noopener">Voir sur la carte</a>
           </div>
