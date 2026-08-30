@@ -134,7 +134,10 @@ export class PublicHomeComponent {
       blurb: 'Descente en bateau dans une rivière souterraine, sous un gouffre de 103 mètres. Pensez à réserver en haute saison.',
       mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Gouffre+de+Padirac',
     },
-  ]
+  ];
+
+  readonly coupleLabel = computed(() => {
+    const names = this.site()?.coupleNames ?? [];
     if (names.length >= 2) return `${names[0]} & ${names[1]}`;
     if (names.length === 1) return names[0];
     return '';
