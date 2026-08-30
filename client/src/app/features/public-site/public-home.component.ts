@@ -86,6 +86,13 @@ export class PublicHomeComponent {
       mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Lac+de+Montcuq',
     },
     {
+      title: 'Golf des Roucous',
+      photo: '/lot/golf.jpg',
+      driveLabel: '15 min',
+      blurb: 'Parcours 9 trous vallonné au cœur du Quercy Blanc, à Sauveterre. Ouvert toute l’année, practice et club-house sur place.',
+      mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Golf+des+Roucous,+Sauveterre',
+    },
+    {
       title: 'Dégustations',
       photo: '/lot/degustation.jpg',
       driveLabel: '15 min',
