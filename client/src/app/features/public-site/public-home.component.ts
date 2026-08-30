@@ -54,8 +54,29 @@ export class PublicHomeComponent {
       title: 'Montcuq',
       photo: '/lot/montcuq.jpg',
       driveLabel: 'sur place',
-      blurb: 'Le village de la cérémonie, sa tour et son marché du lundi. Un détour tout près, le temps d’un café sur la place.',
+      blurb: 'Le village de la cérémonie, sa tour et ses cafés. Un détour tout près, le temps d’un café sur la place.',
       mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Montcuq-en-Quercy-Blanc',
+    },
+    {
+      title: 'Marché de Montcuq',
+      photo: '/lot/marche.jpg',
+      driveLabel: 'sur place',
+      blurb: 'Tous les dimanches matin sur la place, un des plus beaux marchés du Lot. En été, un petit marché le jeudi aussi.',
+      mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Place+de+la+République,+46800+Montcuq-en-Quercy-Blanc',
+    },
+    {
+      title: 'Padel de Montcuq',
+      photo: '/lot/padel.jpg',
+      driveLabel: '5 min',
+      blurb: 'Un court en extérieur au complexe sportif, à deux pas du village. Idéal pour un match entre amis.',
+      mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Complexe+sportif+Belle+Dent,+Montcuq-en-Quercy-Blanc',
+    },
+    {
+      title: 'Accrobranche',
+      photo: '/lot/accrobranche.jpg',
+      driveLabel: '30 min',
+      blurb: 'Parcours dans les arbres au Cap Nature de Pradines, au bord du Lot. Tyroliennes et ponts de singe, dès 2 ans. Réservation conseillée.',
+      mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Cap+Nature,+Chemin+de+l%27Ile,+46090+Pradines',
     },
     {
       title: 'Lac de Montcuq',
@@ -63,6 +84,13 @@ export class PublicHomeComponent {
       driveLabel: '10 min',
       blurb: 'Baignade et balade au bord de l’eau. Un coin calme pour se poser entre deux visites.',
       mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Lac+de+Montcuq',
+    },
+    {
+      title: 'Dégustations',
+      photo: '/lot/degustation.jpg',
+      driveLabel: '15 min',
+      blurb: 'Caves et domaines autour de Montcuq pour goûter le malbec de Cahors. Plusieurs vignerons vendent aussi au marché du dimanche.',
+      mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Clos+Siguier,+Bagat-en-Quercy',
     },
     {
       title: 'Rocamadour',
@@ -107,9 +135,6 @@ export class PublicHomeComponent {
       mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Gouffre+de+Padirac',
     },
   ]
-
-  readonly coupleLabel = computed(() => {
-    const names = this.site()?.coupleNames ?? [];
     if (names.length >= 2) return `${names[0]} & ${names[1]}`;
     if (names.length === 1) return names[0];
     return '';
