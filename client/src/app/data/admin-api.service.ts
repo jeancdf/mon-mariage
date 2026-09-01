@@ -23,6 +23,16 @@ export interface AdminProfile {
   permissions: Array<{ id: string; section: SectionKey; canView: boolean; canEdit: boolean }>;
 }
 
+export interface MailStatus {
+  host: string;
+  port: number;
+  user: string;
+  from: string;
+  applicationUrl: string;
+  passwordConfigured: boolean;
+  passwordLength: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly http = inject(HttpClient);
@@ -39,6 +49,9 @@ export class AdminApiService {
   }
   async sendTestEmail(): Promise<{ success: true; email: string }> {
     return firstValueFrom(this.http.post<{ success: true; email: string }>('/api/admin/mail/test', {}));
+  }
+  mailStatus(): Promise<MailStatus> {
+    return firstValueFrom(this.http.get<MailStatus>('/api/admin/mail/status'));
   }
   async saveProfile(profile: AdminProfile): Promise<AdminProfile> {
     const permissions = Object.fromEntries(profile.permissions.map(permission => [permission.section, {

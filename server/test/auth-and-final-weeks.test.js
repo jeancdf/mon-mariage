@@ -54,6 +54,22 @@ describe('invitation mailer', () => {
       },
     );
   });
+
+  it('rejects a test email when the SMTP password is missing', async () => {
+    const mailer = new InvitationMailerService(config({
+      PUBLIC_APP_URL: 'https://example.com',
+      MAIL_FROM: 'Mon Mariage <moi@example.com>',
+      SMTP_HOST: 'smtp.gmail.com',
+      SMTP_USER: 'moi@example.com',
+    }));
+    await assert.rejects(
+      () => mailer.sendTestEmail({ email: 'moi@example.com' }),
+      error => {
+        assert.match(String(error.message), /SMTP_PASSWORD/);
+        return true;
+      },
+    );
+  });
 });
 
 describe('guest account provisioning', () => {

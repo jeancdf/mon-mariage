@@ -10,6 +10,16 @@
       <div class="eyebrow">SMTP</div>
       <h2>Tester l’envoi d’e-mails</h2>
       <p class="muted">Envoie un message de test à {{ organizerEmail() || 'votre adresse' }} pour vérifier la configuration.</p>
+      @if (mailStatus(); as mail) {
+        @if (mail.passwordConfigured) {
+          <p class="muted">{{ mail.host }} · {{ mail.user }} · mot de passe d’application renseigné ({{ mail.passwordLength }} caractères)</p>
+        } @else {
+          <p class="form-error">Mot de passe SMTP manquant. Dans le secret GitHub FULLSTACK_ENV_PRODUCTION, mettez un mot de passe d’application Gmail dans SMTP_PASSWORD, puis redéployez.</p>
+        }
+      }
+      @if (mailTestError(); as mailError) {
+        <p class="form-error" role="alert">{{ mailError }}</p>
+      }
     </div>
     <button
       class="btn secondary"

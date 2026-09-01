@@ -3009,9 +3009,10 @@ textarea {
   margin-bottom: 18px;
 }
 
-.mail-test-panel .muted {
+.mail-test-panel .muted,
+.mail-test-panel .form-error {
   margin: 6px 0 0;
-  max-width: 46ch;
+  max-width: 52ch;
 }
 
 .password-panel {

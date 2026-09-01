@@ -43,6 +43,27 @@ export class InvitationMailerService {
     });
   }
 
+  describeStatus(): {
+    host: string;
+    port: number;
+    user: string;
+    from: string;
+    applicationUrl: string;
+    passwordConfigured: boolean;
+    passwordLength: number;
+  } {
+    const password = this.smtpPassword();
+    return {
+      host: this.config.get<string>('SMTP_HOST', ''),
+      port: Number(this.config.get<string>('SMTP_PORT', '587')),
+      user: this.config.get<string>('SMTP_USER', ''),
+      from: this.config.get<string>('MAIL_FROM', ''),
+      applicationUrl: this.config.get<string>('PUBLIC_APP_URL', this.config.get<string>('CLIENT_ORIGIN', '')),
+      passwordConfigured: password.length > 0,
+      passwordLength: password.length,
+    };
+  }
+
   async sendTestEmail(recipient: { email: string; name?: string }): Promise<void> {
     const { applicationUrl } = this.requireMailSettings();
     const name = recipient.name?.trim() || 'organisateur';
@@ -69,7 +90,7 @@ export class InvitationMailerService {
             </div>
           </div>
         `,
-      failureMessage: "L'e-mail de test n'a pas pu être envoyé. Vérifiez SMTP_HOST, SMTP_USER et le mot de passe d'application Gmail.",
+      explainFailure: true,
     });
   }
 
@@ -82,13 +103,45 @@ export class InvitationMailerService {
     return { from, applicationUrl };
   }
 
+  private smtpPassword(): string {
+    return this.config.get<string>('SMTP_PASSWORD', '').replace(/\s+/g, '');
+  }
+
+  private assertSmtpReady(): void {
+    this.requireMailSettings();
+    if (!this.config.get<string>('SMTP_HOST', '')) {
+      throw new ServiceUnavailableException("L'envoi des invitations n'est pas configuré.");
+    }
+    if (!this.config.get<string>('SMTP_USER', '') || !this.smtpPassword()) {
+      throw new ServiceUnavailableException(
+        "SMTP_PASSWORD est vide. Ajoutez un mot de passe d'application Gmail (16 caractères) dans le secret GitHub FULLSTACK_ENV_PRODUCTION, pas le mot de passe du compte, puis redéployez.",
+      );
+    }
+  }
+
+  private describeSmtpFailure(error: unknown): string {
+    const raw = (error instanceof Error ? error.message : String(error)).replace(/\s+/g, ' ').trim();
+    if (/invalid login|535|badcredentials|username and password/i.test(raw)) {
+      return "Gmail a refusé l'authentification. Il faut un mot de passe d'application (compte Google → Sécurité → Validation en 2 étapes → Mots de passe des applications), collé dans SMTP_PASSWORD.";
+    }
+    if (/must issue a starttls|wrong version number|ssl/i.test(raw)) {
+      return 'Le serveur SMTP refuse le TLS actuel. Gardez SMTP_PORT=587, SMTP_SECURE=false et SMTP_REQUIRE_TLS=true.';
+    }
+    if (/econnrefused|etimedout|enotfound|edns/i.test(raw)) {
+      return `Impossible de joindre le serveur SMTP. ${raw}`.slice(0, 280);
+    }
+    return `L'e-mail de test n'a pas pu être envoyé. ${raw}`.slice(0, 280);
+  }
+
   private async deliver(message: {
     to: string;
     subject: string;
     text: string;
     html: string;
-    failureMessage: string;
+    failureMessage?: string;
+    explainFailure?: boolean;
   }): Promise<void> {
+    this.assertSmtpReady();
     const { from } = this.requireMailSettings();
     try {
       await this.getTransporter().sendMail({
@@ -100,22 +153,25 @@ export class InvitationMailerService {
       });
     } catch (error: unknown) {
       this.logger.warn(`SMTP send failed: ${error instanceof Error ? error.message : 'unknown error'}`);
-      throw new ServiceUnavailableException(message.failureMessage);
+      throw new ServiceUnavailableException(
+        message.explainFailure
+          ? this.describeSmtpFailure(error)
+          : (message.failureMessage ?? "L'e-mail n'a pas pu être envoyé. Vérifiez la configuration SMTP."),
+      );
     }
   }
 
   private getTransporter(): Transporter {
     if (this.transporter) return this.transporter;
     const host = this.config.get<string>('SMTP_HOST', '');
-    if (!host) throw new ServiceUnavailableException("L'envoi des invitations n'est pas configuré.");
     const user = this.config.get<string>('SMTP_USER', '');
-    const pass = this.config.get<string>('SMTP_PASSWORD', '');
+    const pass = this.smtpPassword();
     this.transporter = nodemailer.createTransport({
       host,
       port: Number(this.config.get<string>('SMTP_PORT', '587')),
       secure: this.config.get<string>('SMTP_SECURE', 'false') === 'true',
       requireTLS: this.config.get<string>('SMTP_REQUIRE_TLS', 'true') === 'true',
-      auth: user && pass ? { user, pass } : undefined,
+      auth: { user, pass },
     });
     return this.transporter;
   }

@@ -12,6 +12,11 @@ export class AdminController {
     private readonly invitationMailer: InvitationMailerService,
   ) {}
 
+  @Get('mail/status')
+  mailStatus(@Req() request: AuthenticatedRequest) {
+    return this.invitationMailer.describeStatus();
+  }
+
   @Post('mail/test')
   async sendTestMail(@Req() request: AuthenticatedRequest): Promise<{ success: true; email: string }> {
     const email = request.account.email;

@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
-import { AdminAccount, AdminApiService, AdminProfile } from '../../data/admin-api.service';
+import { AdminAccount, AdminApiService, AdminProfile, MailStatus } from '../../data/admin-api.service';
 import { WeddingStore } from '../../data/store';
 import { Guest } from '../../data/types';
 import { ToastService } from '../../shared/toast.service';
@@ -24,6 +24,8 @@ export class AdminComponent {
   readonly profiles = signal<AdminProfile[]>([]);
   readonly loading = signal(true);
   readonly mailTestPending = signal(false);
+  readonly mailStatus = signal<MailStatus | null>(null);
+  readonly mailTestError = signal<string | null>(null);
   readonly organizerEmail = computed(() => this.auth.account()?.email ?? '');
   invitationPendingId: string | null = null;
   currentPassword = '';
@@ -36,7 +38,10 @@ export class AdminComponent {
     { key: 'todos', label: 'À faire' }, { key: 'final_weeks', label: 'Dernières semaines' },
   ] as const;
 
-  constructor() { void this.reload(); }
+  constructor() {
+    void this.reload();
+    void this.loadMailStatus();
+  }
 
   async reload(): Promise<void> {
     this.loading.set(true);
@@ -46,6 +51,11 @@ export class AdminComponent {
       this.profiles.set(profiles);
     } catch { this.toast.error("Impossible de charger l'administration."); }
     finally { this.loading.set(false); }
+  }
+
+  async loadMailStatus(): Promise<void> {
+    try { this.mailStatus.set(await this.api.mailStatus()); }
+    catch { this.mailStatus.set(null); }
   }
 
   permission(profile: AdminProfile, section: typeof this.sections[number]['key']) {
@@ -98,12 +108,15 @@ export class AdminComponent {
 
   async sendTestEmail(): Promise<void> {
     this.mailTestPending.set(true);
+    this.mailTestError.set(null);
     try {
       const result = await this.api.sendTestEmail();
       this.toast.success(`E-mail de test envoyé à ${result.email}. Vérifiez aussi les spams.`);
     } catch (error: unknown) {
       const response = error as { error?: { message?: string } };
-      this.toast.error(response.error?.message ?? "Impossible d'envoyer l'e-mail de test.");
+      const message = response.error?.message ?? "Impossible d'envoyer l'e-mail de test.";
+      this.mailTestError.set(message);
+      this.toast.error(message);
     } finally {
       this.mailTestPending.set(false);
     }

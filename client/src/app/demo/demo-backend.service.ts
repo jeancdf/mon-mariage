@@ -670,6 +670,12 @@ export class DemoBackendService {
   // ── Admin ─────────────────────────────────────────────────────────
   private admin(method: string, rest: string[], body: unknown): unknown {
     if (rest[0] === 'mail') {
+      if (method === 'GET' && rest[1] === 'status') {
+        return {
+          host: '', port: 587, user: '', from: '', applicationUrl: '',
+          passwordConfigured: false, passwordLength: 0,
+        };
+      }
       if (method === 'POST' && rest[1] === 'test') {
         throw new DemoHttpError(503, "Les e-mails ne s’envoient pas en mode démonstration. Testez ce bouton sur l’application déployée.");
       }
