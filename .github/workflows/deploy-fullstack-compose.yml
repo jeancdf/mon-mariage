@@ -53,8 +53,13 @@ jobs:
           exit 1
 
       - name: Write .env.production from secret
+        env:
+          FULLSTACK_ENV_PRODUCTION: ${{ secrets.FULLSTACK_ENV_PRODUCTION }}
         run: |
-          printf '%s' "${{ secrets.FULLSTACK_ENV_PRODUCTION }}" > .env.production
+          # Pass the secret via env, never interpolate it into the script.
+          # MAIL_FROM="Name <user@host>" contains quotes and <...> that would
+          # otherwise break bash quoting and be read as a file redirection.
+          printf '%s\n' "$FULLSTACK_ENV_PRODUCTION" > .env.production
           for key in SESSION_SECRET PRIVATE_EVENT_CODE BOOTSTRAP_ORGANIZER_EMAIL BOOTSTRAP_ORGANIZER_PASSWORD; do
             if ! grep -q "^${key}=..*" .env.production; then
               echo "::error::${key} is missing from FULLSTACK_ENV_PRODUCTION"
@@ -87,6 +92,10 @@ jobs:
           set_env_value DEPLOY_SHA "${DEPLOY_SHA}"
           set_env_value DEPLOY_VERSION "${DEPLOY_VERSION}"
           set_env_value DEPLOYED_AT "${DEPLOYED_AT}"
+
+          echo "FRONTEND_HOST_PORT=9003" >> "$GITHUB_ENV"
+          echo "BACKEND_HOST_PORT=3007" >> "$GITHUB_ENV"
+          echo "PUBLIC_DOMAIN=mon-mariage.duckdns.org" >> "$GITHUB_ENV"
 
       - name: Package deployment files
         run: |
@@ -148,13 +157,14 @@ jobs:
           EOF
 
       - name: Healthchecks
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          set -a
-          . ./.env.production
-          set +a
           FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-9003}"
           BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-3007}"
-          ssh -p "${{ secrets.VPS_PORT || '22' }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+          ssh -p "${VPS_PORT}" "${VPS_USER}@${VPS_HOST}" \
             "FRONTEND_HOST_PORT='${FRONTEND_HOST_PORT}' BACKEND_HOST_PORT='${BACKEND_HOST_PORT}' DEPLOY_SHA='${DEPLOY_SHA}' DEPLOY_VERSION='${DEPLOY_VERSION}' DEPLOYED_AT='${DEPLOYED_AT}' bash -s" << 'EOF'
           set -euo pipefail
           wget -qO- "http://localhost:${BACKEND_HOST_PORT}/api/health" >/dev/null
@@ -168,9 +178,7 @@ jobs:
 
       - name: Public HTTPS healthcheck
         run: |
-          set -a
-          . ./.env.production
-          set +a
+          PUBLIC_DOMAIN="${PUBLIC_DOMAIN:-mon-mariage.duckdns.org}"
           curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors \
             "https://${PUBLIC_DOMAIN}/" >/dev/null
           curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors \
