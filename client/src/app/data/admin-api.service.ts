@@ -37,6 +37,9 @@ export class AdminApiService {
   async invite(accountId: string): Promise<void> {
     await firstValueFrom(this.http.post(`/api/admin/accounts/${accountId}/invite`, {}));
   }
+  async sendTestEmail(): Promise<{ success: true; email: string }> {
+    return firstValueFrom(this.http.post<{ success: true; email: string }>('/api/admin/mail/test', {}));
+  }
   async saveProfile(profile: AdminProfile): Promise<AdminProfile> {
     const permissions = Object.fromEntries(profile.permissions.map(permission => [permission.section, {
       canView: permission.canView, canEdit: permission.canEdit,

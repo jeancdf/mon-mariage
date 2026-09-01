@@ -2904,6 +2904,7 @@ textarea {
 
 .responsibility-form h2,
 .admin-section h2,
+.mail-test-panel h2,
 .password-panel h2 {
   margin: 3px 0 0;
   font-size: 18px;
@@ -2996,11 +2997,24 @@ textarea {
   text-transform: uppercase;
 }
 
+.mail-test-panel,
 .password-panel {
   display: flex;
   align-items: end;
   justify-content: space-between;
   gap: 20px;
+}
+
+.mail-test-panel {
+  margin-bottom: 18px;
+}
+
+.mail-test-panel .muted {
+  margin: 6px 0 0;
+  max-width: 46ch;
+}
+
+.password-panel {
   margin-top: 18px;
 }
 
@@ -3013,6 +3027,7 @@ textarea {
     grid-column: 1 / -1;
   }
 
+  .mail-test-panel,
   .password-panel,
   .repeat-panel {
     align-items: stretch;

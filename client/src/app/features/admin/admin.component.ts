@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
@@ -23,6 +23,8 @@ export class AdminComponent {
   readonly accounts = signal<AdminAccount[]>([]);
   readonly profiles = signal<AdminProfile[]>([]);
   readonly loading = signal(true);
+  readonly mailTestPending = signal(false);
+  readonly organizerEmail = computed(() => this.auth.account()?.email ?? '');
   invitationPendingId: string | null = null;
   currentPassword = '';
   newPassword = '';
@@ -93,6 +95,19 @@ export class AdminComponent {
   }
 
   hasAccount(guestId: string): boolean { return this.accounts().some(account => account.guestId === guestId); }
+
+  async sendTestEmail(): Promise<void> {
+    this.mailTestPending.set(true);
+    try {
+      const result = await this.api.sendTestEmail();
+      this.toast.success(`E-mail de test envoyé à ${result.email}. Vérifiez aussi les spams.`);
+    } catch (error: unknown) {
+      const response = error as { error?: { message?: string } };
+      this.toast.error(response.error?.message ?? "Impossible d'envoyer l'e-mail de test.");
+    } finally {
+      this.mailTestPending.set(false);
+    }
+  }
 
   async changePassword(): Promise<void> {
     try {

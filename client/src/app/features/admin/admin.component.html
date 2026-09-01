@@ -5,6 +5,22 @@
     <p>Créez les comptes ici : chaque utilisateur recevra un lien personnel pour choisir son mot de passe.</p>
   </header>
 
+  <article class="panel mail-test-panel">
+    <div>
+      <div class="eyebrow">SMTP</div>
+      <h2>Tester l’envoi d’e-mails</h2>
+      <p class="muted">Envoie un message de test à {{ organizerEmail() || 'votre adresse' }} pour vérifier la configuration.</p>
+    </div>
+    <button
+      class="btn secondary"
+      type="button"
+      [disabled]="mailTestPending() || !organizerEmail()"
+      (click)="sendTestEmail()"
+    >
+      {{ mailTestPending() ? 'Envoi…' : 'M’envoyer un e-mail de test' }}
+    </button>
+  </article>
+
   @if (loading()) {
     <article class="panel">Chargement…</article>
   } @else {

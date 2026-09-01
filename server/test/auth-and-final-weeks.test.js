@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const { describe, it } = require('node:test');
 
 const { AccountsService, normalizeEmail, profileForOrganizationRole } = require('../dist/auth/accounts.service.js');
+const { InvitationMailerService } = require('../dist/auth/invitation-mailer.service.js');
 const { PasswordService } = require('../dist/auth/password.service.js');
 const { addDays } = require('../dist/event-config/event-config.service.js');
 const { expandRecurrenceDates, isDateInWindow } = require('../dist/final-weeks/final-weeks.utils.js');
@@ -39,6 +40,19 @@ describe('password security', () => {
   it('rejects passwords shorter than twelve characters', async () => {
     const passwords = new PasswordService();
     await assert.rejects(() => passwords.hash('trop-court'));
+  });
+});
+
+describe('invitation mailer', () => {
+  it('rejects a test email when SMTP is not configured', async () => {
+    const mailer = new InvitationMailerService(config({}));
+    await assert.rejects(
+      () => mailer.sendTestEmail({ email: 'moi@example.com' }),
+      error => {
+        assert.match(String(error.message), /n'est pas configuré/);
+        return true;
+      },
+    );
   });
 });
 

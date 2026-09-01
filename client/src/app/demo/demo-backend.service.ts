@@ -669,6 +669,12 @@ export class DemoBackendService {
 
   // ── Admin ─────────────────────────────────────────────────────────
   private admin(method: string, rest: string[], body: unknown): unknown {
+    if (rest[0] === 'mail') {
+      if (method === 'POST' && rest[1] === 'test') {
+        throw new DemoHttpError(503, "Les e-mails ne s’envoient pas en mode démonstration. Testez ce bouton sur l’application déployée.");
+      }
+      throw new DemoHttpError(404, `Route administration inconnue : ${method} ${rest.join('/')}`);
+    }
     if (rest[0] === 'accounts') {
       if (method === 'GET' && rest.length === 1) return this.data.accounts;
       if (method === 'POST' && rest.length === 3 && rest[1] === 'guests') {
