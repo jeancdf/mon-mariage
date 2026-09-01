@@ -721,12 +721,37 @@ export class DemoBackendService {
       }
       if (method === 'POST' && rest.length === 3 && rest[2] === 'invite') {
         const existing = this.find(this.data.accounts, rest[1], 'Compte introuvable.');
-        if (existing.isOrganizer) throw new DemoHttpError(404, 'Compte introuvable.');
         if (existing.status === 'disabled') {
           throw new DemoHttpError(400, "Réactivez ce compte avant d'envoyer une invitation.");
         }
         this.data.accounts = this.data.accounts.map(account =>
           account.id === existing.id ? this.markInvited(account) : account);
+        return { success: true };
+      }
+      if (method === 'POST' && rest.length === 3 && rest[2] === 'cancel-invitation') {
+        const existing = this.find(this.data.accounts, rest[1], 'Compte introuvable.');
+        if (!existing.invitationSentAt && existing.status !== 'pending') {
+          throw new DemoHttpError(400, "Aucune invitation en cours pour ce compte.");
+        }
+        if (!existing.hasPassword) {
+          this.data.accounts = this.data.accounts.filter(account => account.id !== existing.id);
+          return { success: true };
+        }
+        this.data.accounts = this.data.accounts.map(account =>
+          account.id === existing.id
+            ? { ...account, invitationSentAt: null, invitationExpiresAt: null }
+            : account);
+        return { success: true };
+      }
+      if (method === 'DELETE' && rest.length === 2) {
+        const existing = this.find(this.data.accounts, rest[1], 'Compte introuvable.');
+        if (existing.id === this.data.account.id) {
+          throw new DemoHttpError(400, 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+        if (existing.isOrganizer && this.data.accounts.filter(account => account.isOrganizer).length <= 1) {
+          throw new DemoHttpError(400, 'Le dernier compte organisateur ne peut pas être supprimé.');
+        }
+        this.data.accounts = this.data.accounts.filter(account => account.id !== existing.id);
         return { success: true };
       }
     }

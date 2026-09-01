@@ -22,6 +22,8 @@ const emptyRepository = () => ({
   count: async () => 0,
   update: async () => undefined,
   upsert: async () => undefined,
+  delete: async () => undefined,
+  remove: async value => value,
 });
 
 describe('password security', () => {
@@ -124,6 +126,53 @@ describe('guest account provisioning', () => {
     assert.equal(existing.email, 'new@example.com');
     assert.equal(existing.profileKey, 'witness');
     assert.equal(existing.status, 'active');
+  });
+
+  it('deletes another account and refuses to delete the signed-in one', async () => {
+    let deleted = null;
+    const accounts = {
+      ...emptyRepository(),
+      findOne: async ({ where }) => where.id === 'other' ? { id: 'other', isOrganizer: false } : null,
+      delete: async where => { deleted = where; },
+    };
+    const sessions = {
+      ...emptyRepository(),
+      update: async () => undefined,
+    };
+    const service = new AccountsService(
+      accounts, sessions, emptyRepository(), emptyRepository(), emptyRepository(),
+      new PasswordService(), config({ SESSION_SECRET: 'c'.repeat(32) }),
+    );
+    await assert.rejects(() => service.deleteAccount('me', 'me'));
+    await service.deleteAccount('other', 'me');
+    assert.deepEqual(deleted, { id: 'other' });
+  });
+
+  it('cancels a pending invitation by deleting the account', async () => {
+    let deleted = null;
+    const pending = {
+      id: 'pending-1', isOrganizer: false, passwordHash: null,
+      invitationTokenHash: 'hash', invitationSentAt: new Date(), status: 'pending',
+    };
+    const accounts = {
+      ...emptyRepository(),
+      createQueryBuilder: () => {
+        const builder = {
+          addSelect: () => builder,
+          where: () => builder,
+          getOne: async () => pending,
+        };
+        return builder;
+      },
+      findOne: async () => pending,
+      delete: async where => { deleted = where; },
+    };
+    const service = new AccountsService(
+      accounts, emptyRepository(), emptyRepository(), emptyRepository(), emptyRepository(),
+      new PasswordService(), config({ SESSION_SECRET: 'd'.repeat(32) }),
+    );
+    await service.cancelInvitation('pending-1', 'organizer');
+    assert.deepEqual(deleted, { id: 'pending-1' });
   });
 
   it('prevents an eligible guest from reusing another account email', async () => {

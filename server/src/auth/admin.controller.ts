@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import type { AuthenticatedRequest, AccessProfileKey, SectionKey } from './auth.types';
 import { AccountsService } from './accounts.service';
 import { OrganizerOnly } from './auth.decorators';
@@ -54,6 +54,24 @@ export class AdminController {
     @Param('accountId') accountId: string,
   ): Promise<{ success: true }> {
     await this.accountsService.inviteAccount(accountId);
+    return { success: true };
+  }
+
+  @Post('accounts/:accountId/cancel-invitation')
+  async cancelInvitation(
+    @Req() request: AuthenticatedRequest,
+    @Param('accountId') accountId: string,
+  ): Promise<{ success: true }> {
+    await this.accountsService.cancelInvitation(accountId, request.account.id);
+    return { success: true };
+  }
+
+  @Delete('accounts/:accountId')
+  async deleteAccount(
+    @Req() request: AuthenticatedRequest,
+    @Param('accountId') accountId: string,
+  ): Promise<{ success: true }> {
+    await this.accountsService.deleteAccount(accountId, request.account.id);
     return { success: true };
   }
 

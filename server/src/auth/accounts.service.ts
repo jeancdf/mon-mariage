@@ -344,11 +344,47 @@ export class AccountsService implements OnModuleInit {
       .addSelect('account.passwordHash')
       .where('account.id = :accountId', { accountId })
       .getOne();
-    if (!account || account.isOrganizer) throw new NotFoundException('Compte introuvable.');
+    if (!account) throw new NotFoundException('Compte introuvable.');
     if (account.status === 'disabled') throw new BadRequestException("Réactivez ce compte avant d'envoyer une invitation.");
     const guest = account.guestId ? await this.guestsRepository.findOne({ where: { id: account.guestId } }) : null;
     const name = guest ? `${guest.firstName} ${guest.lastName}`.trim() : account.email;
     await this.sendInvitation(account, name);
+  }
+
+  async cancelInvitation(accountId: string, actorId: string): Promise<void> {
+    const account = await this.accountsRepository.createQueryBuilder('account')
+      .addSelect('account.passwordHash')
+      .addSelect('account.invitationTokenHash')
+      .where('account.id = :accountId', { accountId })
+      .getOne();
+    if (!account) throw new NotFoundException('Compte introuvable.');
+    if (!account.invitationTokenHash && !account.invitationSentAt && account.status !== 'pending') {
+      throw new BadRequestException("Aucune invitation en cours pour ce compte.");
+    }
+    if (!account.passwordHash) {
+      await this.deleteAccount(accountId, actorId);
+      return;
+    }
+    account.invitationTokenHash = null;
+    account.invitationExpiresAt = null;
+    account.invitationSentAt = null;
+    await this.accountsRepository.save(account);
+  }
+
+  async deleteAccount(accountId: string, actorId: string): Promise<void> {
+    if (accountId === actorId) {
+      throw new BadRequestException('Vous ne pouvez pas supprimer votre propre compte.');
+    }
+    const account = await this.accountsRepository.findOne({ where: { id: accountId } });
+    if (!account) throw new NotFoundException('Compte introuvable.');
+    if (account.isOrganizer) {
+      const organizers = await this.accountsRepository.count({ where: { isOrganizer: true } });
+      if (organizers <= 1) {
+        throw new BadRequestException('Le dernier compte organisateur ne peut pas être supprimé.');
+      }
+    }
+    await this.sessionsRepository.update({ accountId, revokedAt: IsNull() }, { revokedAt: new Date() });
+    await this.accountsRepository.delete({ id: accountId });
   }
 
   async setAccountStatus(accountId: string, status: 'active' | 'disabled'): Promise<void> {

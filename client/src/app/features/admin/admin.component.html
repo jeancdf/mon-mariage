@@ -75,13 +75,25 @@
                 </td>
                 <td>{{ account.lastLoginAt ? (account.lastLoginAt | date:'short') : 'Jamais' }}</td>
                 <td>
-                  @if (!account.isOrganizer && account.status !== 'disabled') {
-                    <button class="btn ghost small" type="button" [disabled]="invitationPendingId === account.id" (click)="inviteAccount(account)">
-                      {{ invitationPendingId === account.id
-                        ? 'Envoi…'
-                        : (account.invitationSentAt ? 'Renvoyer l’invitation' : (account.hasPassword ? 'Envoyer un lien de nouveau mot de passe' : 'Envoyer l’invitation')) }}
-                    </button>
-                  }
+                  <div class="row-actions">
+                    @if (canInvite(account)) {
+                      <button class="btn ghost small" type="button" [disabled]="invitationPendingId === account.id" (click)="inviteAccount(account)">
+                        {{ invitationPendingId === account.id
+                          ? 'Envoi…'
+                          : (account.invitationSentAt ? 'Renvoyer l’invitation' : (account.hasPassword ? 'Envoyer un lien de nouveau mot de passe' : 'Envoyer l’invitation')) }}
+                      </button>
+                    }
+                    @if (canCancelInvitation(account)) {
+                      <button class="btn ghost small" type="button" (click)="requestCancelInvitation(account)">
+                        Annuler l’invitation
+                      </button>
+                    }
+                    @if (canDeleteAccount(account)) {
+                      <button class="icon-button danger" type="button" (click)="requestDeleteAccount(account)" aria-label="Supprimer le compte">
+                        <app-icon name="trash" />
+                      </button>
+                    }
+                  </div>
                 </td>
               </tr>
             }
@@ -137,6 +149,30 @@
         <button type="button" class="btn secondary" [disabled]="!currentPassword || newPassword.length < 12" (click)="changePassword()">Modifier</button>
       </div>
     </article>
+  }
+
+  @if (accountPendingAction; as pending) {
+    @if (pending.kind === 'cancel') {
+      <app-confirm-dialog
+        title="Annuler l’invitation ?"
+        [message]="'Le lien envoyé à ' + pending.account.email + ' ne fonctionnera plus.'"
+        [details]="pending.account.hasPassword
+          ? 'Le lien déjà envoyé sera invalidé. Le compte reste actif.'
+          : 'Le compte en attente sera retiré. Vous pourrez renvoyer une invitation plus tard.'"
+        confirmLabel="Annuler l’invitation"
+        titleId="confirm-cancel-invitation-title"
+        (cancel)="cancelAccountAction()"
+        (confirm)="confirmAccountAction()" />
+    } @else {
+      <app-confirm-dialog
+        title="Supprimer ce compte ?"
+        [message]="'Supprimer l’accès de ' + pending.account.name + ' (' + pending.account.email + ') ?'"
+        details="La personne ne pourra plus se connecter. Elle reste dans la liste des invités."
+        confirmLabel="Supprimer le compte"
+        titleId="confirm-delete-account-title"
+        (cancel)="cancelAccountAction()"
+        (confirm)="confirmAccountAction()" />
+    }
   }
 
 </section>
