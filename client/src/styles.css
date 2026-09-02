@@ -3004,6 +3004,14 @@ textarea {
   margin-top: 18px;
 }
 
+.organizer-account-form {
+  margin: 12px 0 8px;
+}
+
+.organizer-account-form .field {
+  margin-bottom: 8px;
+}
+
 @media (max-width: 960px) {
   .final-weeks-summary {
     grid-template-columns: repeat(2, 1fr);

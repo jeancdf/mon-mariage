@@ -109,6 +109,88 @@ describe('guest account provisioning', () => {
   });
 });
 
+describe('organizer account created from admin', () => {
+  const makeService = (accountsRepo, guestsRepo = emptyRepository()) => new AccountsService(
+    accountsRepo,
+    emptyRepository(),
+    emptyRepository(),
+    emptyRepository(),
+    guestsRepo,
+    new PasswordService(),
+    config({ SESSION_SECRET: 'f'.repeat(32) }),
+  );
+
+  it('creates an active organizer that can log in without claiming', async () => {
+    const saved = [];
+    const accounts = {
+      ...emptyRepository(),
+      findOne: async () => null,
+      save: async value => { saved.push({ ...value }); return { id: 'org-2', ...value }; },
+    };
+    const service = makeService(accounts);
+    const created = await service.createOrganizerAccount({
+      email: '  Alice@Example.com ',
+      password: 'phrase-secrete-alice',
+      displayName: 'Alice',
+    });
+
+    assert.equal(created.email, 'alice@example.com');
+    assert.equal(created.displayName, 'Alice');
+    assert.equal(created.status, 'active');
+    assert.equal(created.isOrganizer, true);
+    assert.equal(created.profileKey, 'organizer');
+    assert.equal(saved[0].passwordHash.includes('phrase-secrete-alice'), false);
+    assert.match(saved[0].passwordHash, /^scrypt:/);
+  });
+
+  it('promotes an existing guest account to organizer', async () => {
+    const existing = {
+      id: 'account-alice',
+      guestId: 'guest-alice',
+      email: 'alice@example.com',
+      status: 'pending',
+      profileKey: 'parent',
+      isOrganizer: false,
+      displayName: '',
+      passwordHash: null,
+    };
+    const accounts = {
+      ...emptyRepository(),
+      findOne: async ({ where }) => where.email === 'alice@example.com' ? existing : null,
+      save: async value => value,
+    };
+    const service = makeService(accounts);
+    await service.createOrganizerAccount({
+      email: 'alice@example.com',
+      password: 'phrase-secrete-alice',
+      displayName: 'Alice',
+    });
+    assert.equal(existing.isOrganizer, true);
+    assert.equal(existing.status, 'active');
+    assert.equal(existing.profileKey, 'organizer');
+    assert.equal(existing.guestId, 'guest-alice');
+  });
+
+  it('rejects a second organizer on the same e-mail', async () => {
+    const accounts = {
+      ...emptyRepository(),
+      findOne: async () => ({
+        id: 'account-1',
+        email: 'alice@example.com',
+        isOrganizer: true,
+      }),
+    };
+    const service = makeService(accounts);
+    await assert.rejects(
+      () => service.createOrganizerAccount({
+        email: 'alice@example.com',
+        password: 'phrase-secrete-alice',
+        displayName: 'Alice',
+      }),
+    );
+  });
+});
+
 describe('server-side sessions and CSRF', () => {
   it('sets a secure HTTP-only strict cookie and validates its CSRF token', async () => {
     let storedSession = null;

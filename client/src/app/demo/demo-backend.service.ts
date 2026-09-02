@@ -689,6 +689,9 @@ export class DemoBackendService {
   private admin(method: string, rest: string[], body: unknown): unknown {
     if (rest[0] === 'accounts') {
       if (method === 'GET' && rest.length === 1) return this.data.accounts;
+      if (method === 'POST' && rest.length === 2 && rest[1] === 'organizers') {
+        return this.createOrganizerAccount(body);
+      }
       if (method === 'POST' && rest.length === 3 && rest[1] === 'guests') {
         const guest = this.find(this.data.guests, rest[2], 'Invité introuvable.');
         if (!this.data.accounts.some(account => account.guestId === guest.id)) {
@@ -707,8 +710,12 @@ export class DemoBackendService {
         return { success: true };
       }
       if (method === 'POST' && rest.length === 3 && rest[2] === 'reset') {
-        this.data.accounts = this.data.accounts.map(account =>
-          account.id === rest[1] ? { ...account, status: 'pending', lastLoginAt: null } : account);
+        const { newPassword } = (body ?? {}) as { newPassword?: string };
+        this.data.accounts = this.data.accounts.map(account => {
+          if (account.id !== rest[1]) return account;
+          if (newPassword) return { ...account, status: 'active' };
+          return { ...account, status: 'pending', lastLoginAt: null };
+        });
         return { success: true };
       }
     }
@@ -733,6 +740,57 @@ export class DemoBackendService {
     }
 
     throw new DemoHttpError(404, `Route administration inconnue : ${method} ${rest.join('/')}`);
+  }
+
+  /**
+   * Mirrors the real admin organizer endpoint so demo visitors can try the
+   * fiancée-account flow without touching production data.
+   */
+  private createOrganizerAccount(body: unknown): { success: true } {
+    const payload = (body ?? {}) as {
+      email?: string;
+      password?: string;
+      displayName?: string;
+    };
+    const email = String(payload.email ?? '').trim().toLocaleLowerCase('fr-FR');
+    const displayName = String(payload.displayName ?? '').trim();
+    const password = String(payload.password ?? '');
+    if (!email.includes('@') || !displayName) {
+      throw new DemoHttpError(400, 'Nom et e-mail sont obligatoires.');
+    }
+    if (password.length < 12) {
+      throw new DemoHttpError(400, 'Le mot de passe doit contenir au moins 12 caractères.');
+    }
+    const existing = this.data.accounts.find(account => account.email === email);
+    if (existing?.isOrganizer) {
+      throw new DemoHttpError(409, 'Un compte organisateur existe déjà pour cet e-mail.');
+    }
+    const guest = this.data.guests.find(item =>
+      (item.email || '').toLocaleLowerCase('fr-FR') === email);
+    if (existing) {
+      this.data.accounts = this.data.accounts.map(account => account.id === existing.id
+        ? {
+          ...account,
+          email,
+          name: displayName,
+          status: 'active',
+          profileKey: 'organizer',
+          isOrganizer: true,
+        }
+        : account);
+      return { success: true };
+    }
+    this.data.accounts = [...this.data.accounts, {
+      id: newId(),
+      guestId: guest?.id ?? null,
+      email,
+      status: 'active',
+      profileKey: 'organizer',
+      isOrganizer: true,
+      lastLoginAt: null,
+      name: displayName,
+    }];
+    return { success: true };
   }
 
 

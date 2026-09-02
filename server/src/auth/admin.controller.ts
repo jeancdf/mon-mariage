@@ -19,6 +19,15 @@ export class AdminController {
     return { success: true };
   }
 
+  @Post('accounts/organizers')
+  async createOrganizer(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: { email?: string; password?: string; displayName?: string },
+  ): Promise<{ success: true }> {
+    await this.accountsService.createOrganizerAccount(body);
+    return { success: true };
+  }
+
   @Patch('accounts/:accountId/status')
   async setStatus(
     @Req() request: AuthenticatedRequest,

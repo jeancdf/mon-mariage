@@ -25,9 +25,34 @@ export class AdminApiService {
   private readonly http = inject(HttpClient);
   listAccounts(): Promise<AdminAccount[]> { return firstValueFrom(this.http.get<AdminAccount[]>('/api/admin/accounts')); }
   listProfiles(): Promise<AdminProfile[]> { return firstValueFrom(this.http.get<AdminProfile[]>('/api/admin/profiles')); }
-  async enableGuest(guestId: string): Promise<void> { await firstValueFrom(this.http.post(`/api/admin/accounts/guests/${guestId}`, {})); }
-  async setStatus(accountId: string, status: AdminAccount['status']): Promise<void> { await firstValueFrom(this.http.patch(`/api/admin/accounts/${accountId}/status`, { status })); }
-  async reset(accountId: string): Promise<void> { await firstValueFrom(this.http.post(`/api/admin/accounts/${accountId}/reset`, {})); }
+  async enableGuest(guestId: string): Promise<void> {
+    await firstValueFrom(this.http.post(`/api/admin/accounts/guests/${guestId}`, {}));
+  }
+
+  async createOrganizer(input: {
+    displayName: string;
+    email: string;
+    password: string;
+  }): Promise<void> {
+    await firstValueFrom(this.http.post('/api/admin/accounts/organizers', input));
+  }
+
+  async setStatus(
+    accountId: string,
+    status: AdminAccount['status'],
+  ): Promise<void> {
+    await firstValueFrom(this.http.patch(
+      `/api/admin/accounts/${accountId}/status`,
+      { status },
+    ));
+  }
+
+  async reset(accountId: string, newPassword?: string): Promise<void> {
+    await firstValueFrom(this.http.post(
+      `/api/admin/accounts/${accountId}/reset`,
+      newPassword ? { newPassword } : {},
+    ));
+  }
   async saveProfile(profile: AdminProfile): Promise<AdminProfile> {
     const permissions = Object.fromEntries(profile.permissions.map(permission => [permission.section, {
       canView: permission.canView, canEdit: permission.canEdit,
