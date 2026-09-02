@@ -492,6 +492,7 @@ export const createDemoDataset = (): DemoDataset => ({
     preparationStart: PREPARATION_START,
     dailyStart: DAILY_START,
     timeZone: 'Europe/Paris',
+    coupleNames: ['Camille', 'Alexandre'],
   },
   guests: buildGuests(),
   houses: buildHouses(),

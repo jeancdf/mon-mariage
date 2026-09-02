@@ -129,6 +129,22 @@
             <td>
               @if (auth.can('guests', 'edit')) {
               <div class="row-actions">
+                <button
+                  class="btn ghost small"
+                  type="button"
+                  [disabled]="inviteBusyId === guest.id"
+                  (click)="copyInviteLink(guest)">
+                  {{ guest.inviteToken ? 'Copier le lien' : 'Créer le lien' }}
+                </button>
+                @if (guest.inviteToken) {
+                  <button
+                    class="btn ghost small"
+                    type="button"
+                    [disabled]="inviteBusyId === guest.id"
+                    (click)="requestRegenerateInvite(guest)">
+                    Régénérer
+                  </button>
+                }
                 <button class="icon-button" type="button" (click)="editingGuest = guest" aria-label="Modifier">
                   <app-icon name="edit" />
                 </button>
@@ -160,5 +176,15 @@
       titleId="confirm-delete-guest-title"
       (cancel)="cancelDeleteGuest()"
       (confirm)="confirmDeleteGuest()" />
+  }
+  @if (guestPendingInvite; as guest) {
+    <app-confirm-dialog
+      title="Régénérer le lien d’invitation ?"
+      [message]="'L’ancien lien de ' + guest.firstName + ' ' + guest.lastName + ' ne fonctionnera plus.'"
+      details="Un nouveau lien sera copié dans le presse-papiers."
+      confirmLabel="Régénérer"
+      titleId="confirm-regenerate-invite-title"
+      (cancel)="cancelRegenerateInvite()"
+      (confirm)="confirmRegenerateInvite()" />
   }
 </section>

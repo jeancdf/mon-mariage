@@ -242,6 +242,7 @@ export class AccountsService implements OnModuleInit {
       account = this.accountsRepository.create({
         guestId: guest.id,
         email,
+        displayName: '',
         passwordHash: null,
         status: 'pending',
         profileKey,
@@ -301,9 +302,42 @@ export class AccountsService implements OnModuleInit {
         profileKey: account.profileKey,
         isOrganizer: account.isOrganizer,
         lastLoginAt: account.lastLoginAt,
-        name: guest ? `${guest.firstName} ${guest.lastName}`.trim() : 'Organisateur principal',
+        name: this.accountLabel(account, guest),
       };
     });
+  }
+
+  /**
+   * Creates a ready-to-use organizer from the admin screen. The couple sets
+   * the e-mail and password themselves, so nobody has to claim via invite.
+   */
+  async createOrganizerAccount(input: {
+    email?: unknown;
+    password?: unknown;
+    displayName?: unknown;
+  }): Promise<AccountEntity> {
+    const email = normalizeEmail(input.email);
+    this.assertUsableEmail(email);
+    const displayName = this.requireDisplayName(input.displayName);
+    const passwordHash = await this.passwords.hash(String(input.password ?? ''));
+    const account = await this.findOrCreateOrganizerSlot(email);
+    const guest = await this.guestsRepository.findOne({ where: { email } });
+    account.email = email;
+    account.displayName = displayName;
+    account.passwordHash = passwordHash;
+    account.status = 'active';
+    account.profileKey = 'organizer';
+    account.isOrganizer = true;
+    account.invitationTokenHash = null;
+    account.invitationExpiresAt = null;
+    account.invitationSentAt = null;
+    if (guest && !account.guestId) account.guestId = guest.id;
+    const saved = await this.accountsRepository.save(account);
+    await this.sessionsRepository.update(
+      { accountId: saved.id, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+    return saved;
   }
 
   async enableGuestAccount(guestId: string): Promise<void> {
@@ -323,6 +357,7 @@ export class AccountsService implements OnModuleInit {
       account = this.accountsRepository.create({
         guestId,
         email,
+        displayName: '',
         passwordHash: null,
         status: 'pending',
         profileKey: profileForOrganizationRole(guest.organizationRole),
@@ -495,6 +530,7 @@ export class AccountsService implements OnModuleInit {
     account = this.accountsRepository.create({
       guestId: null,
       email,
+      displayName: this.config.get<string>('COUPLE_NAME_2', '').trim(),
       passwordHash: await this.passwords.hash(password),
       status: 'active',
       profileKey: 'organizer',
@@ -587,5 +623,47 @@ export class AccountsService implements OnModuleInit {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) {
       throw new BadRequestException('Adresse e-mail invalide.');
     }
+  }
+
+  private requireDisplayName(value: unknown): string {
+    const name = String(value ?? '').trim();
+    if (!name) {
+      throw new BadRequestException('Le nom affiché est obligatoire.');
+    }
+    if (name.length > 80) {
+      throw new BadRequestException('Le nom affiché est trop long.');
+    }
+    return name;
+  }
+
+  private async findOrCreateOrganizerSlot(email: string): Promise<AccountEntity> {
+    const existing = await this.accountsRepository.findOne({ where: { email } });
+    if (existing?.isOrganizer) {
+      throw new ConflictException(
+        'Un compte organisateur existe déjà pour cet e-mail.',
+      );
+    }
+    if (existing) return existing;
+    return this.accountsRepository.create({
+      guestId: null,
+      email,
+      displayName: '',
+      passwordHash: null,
+      status: 'pending',
+      profileKey: 'organizer',
+      isOrganizer: true,
+      lastLoginAt: null,
+      lastLoginIp: '',
+    });
+  }
+
+  private accountLabel(
+    account: AccountEntity,
+    guest: GuestEntity | undefined,
+  ): string {
+    const named = account.displayName?.trim();
+    if (named) return named;
+    if (guest) return `${guest.firstName} ${guest.lastName}`.trim();
+    return account.isOrganizer ? 'Organisateur' : account.email;
   }
 }

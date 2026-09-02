@@ -23,6 +23,20 @@ export class GuestsController {
     return this.guestsService.create(guest);
   }
 
+  @Post(':id/invite-link')
+  @RequirePermission('guests', 'edit')
+  async issueInviteLink(@Param('id') id: string): Promise<{ token: string; path: string }> {
+    const { token } = await this.guestsService.issueInviteToken(id, false);
+    return { token, path: `/i/${token}` };
+  }
+
+  @Post(':id/invite-link/regenerate')
+  @RequirePermission('guests', 'edit')
+  async regenerateInviteLink(@Param('id') id: string): Promise<{ token: string; path: string }> {
+    const { token } = await this.guestsService.issueInviteToken(id, true);
+    return { token, path: `/i/${token}` };
+  }
+
   @Patch(':id')
   @RequirePermission('guests', 'edit')
   update(

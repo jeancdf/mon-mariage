@@ -2,7 +2,7 @@
   <header class="page-header">
     <div class="script-note">Accès et sécurité</div>
     <h1>Administration</h1>
-    <p>Créez les comptes ici : chaque utilisateur recevra un lien personnel pour choisir son mot de passe.</p>
+    <p>Créez le compte de ta fiancée ici, ou invitez les autres accès par e-mail.</p>
   </header>
 
   <article class="panel mail-test-panel">
@@ -37,6 +37,70 @@
     <article class="panel admin-section">
       <header>
         <div>
+          <div class="eyebrow">Couple</div>
+          <h2>Compte de ta fiancée</h2>
+        </div>
+      </header>
+      <p class="muted">
+        Tu choisis son e-mail et son mot de passe ici. Elle se connecte
+        ensuite comme toi, avec les mêmes droits d’administration, sans
+        lien d’invitation.
+      </p>
+      <div class="form-grid organizer-account-form">
+        <label class="field">
+          <span>Nom affiché</span>
+          <input
+            [(ngModel)]="partnerName"
+            name="partnerName"
+            autocomplete="name"
+            placeholder="Alice"
+          />
+        </label>
+        <label class="field">
+          <span>Adresse e-mail</span>
+          <input
+            type="email"
+            [(ngModel)]="partnerEmail"
+            name="partnerEmail"
+            autocomplete="off"
+            placeholder="alice@exemple.fr"
+          />
+        </label>
+        <label class="field">
+          <span>Mot de passe</span>
+          <input
+            type="password"
+            [(ngModel)]="partnerPassword"
+            name="partnerPassword"
+            autocomplete="new-password"
+            minlength="12"
+            placeholder="12 caractères minimum"
+          />
+        </label>
+        <label class="field">
+          <span>Confirmer le mot de passe</span>
+          <input
+            type="password"
+            [(ngModel)]="partnerPasswordConfirm"
+            name="partnerPasswordConfirm"
+            autocomplete="new-password"
+            minlength="12"
+          />
+        </label>
+      </div>
+      <button
+        class="btn primary"
+        type="button"
+        [disabled]="!canCreatePartner() || partnerBusy()"
+        (click)="createPartner()"
+      >
+        {{ partnerBusy() ? 'Création…' : 'Créer le compte organisateur' }}
+      </button>
+    </article>
+
+    <article class="panel admin-section">
+      <header>
+        <div>
           <div class="eyebrow">Comptes</div>
           <h2>Accès internes</h2>
         </div>
@@ -59,7 +123,7 @@
               <tr>
                 <td><strong>{{ account.name }}</strong></td>
                 <td>{{ account.email }}</td>
-                <td>{{ account.profileKey }}</td>
+                <td>{{ account.isOrganizer ? 'Organisateur' : account.profileKey }}</td>
                 <td>
                   <select
                     [disabled]="account.isOrganizer || account.status === 'pending'"
@@ -176,4 +240,3 @@
   }
 
 </section>
-

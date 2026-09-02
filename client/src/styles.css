@@ -3019,6 +3019,14 @@ textarea {
   margin-top: 18px;
 }
 
+.organizer-account-form {
+  margin: 12px 0 8px;
+}
+
+.organizer-account-form .field {
+  margin-bottom: 8px;
+}
+
 @media (max-width: 960px) {
   .final-weeks-summary {
     grid-template-columns: repeat(2, 1fr);
@@ -3870,5 +3878,328 @@ textarea {
   .presence-page-grid,
   .full-responsibility-list {
     grid-template-columns: 1fr;
+  }
+}
+/* Site public, theme ivoire / nuit via CSS variables */
+.public-site {
+  position: relative;
+  min-height: 100dvh;
+  padding: 32px 20px 64px;
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 36%),
+    var(--bg);
+  color: var(--text);
+}
+
+.public-theme-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.public-theme-toggle:hover {
+  background: var(--surface-alt);
+}
+
+.public-theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.public-hero {
+  max-width: 640px;
+  margin: 0 auto 28px;
+  text-align: center;
+}
+
+.public-hero h1 {
+  margin: 8px 0 10px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(42px, 8vw, 64px);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.public-date {
+  margin: 0;
+  color: var(--muted);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 20px;
+  font-style: italic;
+}
+
+.public-countdown {
+  justify-content: center;
+  width: max-content;
+  margin: 28px auto 0;
+}
+
+.public-panel {
+  max-width: 640px;
+  margin: 0 auto 16px;
+  padding: 22px 22px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.public-panel h2 {
+  margin: 4px 0 8px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.public-programme,
+.public-people,
+.public-venues {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-programme li,
+.public-people li,
+.public-venues li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.public-programme li:first-child,
+.public-people li:first-child,
+.public-venues li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.public-programme span,
+.public-people small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.public-venues li {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.public-venue-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.public-venue-heading span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.public-venues p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.public-venues a,
+.public-lot-card a {
+  color: var(--text);
+  text-underline-offset: 2px;
+}
+
+.public-venues a:hover,
+.public-lot-card a:hover {
+  color: var(--accent);
+}
+
+.public-people {
+  gap: 16px;
+}
+
+.public-people li {
+  flex-wrap: wrap;
+}
+
+.public-lot {
+  max-width: 960px;
+  margin: 28px auto 0;
+}
+
+.public-lot h2 {
+  margin: 4px 0 18px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(28px, 5vw, 36px);
+  font-weight: 400;
+}
+
+.public-lot-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.public-lot-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.public-lot-photo-wrap {
+  height: 220px;
+  overflow: hidden;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--muted) 18%, var(--surface-alt)), var(--surface-alt));
+}
+
+.public-lot-photo {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.public-site--nuit .public-lot-photo {
+  filter: brightness(0.78) saturate(0.92);
+}
+
+.public-lot-card-body {
+  padding: 16px 18px 18px;
+}
+
+.public-lot-card h3 {
+  margin: 0 0 6px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.public-lot-drive {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.public-lot-card p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.public-lot-card a {
+  font-size: 13px;
+}
+
+.public-lot-credit {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.public-rsvp-form {
+  display: grid;
+  gap: 4px;
+}
+
+.public-rsvp-form .auth-submit {
+  max-width: 640px;
+  width: 100%;
+  margin: 8px auto 0;
+}
+
+.public-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.public-check input[type="checkbox"] {
+  width: 18px;
+  min-height: 18px;
+}
+
+.public-rsvp-hint {
+  max-width: 640px;
+  margin: 28px auto 12px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.public-site .auth-switch {
+  color: var(--muted);
+}
+
+.public-site .form-error {
+  max-width: 640px;
+  margin: 0 auto 16px;
+  color: #b42318;
+}
+
+.public-site--nuit .form-error {
+  color: #fca5a5;
+}
+
+.public-site .muted {
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .public-lot-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 960px) {
+  .public-lot-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .public-site {
+    padding: 24px 16px 48px;
+  }
+
+  .public-theme-toggle {
+    top: 12px;
+    right: 12px;
+  }
+
+  .public-people li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .public-countdown span {
+    font-size: 56px;
   }
 }

@@ -41,6 +41,15 @@ export class AdminApiService {
   async enableGuest(guestId: string): Promise<void> {
     await firstValueFrom(this.http.post(`/api/admin/accounts/guests/${guestId}`, {}));
   }
+
+  async createOrganizer(input: {
+    displayName: string;
+    email: string;
+    password: string;
+  }): Promise<void> {
+    await firstValueFrom(this.http.post('/api/admin/accounts/organizers', input));
+  }
+
   async setStatus(accountId: string, status: 'active' | 'disabled'): Promise<void> {
     await firstValueFrom(this.http.patch(`/api/admin/accounts/${accountId}/status`, { status }));
   }

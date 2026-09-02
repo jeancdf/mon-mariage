@@ -29,10 +29,15 @@ export class AdminComponent {
   readonly mailStatus = signal<MailStatus | null>(null);
   readonly mailTestError = signal<string | null>(null);
   readonly organizerEmail = computed(() => this.auth.account()?.email ?? '');
+  readonly partnerBusy = signal(false);
   invitationPendingId: string | null = null;
   accountPendingAction: { account: AdminAccount; kind: 'delete' | 'cancel' } | null = null;
   currentPassword = '';
   newPassword = '';
+  partnerName = '';
+  partnerEmail = '';
+  partnerPassword = '';
+  partnerPasswordConfirm = '';
 
   readonly sections = [
     { key: 'dashboard', label: 'Tableau de bord' }, { key: 'guests', label: 'Invités' },
@@ -44,6 +49,15 @@ export class AdminComponent {
   constructor() {
     void this.reload();
     void this.loadMailStatus();
+  }
+
+  canCreatePartner(): boolean {
+    return Boolean(
+      this.partnerName.trim()
+      && this.partnerEmail.trim()
+      && this.partnerPassword.length >= 12
+      && this.partnerPassword === this.partnerPasswordConfirm,
+    );
   }
 
   async reload(options?: { silent?: boolean }): Promise<void> {
@@ -73,6 +87,28 @@ export class AdminComponent {
     } catch { this.toast.error("Impossible d'enregistrer ce profil."); }
   }
 
+  async createPartner(): Promise<void> {
+    if (!this.canCreatePartner() || this.partnerBusy()) return;
+    this.partnerBusy.set(true);
+    try {
+      await this.api.createOrganizer({
+        displayName: this.partnerName.trim(),
+        email: this.partnerEmail.trim(),
+        password: this.partnerPassword,
+      });
+      this.partnerName = '';
+      this.partnerEmail = '';
+      this.partnerPassword = '';
+      this.partnerPasswordConfirm = '';
+      await this.reload({ silent: true });
+      this.toast.success('Compte organisateur créé. Elle peut se connecter.');
+    } catch (error: unknown) {
+      this.toast.error(this.messageOf(error, 'Impossible de créer ce compte.'));
+    } finally {
+      this.partnerBusy.set(false);
+    }
+  }
+
   async inviteGuest(guest: Guest): Promise<void> {
     this.invitationPendingId = guest.id;
     try {
@@ -80,8 +116,7 @@ export class AdminComponent {
       await this.reload({ silent: true });
       this.toast.success(`Compte créé et invitation envoyée à ${guest.email}.`);
     } catch (error: unknown) {
-      const response = error as { error?: { message?: string } };
-      this.toast.error(response.error?.message ?? "Impossible d'envoyer l'invitation.");
+      this.toast.error(this.messageOf(error, "Impossible d'envoyer l'invitation."));
     } finally {
       this.invitationPendingId = null;
     }
@@ -94,8 +129,7 @@ export class AdminComponent {
       await this.reload({ silent: true });
       this.toast.success(`Invitation envoyée à ${account.email}.`);
     } catch (error: unknown) {
-      const response = error as { error?: { message?: string } };
-      this.toast.error(response.error?.message ?? "Impossible d'envoyer l'invitation.");
+      this.toast.error(this.messageOf(error, "Impossible d'envoyer l'invitation."));
     } finally {
       this.invitationPendingId = null;
     }
@@ -104,7 +138,9 @@ export class AdminComponent {
   async setStatus(account: AdminAccount, status: 'active' | 'disabled'): Promise<void> {
     if (account.status === status) return;
     try { await this.api.setStatus(account.id, status); await this.reload({ silent: true }); }
-    catch (error: unknown) { const response = error as { error?: { message?: string } }; this.toast.error(response.error?.message ?? 'Impossible de modifier ce compte.'); }
+    catch (error: unknown) {
+      this.toast.error(this.messageOf(error, 'Impossible de modifier ce compte.'));
+    }
   }
 
   hasAccount(guestId: string): boolean { return this.accounts().some(account => account.guestId === guestId); }
@@ -155,8 +191,7 @@ export class AdminComponent {
       }
       await this.reload({ silent: true });
     } catch (error: unknown) {
-      const response = error as { error?: { message?: string } };
-      this.toast.error(response.error?.message ?? 'Impossible de modifier ce compte.');
+      this.toast.error(this.messageOf(error, 'Impossible de modifier ce compte.'));
     }
   }
 
@@ -167,8 +202,7 @@ export class AdminComponent {
       const result = await this.api.sendTestEmail();
       this.toast.success(`E-mail de test envoyé à ${result.email}. Vérifiez aussi les spams.`);
     } catch (error: unknown) {
-      const response = error as { error?: { message?: string } };
-      const message = response.error?.message ?? "Impossible d'envoyer l'e-mail de test.";
+      const message = this.messageOf(error, "Impossible d'envoyer l'e-mail de test.");
       this.mailTestError.set(message);
       this.toast.error(message);
     } finally {
@@ -181,8 +215,12 @@ export class AdminComponent {
       await this.auth.changePassword(this.currentPassword, this.newPassword);
       await this.router.navigateByUrl('/connexion');
     } catch (error: unknown) {
-      const response = error as { error?: { message?: string } };
-      this.toast.error(response.error?.message ?? 'Impossible de changer le mot de passe.');
+      this.toast.error(this.messageOf(error, 'Impossible de changer le mot de passe.'));
     }
+  }
+
+  private messageOf(error: unknown, fallback: string): string {
+    const response = error as { error?: { message?: string } };
+    return response.error?.message ?? fallback;
   }
 }

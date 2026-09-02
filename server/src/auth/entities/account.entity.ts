@@ -15,6 +15,9 @@ export class AccountEntity {
   @Column({ type: 'text' })
   email!: string;
 
+  @Column({ type: 'text', default: '' })
+  displayName!: string;
+
   @Column({ type: 'text', nullable: true, select: false })
   passwordHash!: string | null;
 

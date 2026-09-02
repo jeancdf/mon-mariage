@@ -1,0 +1,96 @@
+<main
+  class="public-site"
+  [class.public-site--nuit]="publicTheme.isDark()"
+  [style.--bg]="publicTheme.theme().bg"
+  [style.--surface]="publicTheme.theme().surface"
+  [style.--surface-alt]="publicTheme.theme().surfaceAlt"
+  [style.--border]="publicTheme.theme().border"
+  [style.--text]="publicTheme.theme().text"
+  [style.--muted]="publicTheme.theme().muted"
+  [style.--accent]="publicTheme.theme().accent"
+  [style.--accent-fg]="publicTheme.theme().accentFg"
+>
+  <app-public-theme-toggle />
+
+  <section class="public-hero">
+    <p class="script-note">{{ site()?.weddingPlace || 'Mariage' }}</p>
+    <h1>{{ coupleLabel() || 'Mariage' }}</h1>
+    @if (dateLabel()) {
+      <p class="public-date">{{ dateLabel() }}</p>
+    }
+    @if (site(); as info) {
+      <div class="countdown public-countdown">
+        <span>{{ info.daysRemaining }}</span>
+        <div>
+          <strong>jours</strong>
+          <strong>restants</strong>
+        </div>
+      </div>
+    }
+  </section>
+
+  @if (loading()) {
+    <p class="muted">Chargement…</p>
+  } @else if (error()) {
+    <p class="form-error" role="alert">{{ error() }}</p>
+  }
+
+  <section class="public-panel">
+    <div class="eyebrow">Programme</div>
+    <ul class="public-venues">
+      @for (venue of venues; track venue.title) {
+        <li>
+          <div class="public-venue-heading">
+            <strong>{{ venue.title }}</strong>
+            @if (venue.time) {
+              <span>{{ venue.time }}</span>
+            }
+          </div>
+          <p>
+            @if (venue.place) {
+              <span>{{ venue.place }} — </span>
+            }
+            <a [href]="venue.mapsUrl" target="_blank" rel="noopener">{{ venue.address }}</a>
+          </p>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <section class="public-lot" aria-labelledby="public-lot-heading">
+    <div class="eyebrow">À découvrir</div>
+    <h2 id="public-lot-heading">Autour du Lot</h2>
+    <div class="public-lot-grid">
+      @for (spot of lotSpots; track spot.photo) {
+        <article class="public-lot-card">
+          <div class="public-lot-photo-wrap">
+            <img
+              class="public-lot-photo"
+              [src]="spot.photo"
+              [alt]="spot.title"
+              (error)="hideBrokenPhoto($event)"
+            />
+          </div>
+          <div class="public-lot-card-body">
+            <h3>{{ spot.title }}</h3>
+            <p class="public-lot-drive">
+              @if (spot.driveLabel === 'sur place') {
+                Depuis l’église, sur place
+              } @else {
+                {{ spot.driveLabel }} en voiture depuis l’église
+              }
+            </p>
+            <p>{{ spot.blurb }}</p>
+            <a [href]="spot.mapsUrl" target="_blank" rel="noopener">Voir sur la carte</a>
+          </div>
+        </article>
+      }
+    </div>
+    <p class="public-lot-credit">Photos : Wikimedia Commons</p>
+  </section>
+
+  <p class="public-rsvp-hint muted">
+    Vous avez reçu un lien d’invitation privé ? Ouvrez-le pour confirmer la présence de votre foyer.
+  </p>
+  <a class="auth-switch" routerLink="/connexion">Espace organisateurs</a>
+</main>

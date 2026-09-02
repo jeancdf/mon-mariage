@@ -11,8 +11,12 @@ import { VendorsComponent } from './features/vendors/vendors.component';
 import { WeddingShellComponent } from './wedding-shell/wedding-shell.component';
 import { AccessDeniedComponent } from './auth/access-denied.component';
 import { InvitationComponent } from './auth/invitation.component';
+import { PublicHomeComponent } from './features/public-site/public-home.component';
+import { RsvpComponent } from './features/public-site/rsvp.component';
 
 export const routes: Routes = [
+  { path: '', pathMatch: 'full', component: PublicHomeComponent },
+  { path: 'i/:token', component: RsvpComponent },
   { path: 'connexion', component: AuthComponent, data: { mode: 'login' } },
   { path: 'invitation', component: InvitationComponent },
   { path: 'activer', redirectTo: 'connexion' },
@@ -21,7 +25,6 @@ export const routes: Routes = [
     component: WeddingShellComponent,
     canActivate: [authGuard],
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'aucun-acces', component: AccessDeniedComponent },
       { path: 'dashboard', component: DashboardComponent, canActivate: [permissionGuard], data: { section: 'dashboard' } },
       { path: 'invites', component: GuestsComponent, canActivate: [permissionGuard], data: { section: 'guests' } },
@@ -65,5 +68,5 @@ export const routes: Routes = [
       },
     ],
   },
-  { path: '**', redirectTo: 'dashboard' },
+  { path: '**', redirectTo: '' },
 ];

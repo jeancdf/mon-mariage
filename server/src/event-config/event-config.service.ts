@@ -13,6 +13,7 @@ export interface EventConfiguration {
   preparationStart: string;
   dailyStart: string;
   timeZone: string;
+  coupleNames: string[];
 }
 
 @Injectable()
@@ -27,10 +28,18 @@ export class EventConfigService {
       preparationStart: addDays(weddingDate, -56),
       dailyStart: addDays(weddingDate, -7),
       timeZone: this.getTimeZone(),
+      coupleNames: this.getCoupleNames(),
     };
   }
 
   getTimeZone(): string {
     return this.config.get<string>('TIMEZONE', 'Europe/Paris');
+  }
+
+  getCoupleNames(): string[] {
+    return [
+      this.config.get<string>('COUPLE_NAME_1', ''),
+      this.config.get<string>('COUPLE_NAME_2', ''),
+    ].map(name => name.trim()).filter(Boolean);
   }
 }

@@ -134,7 +134,7 @@ export const guestPeople = (guest: Guest): GuestPerson[] => {
       firstName,
       lastName: lastNameParts.join(' '),
       category: guest.category,
-      rsvp: guest.rsvp,
+      rsvp: guest.plusOneRsvp ?? guest.rsvp,
       isPlusOne: true,
       isKid: false,
       parentGuestId: guest.id,
@@ -149,7 +149,7 @@ export const guestPeople = (guest: Guest): GuestPerson[] => {
       firstName,
       lastName: guest.lastName,
       category: 'enfants',
-      rsvp: guest.rsvp,
+      rsvp: kid.rsvp ?? guest.rsvp,
       isPlusOne: false,
       isKid: true,
       parentGuestId: guest.id,
@@ -185,11 +185,14 @@ export const emptyGuest = (): Guest => ({
   rsvp: 'pending',
   hasPlusOne: false,
   plusOneName: '',
+  plusOneRsvp: 'pending',
   kids: [],
   dietary: '',
   events: ['ceremony', 'dinner'],
   transport: '',
+  needsHousing: false,
   notes: '',
+  inviteToken: null,
 });
 
 export const cloneGuest = (guest: Guest): Guest => ({

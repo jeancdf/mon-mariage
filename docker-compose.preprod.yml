@@ -1,15 +1,14 @@
-# The project name and the postgres volume name are pinned on purpose:
-# compose derives volume names from the project name, so changing either
-# (flag, env var, or deploy directory) would silently attach postgres to a
-# fresh empty volume. Keep these stable across workflow rewrites.
-name: mon-mariage
+# Dedicated preprod stack. Project name, volume, and default network are
+# pinned so this file cannot attach to production postgres
+# (mon-mariage_postgres_data) even if invoked from the prod directory.
+name: mon-mariage-preprod
 
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-mon_mariage}
+      POSTGRES_DB: ${POSTGRES_DB:-mon_mariage_preprod}
       POSTGRES_USER: ${POSTGRES_USER:-mon_mariage}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
@@ -34,28 +33,21 @@ services:
       CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:8080}
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-mon_mariage}
+      DB_NAME: ${DB_NAME:-mon_mariage_preprod}
       DB_USER: ${DB_USER:-mon_mariage}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       DB_SSL: ${DB_SSL:-false}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      PRIVATE_EVENT_CODE: ${PRIVATE_EVENT_CODE:?PRIVATE_EVENT_CODE is required}
       BOOTSTRAP_ORGANIZER_EMAIL: ${BOOTSTRAP_ORGANIZER_EMAIL:?BOOTSTRAP_ORGANIZER_EMAIL is required}
       BOOTSTRAP_ORGANIZER_PASSWORD: ${BOOTSTRAP_ORGANIZER_PASSWORD:?BOOTSTRAP_ORGANIZER_PASSWORD is required}
-      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?PUBLIC_APP_URL is required}
-      SMTP_HOST: "${SMTP_HOST:?SMTP_HOST is required}"
-      SMTP_PORT: "${SMTP_PORT:-587}"
-      SMTP_SECURE: "${SMTP_SECURE:-false}"
-      SMTP_REQUIRE_TLS: "${SMTP_REQUIRE_TLS:-true}"
-      SMTP_USER: "${SMTP_USER:-}"
-      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
-      MAIL_FROM: "${MAIL_FROM:?MAIL_FROM is required}"
       WEDDING_DATE: ${WEDDING_DATE:-2027-07-16}
       WEDDING_PLACE: ${WEDDING_PLACE:-Escayrac}
       TIMEZONE: ${TIMEZONE:-Europe/Paris}
       COUPLE_NAME_1: ${COUPLE_NAME_1:-}
       COUPLE_NAME_2: ${COUPLE_NAME_2:-}
     ports:
-      - "127.0.0.1:${BACKEND_HOST_PORT:-3001}:${BACKEND_PORT:-3000}"
+      - "127.0.0.1:${BACKEND_HOST_PORT:-3008}:${BACKEND_PORT:-3000}"
     healthcheck:
       test:
         [
@@ -79,15 +71,15 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    # Caddy (qr_caddy) already sits on mon-mariage_default. Join that network
+    # so HTTPS works without a second Caddy external network.
     networks:
       default:
       public_proxy:
         aliases:
-          - mon-mariage-frontend
-    # Keep the diagnostic host port private; Caddy reaches the container over
-    # the shared Docker network and publishes the public HTTPS endpoint.
+          - mon-mariage-preprod-frontend-1
     ports:
-      - "127.0.0.1:${FRONTEND_HOST_PORT:-8081}:80"
+      - "127.0.0.1:${FRONTEND_HOST_PORT:-9004}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null"]
       interval: 10s
@@ -95,15 +87,12 @@ services:
       retries: 5
 
 networks:
-  # qr_caddy (qr-code project) joins this network to proxy
-  # mon-mariage.duckdns.org -> mon-mariage-frontend-1:80. Renaming the
-  # project, this network, or the frontend service breaks the reverse proxy.
   default:
-    name: mon-mariage_default
+    name: mon-mariage-preprod_default
   public_proxy:
     external: true
-    name: qr-code_app_net
+    name: mon-mariage_default
 
 volumes:
   postgres_data:
-    name: mon-mariage_postgres_data
+    name: mon-mariage-preprod_postgres_data

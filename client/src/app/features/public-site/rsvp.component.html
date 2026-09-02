@@ -1,0 +1,92 @@
+<main
+  class="public-site"
+  [class.public-site--nuit]="publicTheme.isDark()"
+  [style.--bg]="publicTheme.theme().bg"
+  [style.--surface]="publicTheme.theme().surface"
+  [style.--surface-alt]="publicTheme.theme().surfaceAlt"
+  [style.--border]="publicTheme.theme().border"
+  [style.--text]="publicTheme.theme().text"
+  [style.--muted]="publicTheme.theme().muted"
+  [style.--accent]="publicTheme.theme().accent"
+  [style.--accent-fg]="publicTheme.theme().accentFg"
+>
+  <app-public-theme-toggle />
+
+  <section class="public-hero">
+    <p class="script-note">Réponse à l’invitation</p>
+    <h1>Votre foyer</h1>
+    <a class="auth-switch" routerLink="/">Retour au site</a>
+  </section>
+
+  @if (loading()) {
+    <p class="muted">Chargement…</p>
+  } @else if (!household) {
+    <p class="form-error" role="alert">{{ error() }}</p>
+  } @else {
+    @if (submitted()) {
+      <section class="public-panel">
+        <div class="eyebrow">Merci</div>
+        <h2>Votre réponse est enregistrée</h2>
+        <p>Vous pouvez modifier ces informations tant que le lien reste valable.</p>
+      </section>
+    }
+
+    <form class="public-rsvp-form" (ngSubmit)="submit()">
+      <section class="public-panel">
+        <div class="eyebrow">Présence</div>
+        <p>Confirmez ou déclinez pour chaque personne déjà sur l’invitation.</p>
+        <ul class="public-people">
+          @for (person of people; track person.id) {
+            <li>
+              <div>
+                <strong>{{ person.name }}</strong>
+                <small>{{ kindLabel(person.kind) }}</small>
+              </div>
+              <div class="chip-row">
+                <button class="chip" type="button" [class.active]="person.rsvp === 'confirmed'" (click)="setPersonRsvp(person, 'confirmed')">Présent</button>
+                <button class="chip" type="button" [class.active]="person.rsvp === 'declined'" (click)="setPersonRsvp(person, 'declined')">Absent</button>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="public-panel">
+        <div class="eyebrow">Événements</div>
+        <div class="chip-row">
+          @for (eventOption of eventOptions; track eventOption.value) {
+            <button class="chip" type="button" [class.active]="events.includes(eventOption.value)" (click)="toggleEvent(eventOption.value)">
+              {{ eventOption.label }}
+            </button>
+          }
+        </div>
+      </section>
+
+      <section class="public-panel">
+        <label class="field">
+          <span>Régime alimentaire</span>
+          <input [(ngModel)]="dietary" name="dietary" placeholder="Allergies, végétarien…" />
+        </label>
+        <label class="field">
+          <span>Transport</span>
+          <input [(ngModel)]="transport" name="transport" placeholder="Voiture, train…" />
+        </label>
+        <label class="field public-check">
+          <input type="checkbox" [(ngModel)]="needsHousing" name="needsHousing" />
+          <span>Nous avons besoin d’un couchage</span>
+        </label>
+      </section>
+
+      @if (error() && household) {
+        <p class="form-error" role="alert">{{ error() }}</p>
+      }
+
+      <button class="btn primary auth-submit" type="submit" [disabled]="saving() || people.some(person => person.rsvp === 'pending')">
+        {{ saving() ? 'Envoi…' : 'Envoyer la réponse' }}
+      </button>
+      @if (people.some(person => person.rsvp === 'pending')) {
+        <p class="muted">Indiquez présent ou absent pour chaque personne.</p>
+      }
+    </form>
+  }
+</main>

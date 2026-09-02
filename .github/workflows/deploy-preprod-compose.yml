@@ -1,0 +1,177 @@
+name: Deploy Preprod (Docker Compose)
+
+on:
+  push:
+    branches: [preprod]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-preprod-compose
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          FULLSTACK_ENV_PREPROD: ${{ secrets.FULLSTACK_ENV_PREPROD }}
+        run: |
+          test -n "$VPS_HOST"
+          test -n "$VPS_USER"
+          test -n "$VPS_SSH_KEY"
+          test -n "$FULLSTACK_ENV_PREPROD"
+          case "$VPS_PORT" in
+            ''|*[!0-9]*) echo "::error::VPS_PORT must be a number (1-65535)"; exit 1;;
+          esac
+
+      - name: Prepare SSH key
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          for attempt in 1 2 3; do
+            if ssh-keyscan -T 10 -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts; then
+              exit 0
+            fi
+            echo "ssh-keyscan attempt ${attempt}/3 failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::Cannot reach the VPS over SSH -- the host is down, a firewall/fail2ban is dropping GitHub runner IPs, or the VPS_HOST/VPS_PORT secret is stale."
+          exit 1
+
+      - name: Write .env.preprod from secret
+        run: |
+          printf '%s' "${{ secrets.FULLSTACK_ENV_PREPROD }}" > .env.preprod
+          for key in SESSION_SECRET PRIVATE_EVENT_CODE BOOTSTRAP_ORGANIZER_EMAIL BOOTSTRAP_ORGANIZER_PASSWORD; do
+            if ! grep -q "^${key}=..*" .env.preprod; then
+              echo "::error::${key} is missing from FULLSTACK_ENV_PREPROD"
+              exit 1
+            fi
+          done
+
+      - name: Set deployment metadata
+        run: |
+          echo "DEPLOY_SHA=${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "DEPLOY_VERSION=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "DEPLOYED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+
+      - name: Set deployment env overrides
+        run: |
+          set_env_value() {
+            key="$1"
+            value="$2"
+            if grep -q "^${key}=" .env.preprod; then
+              sed -i "s|^${key}=.*|${key}=${value}|" .env.preprod
+            else
+              printf '%s=%s\n' "${key}" "${value}" >> .env.preprod
+            fi
+          }
+
+          set_env_value FRONTEND_HOST_PORT 9004
+          set_env_value BACKEND_HOST_PORT 3008
+          set_env_value PUBLIC_DOMAIN "preprod-mon-mariage.duckdns.org"
+          set_env_value CLIENT_ORIGIN "https://preprod-mon-mariage.duckdns.org"
+          set_env_value DEPLOY_SHA "${DEPLOY_SHA}"
+          set_env_value DEPLOY_VERSION "${DEPLOY_VERSION}"
+          set_env_value DEPLOYED_AT "${DEPLOYED_AT}"
+
+      - name: Package deployment files
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude='.git' \
+            --exclude='client/node_modules' \
+            --exclude='client/dist' \
+            --exclude='server/node_modules' \
+            --exclude='server/dist' \
+            -czf /tmp/mon-mariage-preprod-deploy.tgz \
+            docker-compose.preprod.yml .env.preprod client server
+
+      - name: Upload release over SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          REMOTE_PREPROD_APP_DIR: ${{ secrets.REMOTE_PREPROD_APP_DIR }}
+        run: |
+          set -euo pipefail
+          REMOTE_PREPROD_APP_DIR="${REMOTE_PREPROD_APP_DIR:-~/mon-mariage-preprod}"
+          REMOTE_TMP="/tmp/mon-mariage-preprod-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
+
+          scp -P "${VPS_PORT}" /tmp/mon-mariage-preprod-deploy.tgz "${VPS_USER}@${VPS_HOST}:${REMOTE_TMP}"
+          ssh -p "${VPS_PORT}" "${VPS_USER}@${VPS_HOST}" \
+            "REMOTE_PREPROD_APP_DIR='${REMOTE_PREPROD_APP_DIR}' REMOTE_TMP='${REMOTE_TMP}' bash -s" << 'EOF'
+          set -euo pipefail
+          APP_DIR="${REMOTE_PREPROD_APP_DIR/#\~/$HOME}"
+          RELEASE_DIR="${APP_DIR}/release"
+
+          mkdir -p "${APP_DIR}"
+          rm -rf "${RELEASE_DIR}"
+          mkdir -p "${RELEASE_DIR}"
+          tar -xzf "${REMOTE_TMP}" -C "${RELEASE_DIR}"
+          rm -f "${REMOTE_TMP}"
+          EOF
+
+      - name: Deploy stack on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          REMOTE_PREPROD_APP_DIR: ${{ secrets.REMOTE_PREPROD_APP_DIR }}
+        run: |
+          set -euo pipefail
+          REMOTE_PREPROD_APP_DIR="${REMOTE_PREPROD_APP_DIR:-~/mon-mariage-preprod}"
+
+          ssh -p "${VPS_PORT}" "${VPS_USER}@${VPS_HOST}" \
+            "REMOTE_PREPROD_APP_DIR='${REMOTE_PREPROD_APP_DIR}' bash -s" << 'EOF'
+          set -euo pipefail
+          APP_DIR="${REMOTE_PREPROD_APP_DIR/#\~/$HOME}"
+          cd "${APP_DIR}/release"
+
+          docker compose --project-name mon-mariage-preprod --env-file .env.preprod -f docker-compose.preprod.yml build frontend backend
+          docker compose --project-name mon-mariage-preprod --env-file .env.preprod -f docker-compose.preprod.yml up -d --remove-orphans
+          docker compose --project-name mon-mariage-preprod --env-file .env.preprod -f docker-compose.preprod.yml up -d --no-deps --force-recreate frontend
+          docker compose --project-name mon-mariage-preprod --env-file .env.preprod -f docker-compose.preprod.yml ps
+          EOF
+
+      - name: Healthchecks
+        run: |
+          set -a
+          . ./.env.preprod
+          set +a
+          FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-9004}"
+          BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-3008}"
+          ssh -p "${{ secrets.VPS_PORT || '22' }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "FRONTEND_HOST_PORT='${FRONTEND_HOST_PORT}' BACKEND_HOST_PORT='${BACKEND_HOST_PORT}' DEPLOY_SHA='${DEPLOY_SHA}' DEPLOY_VERSION='${DEPLOY_VERSION}' DEPLOYED_AT='${DEPLOYED_AT}' bash -s" << 'EOF'
+          set -euo pipefail
+          wget -qO- "http://localhost:${BACKEND_HOST_PORT}/api/health" >/dev/null
+          wget -qO- "http://localhost:${BACKEND_HOST_PORT}/api/auth/setup" | grep '"configured":true' >/dev/null
+          wget -qO- "http://localhost:${FRONTEND_HOST_PORT}/" >/dev/null
+          DEPLOY_METADATA="$(wget -qO- "http://localhost:${FRONTEND_HOST_PORT}/deploy-version.json")"
+          printf '%s' "${DEPLOY_METADATA}" | grep "\"revision\":\"${DEPLOY_SHA}\"" >/dev/null
+          printf '%s' "${DEPLOY_METADATA}" | grep "\"version\":${DEPLOY_VERSION}" >/dev/null
+          printf '%s' "${DEPLOY_METADATA}" | grep "\"deployedAt\":\"${DEPLOYED_AT}\"" >/dev/null
+          EOF
+
+      - name: Public HTTPS healthcheck
+        run: |
+          set -a
+          . ./.env.preprod
+          set +a
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors \
+            "https://${PUBLIC_DOMAIN}/" >/dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors \
+            "https://${PUBLIC_DOMAIN}/api/health" >/dev/null
