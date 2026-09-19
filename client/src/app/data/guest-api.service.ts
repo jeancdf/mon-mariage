@@ -16,7 +16,7 @@ export class GuestApiService {
     return firstValueFrom(this.http.get<Guest[]>('/api/guests'));
   }
 
-  async replaceGuests(guests: Guest[]): Promise<Guest[]> {
+  async mergeGuests(guests: Partial<Guest>[]): Promise<Guest[]> {
     return firstValueFrom(
       this.http.put<Guest[]>('/api/guests/import', { guests }),
     );
@@ -26,7 +26,7 @@ export class GuestApiService {
     return firstValueFrom(this.http.post<Guest>('/api/guests', guest));
   }
 
-  async updateGuest(guest: Guest): Promise<Guest> {
+  async updateGuest(guest: Partial<Guest> & { id: string }): Promise<Guest> {
     return firstValueFrom(this.http.patch<Guest>(`/api/guests/${guest.id}`, guest));
   }
 

@@ -9,6 +9,7 @@ import { EventConfigService } from '../event-config/event-config.service';
 import { FinalWeeksService } from '../final-weeks/final-weeks.service';
 import { AccountEntity } from '../auth/entities/account.entity';
 import type { SectionKey } from '../auth/auth.types';
+import { guestPeople } from '../guests/guest-people';
 
 export interface DashboardSummary {
   guests: {
@@ -74,10 +75,9 @@ export class DashboardService {
           ? guest.kids.filter(kid => typeof kid === 'object' && kid !== null && 'name' in kid && String(kid.name).trim()).length
           : 0
       );
+    const people = guests.flatMap(guestPeople);
     const countGuestsByRsvp = (rsvp: 'confirmed' | 'pending' | 'declined') =>
-      guests
-        .filter(guest => guest.rsvp === rsvp)
-        .reduce((sum, guest) => sum + guestPartySize(guest), 0);
+      people.filter(person => person.rsvp === rsvp).length;
     const confirmed = countGuestsByRsvp('confirmed');
     const pending = countGuestsByRsvp('pending');
     const declined = countGuestsByRsvp('declined');

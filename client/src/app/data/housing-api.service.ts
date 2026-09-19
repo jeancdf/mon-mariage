@@ -2,6 +2,18 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { BedType, House, Room } from './types';
+import { GuestPerson } from '../shared/wedding-utils';
+
+export interface HousingPerson extends GuestPerson { arrivalDate: string | null; departureDate: string | null; }
+export interface HousingCalendar {
+  weddingDate: string;
+  startDate: string;
+  endDate: string;
+  nights: string[];
+  houses: House[];
+  people: HousingPerson[];
+  assignments: { guestId: string; roomId: string; night: string }[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class HousingApiService {
@@ -9,6 +21,18 @@ export class HousingApiService {
 
   async loadHousing(): Promise<House[]> {
     return firstValueFrom(this.http.get<House[]>('/api/housing'));
+  }
+
+  async loadPeople(): Promise<GuestPerson[]> {
+    return firstValueFrom(this.http.get<GuestPerson[]>('/api/housing/people'));
+  }
+
+  loadCalendar(): Promise<HousingCalendar> {
+    return firstValueFrom(this.http.get<HousingCalendar>('/api/housing/calendar'));
+  }
+
+  saveStay(guestId: string, arrivalDate: string, departureDate: string): Promise<unknown> {
+    return firstValueFrom(this.http.put(`/api/housing/people/${encodeURIComponent(guestId)}/stay`, { arrivalDate, departureDate }));
   }
 
   async createHouse(name: string): Promise<House[]> {
@@ -31,10 +55,7 @@ export class HousingApiService {
     return firstValueFrom(this.http.delete<House[]>(`/api/housing/rooms/${roomId}`));
   }
 
-  async assignGuest(guestId: string, roomId: string | null): Promise<House[]> {
-    if (!roomId) {
-      return firstValueFrom(this.http.delete<House[]>(`/api/housing/assignments/${guestId}`));
-    }
-    return firstValueFrom(this.http.put<House[]>(`/api/housing/assignments/${guestId}`, { roomId }));
+  async assignGuest(guestId: string, roomId: string | null, from?: string, until?: string): Promise<House[]> {
+    return firstValueFrom(this.http.put<House[]>(`/api/housing/assignments/${guestId}`, { roomId, from, until }));
   }
 }

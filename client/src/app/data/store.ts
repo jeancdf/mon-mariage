@@ -2,7 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import {
   Budget, BudgetCategory, BudgetItem, Guest, House, Room, Table, TodoGroup, Task, ThemeKey, Vendor,
 } from './types';
-import { allGuestPeople, guestPeople, THEME_KEYS } from '../shared/wedding-utils';
+import { allGuestPeople, guestPeople, GuestPerson, THEME_KEYS } from '../shared/wedding-utils';
 
 const THEME_STORAGE_KEY = 'wedding-theme';
 
@@ -20,6 +20,7 @@ const readStoredTheme = (): ThemeKey => {
 export class WeddingStore {
   readonly guests = signal<Guest[]>([]);
   readonly houses = signal<House[]>([]);
+  readonly housingPeople = signal<GuestPerson[]>([]);
   readonly tables = signal<Table[]>([]);
   readonly budget = signal<Budget>({ categories: [] });
   readonly todos = signal<TodoGroup[]>([]);
@@ -49,9 +50,7 @@ export class WeddingStore {
   }
 
   private countGuestsByRsvp(rsvp: Guest['rsvp']): number {
-    return this.guests()
-      .filter(guest => guest.rsvp === rsvp)
-      .reduce((count, guest) => count + this.guestPartySize(guest), 0);
+    return allGuestPeople(this.guests()).filter(person => person.rsvp === rsvp).length;
   }
 
   // ── Guests ────────────────────────────────────────────────────────
@@ -59,25 +58,16 @@ export class WeddingStore {
     this.guests.update(arr => [...arr, g]);
   }
   replaceGuests(guests: Guest[]) {
-    const validGuestIds = new Set(allGuestPeople(guests).map(person => person.id));
+    const validGuestIds = new Set(allGuestPeople(guests).filter(person => person.rsvp !== 'declined').map(person => person.id));
+    const previousIds = allGuestPeople(this.guests()).map(person => person.id);
     this.guests.set(guests);
-    this.houses.update(houses => houses.map(house => ({
-      ...house,
-      rooms: house.rooms.map(room => ({
-        ...room,
-        guestIds: room.guestIds.filter(id => validGuestIds.has(id)),
-      })),
-    })));
-    this.tables.update(tables => tables.map(table => ({
-      ...table,
-      assignments: table.assignments.filter(assignment => validGuestIds.has(assignment.guestId)),
-    })));
+    for (const id of previousIds) if (!validGuestIds.has(id)) this.removeGuestAssignments(id);
   }
   updateGuest(g: Guest) {
     const previous = this.guests().find(guest => guest.id === g.id);
     this.guests.update(arr => arr.map(x => x.id === g.id ? g : x));
     if (previous) {
-      const validPersonIds = new Set(guestPeople(g).map(person => person.id));
+      const validPersonIds = new Set(guestPeople(g).filter(person => person.rsvp !== 'declined').map(person => person.id));
       for (const person of guestPeople(previous)) {
         if (!validPersonIds.has(person.id)) {
           this.removeGuestAssignments(person.id);
@@ -112,7 +102,7 @@ export class WeddingStore {
     this.houses.update(arr => [...arr, h]);
   }
   replaceHouses(houses: House[]) {
-    this.houses.set(this.filterHouseAssignments(houses));
+    this.houses.set(houses);
   }
   deleteHouse(id: string) {
     this.houses.update(arr => arr.filter(x => x.id !== id));
@@ -144,7 +134,7 @@ export class WeddingStore {
     this.tables.update(arr => [...arr, t]);
   }
   replaceTables(tables: Table[]) {
-    this.tables.set(this.filterTableAssignments(tables));
+    this.tables.set(tables);
   }
   deleteTable(id: string) {
     this.tables.update(arr => arr.filter(x => x.id !== id));
@@ -292,26 +282,14 @@ export class WeddingStore {
     }
   }
 
-  private validGuestIds(): Set<string> {
-    return new Set(allGuestPeople(this.guests()).map(person => person.id));
-  }
-
-  private filterHouseAssignments(houses: House[]): House[] {
-    const validGuestIds = this.validGuestIds();
-    return houses.map(house => ({
-      ...house,
-      rooms: house.rooms.map(room => ({
-        ...room,
-        guestIds: room.guestIds.filter(id => validGuestIds.has(id)),
-      })),
-    }));
-  }
-
-  private filterTableAssignments(tables: Table[]): Table[] {
-    const validGuestIds = this.validGuestIds();
-    return tables.map(table => ({
-      ...table,
-      assignments: table.assignments.filter(assignment => validGuestIds.has(assignment.guestId)),
-    }));
+  reset(): void {
+    this.guests.set([]);
+    this.houses.set([]);
+    this.housingPeople.set([]);
+    this.tables.set([]);
+    this.budget.set({ categories: [] });
+    this.todos.set([]);
+    this.vendors.set([]);
+    this.loaded.set(false);
   }
 }

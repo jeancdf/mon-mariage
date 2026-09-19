@@ -2,7 +2,7 @@
   <header class="page-header split">
     <div>
       <h1>Liste des invités</h1>
-      <p>{{ store.guestCount() }} invités · {{ store.confirmedCount() }} confirmés · {{ store.pendingCount() }} en attente</p>
+      <p>{{ store.guests().length }} foyers · {{ store.guestCount() }} personnes · {{ store.confirmedCount() }} confirmées · {{ store.pendingCount() }} en attente</p>
     </div>
     <div class="row-actions">
       @if (auth.can('guests', 'edit')) {
@@ -30,7 +30,39 @@
     <p class="muted">{{ importMessage }}</p>
   }
   @if (importError) {
-    <p class="empty">{{ importError }}</p>
+    <p class="form-error" role="alert">{{ importError }}</p>
+  }
+
+  @if (importPreview; as rows) {
+    <section class="panel import-preview" aria-labelledby="import-preview-title">
+      <h2 id="import-preview-title">Vérifier l’import</h2>
+      <p>{{ importCount('new') }} foyers à ajouter · {{ importCount('update') }} à mettre à jour · {{ skippedImportRows }} lignes invalides ignorées.</p>
+      <p>Les autres foyers restent inchangés. Vérifiez les rapprochements et les réponses : retirer une personne du foyer ou enregistrer un refus libère ses affectations.</p>
+      <div class="stack">
+        @for (row of rows; track $index) {
+          <article class="import-preview-row">
+            <strong>{{ row.guest.firstName }} {{ row.guest.lastName }}</strong>
+            <label class="field">
+              <span>Action pour ce foyer</span>
+              <select [(ngModel)]="row.targetId" [disabled]="isImporting">
+                <option value="unresolved" disabled>Rapprochement à vérifier…</option>
+                <option value="new">Ajouter un nouveau foyer</option>
+                <option value="skip">Ignorer cette ligne</option>
+                @for (existing of store.guests(); track existing.id) {
+                  <option [value]="existing.id">Mettre à jour {{ existing.firstName }} {{ existing.lastName }}{{ existing.email ? ' · ' + existing.email : '' }}</option>
+                }
+              </select>
+            </label>
+            <details><summary>Voir les données à importer</summary><ul>@for (detail of importDetails(row); track $index) { <li>{{ detail }}</li> }</ul></details>
+          </article>
+        }
+      </div>
+      @if (!importReady()) { <p class="form-error">Choisissez une action par ligne. Un foyer existant ne peut être sélectionné qu’une fois.</p> }
+      <div class="row-actions">
+        <button class="btn secondary" type="button" [disabled]="isImporting" (click)="importPreview = null">Annuler</button>
+        <button class="btn primary" type="button" [disabled]="isImporting || !importReady()" (click)="confirmImport()">{{ isImporting ? 'Import en cours…' : 'Confirmer la fusion' }}</button>
+      </div>
+    </section>
   }
 
   <div class="filters">
@@ -100,17 +132,21 @@
                 [class.pending]="guest.rsvp === 'pending'"
                 [class.declined]="guest.rsvp === 'declined'"
                 [ngModel]="guest.rsvp"
-                [disabled]="!auth.can('guests', 'edit')"
+                [disabled]="!auth.can('guests', 'edit') || !!rsvpBusyId"
+                [attr.aria-label]="'RSVP de ' + guest.firstName"
                 (ngModelChange)="updateRsvp(guest, $event)">
                 @for (option of rsvpOptions; track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
                 }
               </select>
+              @for (person of peopleFor(guest).slice(1); track person.id) {
+                <small>{{ person.firstName }} : {{ rsvpLabels[person.rsvp] }}</small>
+              }
             </td>
             <td>
               @if (guest.kids.length) {
                 <div class="mini-list">
-                  @for (kid of guest.kids; track kid.name) {
+                  @for (kid of guest.kids; track kid.id) {
                     <app-badge>{{ kid.name }}{{ kid.age ? ', ' + kid.age + 'a' : '' }}</app-badge>
                   }
                 </div>
@@ -134,9 +170,9 @@
                   type="button"
                   [disabled]="inviteBusyId === guest.id"
                   (click)="copyInviteLink(guest)">
-                  {{ guest.inviteToken ? 'Copier le lien' : 'Créer le lien' }}
+                  {{ guest.hasInviteLink ? 'Copier le lien' : 'Créer le lien' }}
                 </button>
-                @if (guest.inviteToken) {
+                @if (guest.hasInviteLink) {
                   <button
                     class="btn ghost small"
                     type="button"
@@ -165,7 +201,7 @@
   </div>
 
   @if (editingGuest || isAdding) {
-    <app-guest-modal [guest]="editingGuest" (closeModal)="closeModal()" (saveGuest)="saveGuest($event)" />
+    <app-guest-modal [guest]="editingGuest" [saving]="isSaving" (closeModal)="closeModal()" (saveGuest)="saveGuest($event)" />
   }
 
   @if (guestPendingDeletion; as guest) {

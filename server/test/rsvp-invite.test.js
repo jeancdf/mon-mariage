@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const { describe, it } = require('node:test');
 
 const { GuestsService } = require('../dist/guests/guests.service.js');
+const { GuestEntity } = require('../dist/guests/guest.entity.js');
 const { toPublicHousehold } = require('../dist/public/public.types.js');
 
 const emptyRepository = () => ({
@@ -19,10 +20,18 @@ const emptyRepository = () => ({
 });
 
 const accountsStub = {
+  withManager() { return this; },
   assertGuestAccountEmail: async () => undefined,
   assertImportAccountEmail: async () => undefined,
   syncGuestAccount: async () => undefined,
   reconcileGuestAccounts: async () => undefined,
+};
+
+const makeService = guests => {
+  const assignments = emptyRepository();
+  const manager = { query: async () => [], getRepository: entity => entity === GuestEntity ? guests : assignments };
+  guests.manager = { transaction: work => work(manager) };
+  return new GuestsService(guests, assignments, assignments, accountsStub);
 };
 
 const makeGuest = (overrides = {}) => ({
@@ -77,7 +86,7 @@ describe('public RSVP tokens', () => {
         return value;
       },
     };
-    const service = new GuestsService(guests, emptyRepository(), emptyRepository(), accountsStub);
+    const service = makeService(guests);
 
     const updated = await service.applyPublicRsvp('token-household-a', {
       people: [
@@ -111,7 +120,7 @@ describe('public RSVP tokens', () => {
       findOne: async ({ where }) => where.inviteToken === guestA.inviteToken ? guestA : null,
       save: async value => value,
     };
-    const service = new GuestsService(guests, emptyRepository(), emptyRepository(), accountsStub);
+    const service = makeService(guests);
 
     await assert.rejects(
       () => service.applyPublicRsvp('token-household-a', {

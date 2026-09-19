@@ -111,6 +111,7 @@ export interface GuestPerson {
   isPlusOne: boolean;
   isKid: boolean;
   parentGuestId: string;
+  needsHousing?: boolean;
 }
 
 export const plusOneGuestId = (guestId: string): string => `${guestId}__plus_one`;
@@ -125,6 +126,7 @@ export const guestPeople = (guest: Guest): GuestPerson[] => {
     isPlusOne: false,
     isKid: false,
     parentGuestId: guest.id,
+    needsHousing: Boolean(guest.needsHousing),
   }];
 
   if (guest.hasPlusOne) {
@@ -138,6 +140,7 @@ export const guestPeople = (guest: Guest): GuestPerson[] => {
       isPlusOne: true,
       isKid: false,
       parentGuestId: guest.id,
+      needsHousing: Boolean(guest.needsHousing),
     });
   }
 
@@ -153,6 +156,7 @@ export const guestPeople = (guest: Guest): GuestPerson[] => {
       isPlusOne: false,
       isKid: true,
       parentGuestId: guest.id,
+      needsHousing: Boolean(guest.needsHousing),
     });
   }
 

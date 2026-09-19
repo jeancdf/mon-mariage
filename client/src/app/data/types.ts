@@ -31,6 +31,7 @@ export interface Guest {
   needsHousing?: boolean;
   notes: string;
   inviteToken?: string | null;
+  hasInviteLink?: boolean;
 }
 
 export interface Room {

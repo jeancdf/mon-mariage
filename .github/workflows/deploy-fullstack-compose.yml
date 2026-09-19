@@ -10,7 +10,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mon_mariage_test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test -d mon_mariage_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+      - run: npm ci
+        working-directory: server
+      - run: npm test
+        working-directory: server
+      - run: node test-postgres/nightly-housing.js
+        working-directory: server
+        env:
+          TEST_DATABASE_URL: postgres://test:test@localhost:5432/mon_mariage_test
+      - run: npm ci
+        working-directory: client
+      - run: npm test -- --watch=false
+        working-directory: client
+      - run: npm run build
+        working-directory: client
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -151,6 +189,16 @@ jobs:
           cd "${APP_DIR}/release"
 
           docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml build frontend backend
+          # Keep a database snapshot outside the replaceable release directory
+          # before the API synchronizes the nightly housing schema.
+          if [ -n "$(docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml ps -q postgres)" ]; then
+            umask 077
+            mkdir -p "${APP_DIR}/backups"
+            BACKUP_PATH="${APP_DIR}/backups/before-deploy-$(date -u +%Y%m%dT%H%M%SZ).dump"
+            docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml exec -T postgres \
+              sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "${BACKUP_PATH}"
+            test -s "${BACKUP_PATH}"
+          fi
           docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml up -d --remove-orphans
           docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml up -d --no-deps --force-recreate frontend
           docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml ps

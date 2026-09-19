@@ -5,6 +5,7 @@ import { AuthResponse, SectionKey } from './auth.types';
 import { CsrfStateService } from './csrf-state.service';
 import { AuthSessionStateService } from './auth-session-state.service';
 import { DemoModeService } from '../demo/demo-mode.service';
+import { WeddingStore } from '../data/store';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -12,6 +13,7 @@ export class AuthService {
   private readonly csrf = inject(CsrfStateService);
   private readonly state = inject(AuthSessionStateService);
   private readonly demo = inject(DemoModeService);
+  private readonly store = inject(WeddingStore);
   private initialization: Promise<void> | null = null;
 
   readonly account = this.state.account;
@@ -74,6 +76,7 @@ export class AuthService {
 
   clear(): void {
     this.state.clear();
+    this.store.reset();
   }
 
   private async loadCurrentAccount(): Promise<void> {

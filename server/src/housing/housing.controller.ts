@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { BedType, House, Room } from '../planner/planner-state.entity';
 import { HousingService } from './housing.service';
 import { RequirePermission } from '../auth/auth.decorators';
@@ -11,6 +11,21 @@ export class HousingController {
   @Get()
   findAll(): Promise<House[]> {
     return this.housingService.findAll();
+  }
+
+  @Get('people')
+  findPeople() {
+    return this.housingService.findPeople();
+  }
+
+  @Get('calendar')
+  calendar() { return this.housingService.calendar(); }
+
+  @Put('people/:guestId/stay')
+  @RequirePermission('housing', 'edit')
+  async saveStay(@Param('guestId') guestId: string, @Body() body: { arrivalDate: string; departureDate: string }) {
+    await this.housingService.saveStay(guestId, body?.arrivalDate, body?.departureDate);
+    return { success: true };
   }
 
   @Post('houses')
@@ -54,13 +69,13 @@ export class HousingController {
 
   @Put('assignments/:guestId')
   @RequirePermission('housing', 'edit')
-  assignGuest(@Param('guestId') guestId: string, @Body() body: { roomId: string | null }): Promise<House[]> {
-    return this.housingService.assignGuest(guestId, body.roomId);
+  assignGuest(@Param('guestId') guestId: string, @Body() body: { roomId: string | null; from?: string; until?: string }): Promise<House[]> {
+    return this.housingService.assignGuest(guestId, body?.roomId, body?.from, body?.until);
   }
 
   @Delete('assignments/:guestId')
   @RequirePermission('housing', 'edit')
-  unassignGuest(@Param('guestId') guestId: string): Promise<House[]> {
-    return this.housingService.assignGuest(guestId, null);
+  unassignGuest(@Param('guestId') guestId: string, @Query('from') from?: string, @Query('until') until?: string): Promise<House[]> {
+    return this.housingService.assignGuest(guestId, null, from, until);
   }
 }

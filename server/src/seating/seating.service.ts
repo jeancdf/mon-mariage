@@ -4,6 +4,9 @@ import { Repository } from 'typeorm';
 import { SeatingTableEntity } from './seating-table.entity';
 import { TableGuestEntity } from './table-guest.entity';
 import { FLOOR_HEIGHT, FLOOR_WIDTH, Table, TableShape } from './seating.types';
+import { guestPeople, GUEST_PLACEMENT_LOCK } from '../guests/guest-people';
+import { GuestEntity } from '../guests/guest.entity';
+import { ConflictException } from '@nestjs/common';
 
 @Injectable()
 export class SeatingService {
@@ -60,6 +63,7 @@ export class SeatingService {
 
   async assignGuest(guestId: string, tableId: string | null, seat?: number | null): Promise<Table[]> {
     await this.assignmentsRepository.manager.transaction(async manager => {
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [GUEST_PLACEMENT_LOCK]);
       const assignmentsRepository = manager.getRepository(TableGuestEntity);
       const tablesRepository = manager.getRepository(SeatingTableEntity);
       const previous = await assignmentsRepository.findOne({ where: { guestId } });
@@ -67,6 +71,9 @@ export class SeatingService {
         await assignmentsRepository.delete({ guestId });
         return;
       }
+      const person = (await manager.getRepository(GuestEntity).find()).flatMap(guestPeople).find(item => item.id === guestId);
+      if (!person) throw new NotFoundException('Personne introuvable.');
+      if (person.rsvp === 'declined') throw new ConflictException('Cette personne a décliné l’invitation.');
 
       const table = await tablesRepository.findOne({
         where: { id: tableId },

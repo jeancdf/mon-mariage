@@ -18,6 +18,7 @@ export interface FinalWeeksPerson {
   mealSelections: Record<string, MealKind[]>;
   account: { id: string; status: string } | null;
   room: { id: string; name: string; houseName: string } | null;
+  roomsByNight?: Record<string, { id: string; name: string; houseName: string }>;
 }
 
 export interface FinalWeeksMeal {

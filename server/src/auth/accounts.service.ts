@@ -10,7 +10,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
-import { IsNull, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 import { GuestEntity, OrganizationRole } from '../guests/guest.entity';
 import { PasswordService } from './password.service';
 import { AccessProfileEntity } from './entities/access-profile.entity';
@@ -74,6 +74,14 @@ export class AccountsService implements OnModuleInit {
     private readonly config: ConfigService,
     private readonly invitationMailer: InvitationMailerService,
   ) {}
+
+  withManager(manager: EntityManager): AccountsService {
+    return new AccountsService(
+      manager.getRepository(AccountEntity), manager.getRepository(SessionEntity),
+      manager.getRepository(AccessProfileEntity), manager.getRepository(PermissionEntity),
+      manager.getRepository(GuestEntity), this.passwords, this.config, this.invitationMailer,
+    );
+  }
 
   async onModuleInit(): Promise<void> {
     this.validateProductionConfiguration();
