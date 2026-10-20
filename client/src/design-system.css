@@ -983,3 +983,77 @@ textarea::placeholder {
 [data-theme='nuit'] :is(.badge, .rsvp-select).confirmed { color: #86efac; }
 [data-theme='nuit'] :is(.badge, .rsvp-select).pending { color: #fcd34d; }
 [data-theme='nuit'] :is(.badge, .rsvp-select).declined { color: #fca5a5; }
+
+/* ── Guests table ──────────────────────────────────────────────── */
+.guests-table td > span.muted {
+  display: block;
+  font-size: 12px;
+}
+
+/* On phones each guest becomes a card: name and RSVP on top, category and
+   actions below, children underneath. Events and transport stay in the
+   edit dialog. */
+@media (max-width: 700px) {
+  .guests-table thead {
+    display: none;
+  }
+
+  .guests-table,
+  .guests-table tbody {
+    display: block;
+  }
+
+  .guests-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name rsvp'
+      'cat actions'
+      'kids kids';
+    gap: 6px 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .guests-table tbody td {
+    padding: 0;
+    border: 0;
+  }
+
+  .guests-table tbody td:nth-child(1) { grid-area: name; }
+  .guests-table tbody td:nth-child(2) { grid-area: cat; align-self: center; }
+  .guests-table tbody td:nth-child(3) { grid-area: rsvp; }
+  .guests-table tbody td:nth-child(4) { grid-area: kids; }
+  .guests-table tbody td:nth-child(7) { grid-area: actions; }
+
+  .guests-table tbody td:nth-child(4):empty,
+  .guests-table tbody td:nth-child(4):has(> .empty:only-child) {
+    display: none;
+  }
+
+  .guests-table tbody td.empty-state {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ── Compact chrome on phones ──────────────────────────────────── */
+@media (max-width: 720px) {
+  .demo-banner {
+    flex-wrap: nowrap;
+    padding: 8px 12px;
+  }
+
+  .demo-banner p {
+    display: none;
+  }
+
+  .demo-banner .btn {
+    margin-left: auto;
+  }
+
+  .hub-tabs,
+  .final-weeks-subnav {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
