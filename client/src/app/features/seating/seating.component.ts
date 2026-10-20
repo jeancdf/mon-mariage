@@ -7,6 +7,7 @@ import { WeddingStore } from '../../data/store';
 import { IconComponent } from '../../shared/icon.component';
 import { GuestSidebarComponent } from '../../shared/guest-sidebar.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { apiError } from '../../shared/api-error';
 import { ToastService } from '../../shared/toast.service';
 import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
 import { AutofocusDirective } from '../../shared/autofocus.directive';
@@ -458,8 +459,8 @@ export class SeatingComponent {
       });
       this.store.replaceTables(tables);
       this.cancelEditing();
-    } catch {
-      this.toast.error('Impossible de modifier la table.');
+    } catch (error: unknown) {
+      this.toast.error(apiError(error, 'Impossible de modifier la table.'));
     }
   }
 

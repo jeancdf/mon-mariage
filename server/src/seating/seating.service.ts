@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SeatingTableEntity } from './seating-table.entity';
@@ -6,7 +6,6 @@ import { TableGuestEntity } from './table-guest.entity';
 import { FLOOR_HEIGHT, FLOOR_WIDTH, Table, TableShape } from './seating.types';
 import { guestPeople, GUEST_PLACEMENT_LOCK } from '../guests/guest-people';
 import { GuestEntity } from '../guests/guest.entity';
-import { ConflictException } from '@nestjs/common';
 
 @Injectable()
 export class SeatingService {
@@ -45,7 +44,14 @@ export class SeatingService {
     });
     if (!table) throw new NotFoundException('Table not found');
     if (input.name !== undefined) table.name = String(input.name).trim();
-    if (input.seats !== undefined) table.seats = this.normalizeSeats(input.seats);
+    if (input.seats !== undefined) {
+      const seats = this.normalizeSeats(input.seats);
+      const seated = (table.assignments ?? []).length;
+      if (seats < seated) {
+        throw new ConflictException(`${seated} invités sont assis à cette table. Déplacez-en ${seated - seats} avant de réduire le nombre de places.`);
+      }
+      table.seats = seats;
+    }
     table.shape = 'rect';
     if (input.x !== undefined) table.x = this.clamp(Number(input.x), 0, FLOOR_WIDTH);
     if (input.y !== undefined) table.y = this.clamp(Number(input.y), 0, FLOOR_HEIGHT);

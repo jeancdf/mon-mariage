@@ -307,6 +307,11 @@ export class DemoBackendService {
       }
       if (method === 'PATCH' && rest.length === 2) {
         const patch = body as Partial<Table>;
+        const current = this.find(this.data.tables, rest[1], 'Table introuvable.');
+        if (patch.seats !== undefined && patch.seats < current.assignments.length) {
+          const seated = current.assignments.length;
+          throw new DemoHttpError(409, `${seated} invités sont assis à cette table. Déplacez-en ${seated - patch.seats} avant de réduire le nombre de places.`);
+        }
         this.data.tables = this.data.tables.map(table => table.id === rest[1]
           ? { ...table, ...patch, id: table.id, assignments: this.fitAssignments(table, patch.seats) }
           : table);
