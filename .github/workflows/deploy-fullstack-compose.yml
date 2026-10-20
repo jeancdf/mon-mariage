@@ -195,8 +195,9 @@ jobs:
             umask 077
             mkdir -p "${APP_DIR}/backups"
             BACKUP_PATH="${APP_DIR}/backups/before-deploy-$(date -u +%Y%m%dT%H%M%SZ).dump"
+            # Do not let exec consume the remaining SSH script from stdin.
             docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml exec -T postgres \
-              sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "${BACKUP_PATH}"
+              sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' < /dev/null > "${BACKUP_PATH}"
             test -s "${BACKUP_PATH}"
           fi
           docker compose --project-name mon-mariage --env-file .env.production -f docker-compose.prod.yml up -d --remove-orphans
