@@ -87,6 +87,10 @@ import { IconName } from './wedding-utils';
         @case ('heart') {
           <path d="M7.5 13S1.5 9.4 1.5 5.4A3 3 0 0 1 7.5 4a3 3 0 0 1 6 1.4c0 4-6 7.6-6 7.6z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
         }
+        @case ('search') {
+          <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.2" />
+          <path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+        }
       }
     </svg>
   `,

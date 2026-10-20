@@ -1,5 +1,7 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { Guest, GuestCategory, Rsvp } from '../../data/types';
 import { WeddingStore } from '../../data/store';
 import { CATS, EVENT_LABELS, RSVP_LABELS, gid } from '../../data/seed';
@@ -35,6 +37,7 @@ export class GuestsComponent {
   readonly store = inject(WeddingStore);
   private readonly guestApi = inject(GuestApiService);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
   readonly auth = inject(AuthService);
   readonly importInput = viewChild<ElementRef<HTMLInputElement>>('importInput');
   readonly categoryOptions = CATEGORY_OPTIONS;
@@ -75,6 +78,14 @@ export class GuestsComponent {
   readonly filtersActive = computed(() =>
     Boolean(this.search().trim()) || this.categoryFilter() !== 'all' || this.rsvpFilter() !== 'all',
   );
+
+  constructor() {
+    // The command palette links here with ?recherche=<name>, also while this page is already open.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
+      const recherche = params.get('recherche');
+      if (recherche) this.search.set(recherche);
+    });
+  }
 
   openAdd(): void {
     if (!this.auth.can('guests', 'edit')) return;

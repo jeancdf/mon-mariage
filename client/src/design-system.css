@@ -144,6 +144,37 @@ textarea:focus {
   line-height: 1.3;
 }
 
+.sidebar-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.sidebar-search:hover {
+  border-color: color-mix(in srgb, var(--highlight) 55%, var(--border));
+  color: var(--text);
+}
+
+.sidebar-search kbd {
+  margin-left: auto;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-alt);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+}
+
 .nav-groups {
   display: flex;
   flex: 1;
@@ -383,6 +414,102 @@ textarea:focus {
     padding: 10px;
     border-bottom: 0;
     white-space: normal;
+  }
+}
+
+/* ── Command palette ───────────────────────────────────────────── */
+.palette-backdrop {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+
+.command-palette {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(520px, 76vh);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.palette-search {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.palette-search input,
+.palette-search input:focus {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 15px;
+}
+
+.palette-results {
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.palette-group-label {
+  padding: 10px 10px 4px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.palette-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13.5px;
+}
+
+.palette-option app-icon {
+  color: var(--muted);
+}
+
+.palette-option:hover {
+  background: var(--surface-alt);
+}
+
+.palette-option[aria-selected='true'] {
+  background: var(--surface-alt);
+  box-shadow: inset 2px 0 0 var(--highlight);
+}
+
+.palette-option[aria-selected='true'] app-icon {
+  color: var(--highlight);
+}
+
+.palette-empty {
+  margin: 0;
+  padding: 22px 16px 28px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .palette-backdrop {
+    padding: 12px;
   }
 }
 

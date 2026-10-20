@@ -11,6 +11,7 @@ import { SeatingApiService } from '../data/seating-api.service';
 import { WeddingStore } from '../data/store';
 import { TodosApiService } from '../data/todos-api.service';
 import { VendorsApiService } from '../data/vendors-api.service';
+import { CommandPaletteComponent } from '../shared/command-palette.component';
 import { IconComponent } from '../shared/icon.component';
 import { ToastComponent } from '../shared/toast.component';
 import { ToastService } from '../shared/toast.service';
@@ -35,9 +36,13 @@ interface DeploymentMetadata {
     RouterLinkActive,
     IconComponent,
     ToastComponent,
+    CommandPaletteComponent,
   ],
   templateUrl: './wedding-shell.component.html',
-  host: { '(document:keydown.escape)': 'navOpen.set(false)' },
+  host: {
+    '(document:keydown.escape)': 'navOpen.set(false)',
+    '(document:keydown)': 'onShortcut($event)',
+  },
 })
 export class WeddingShellComponent {
   readonly store = inject(WeddingStore);
@@ -60,6 +65,10 @@ export class WeddingShellComponent {
     { label: 'Logistique', items: this.navItems().filter(item => LOGISTICS_PAGES.has(item.id)) },
   ].filter(group => group.items.length));
   readonly navOpen = signal(false);
+  readonly paletteOpen = signal(false);
+  readonly paletteShortcut = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘ K' : 'Ctrl K';
+  /** Element focused before the palette opened, focused again when it is dismissed. */
+  private paletteTrigger: HTMLElement | null = null;
   readonly daysRemaining = computed(() => {
     const date = this.eventConfig.configuration()?.weddingDate;
     if (!date) return null;
@@ -102,6 +111,27 @@ export class WeddingShellComponent {
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd), takeUntilDestroyed())
       .subscribe(() => this.navOpen.set(false));
+  }
+
+  onShortcut(event: KeyboardEvent): void {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
+    event.preventDefault();
+    if (this.paletteOpen()) {
+      this.dismissPalette();
+    } else {
+      this.openPalette();
+    }
+  }
+
+  openPalette(): void {
+    this.paletteTrigger = this.document.activeElement as HTMLElement | null;
+    this.navOpen.set(false);
+    this.paletteOpen.set(true);
+  }
+
+  dismissPalette(): void {
+    this.paletteOpen.set(false);
+    this.paletteTrigger?.focus();
   }
 
   setTheme(theme: ThemeKey): void {
