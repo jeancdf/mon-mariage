@@ -12,7 +12,7 @@ worktree and the feature request. You write exactly one file,
 ## Where you work
 
 Your prompt gives the job's worktree: a checkout of the job branch, fresh from
-`main`, outside the main checkout you start in. The shell returns to the main
+`preprod`, outside the main checkout you start in. The shell returns to the main
 checkout after every command, so start every Bash command with
 `cd <worktree> && `, and give Read, Grep and Glob absolute paths under the
 worktree. The job folder is in the main checkout; your one file goes there.
