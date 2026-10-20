@@ -13,11 +13,10 @@
       <app-icon name="search" [size]="18" />
     </button>
     <a class="mobile-brand" routerLink="/dashboard">
-      <span class="brand-mark" aria-hidden="true"><app-icon name="heart" [size]="13" /></span>
       <span class="brand-title">Notre mariage</span>
     </a>
     @if (daysRemaining() !== null) {
-      <span class="countdown-pill" [attr.title]="weddingDateLabel()">J−{{ daysRemaining() }}</span>
+      <span class="mobile-countdown" [attr.title]="weddingDateLabel()">J−{{ daysRemaining() }}</span>
     }
   </header>
 
@@ -25,22 +24,14 @@
 
   <aside class="sidebar" id="app-sidebar" aria-label="Navigation principale">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true"><app-icon name="heart" [size]="14" /></span>
       <div class="brand-text">
         <div class="brand-title">Notre mariage</div>
-        <div class="brand-subtitle">{{ weddingDateLabel() }}@if (weddingPlace()) { · {{ weddingPlace() }} }</div>
+        <div class="brand-subtitle">{{ weddingDateLabel() }}@if (daysRemaining() !== null) { · J−{{ daysRemaining() }} }</div>
       </div>
       <button type="button" class="icon-button sidebar-close" aria-label="Fermer le menu" (click)="navOpen.set(false)">
         <app-icon name="x" />
       </button>
     </div>
-
-    @if (daysRemaining() !== null) {
-      <div class="sidebar-countdown">
-        <strong>{{ daysRemaining() }}</strong>
-        <span>{{ daysRemaining() === 1 ? 'jour' : 'jours' }} avant le grand jour</span>
-      </div>
-    }
 
     <button type="button" class="sidebar-search" (click)="openPalette()">
       <app-icon name="search" />

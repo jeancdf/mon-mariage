@@ -3,14 +3,13 @@ import { RouterLink } from '@angular/router';
 import { DashboardApiService, DashboardSummary } from '../../data/dashboard-api.service';
 import { ToastService } from '../../shared/toast.service';
 import { fmtCurrency } from '../../shared/wedding-utils';
-import { IconComponent } from '../../shared/icon.component';
 import { EventConfigService } from '../../data/event-config.service';
 import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent {
@@ -22,6 +21,12 @@ export class DashboardComponent {
   readonly Math = Math;
   readonly summary = signal<DashboardSummary | null>(null);
   readonly greeting = new Date().getHours() < 18 ? 'Bonjour' : 'Bonsoir';
+  readonly subtitle = computed(() => {
+    const place = this.eventConfig.configuration()?.weddingPlace;
+    const days = this.summary()?.daysRemaining;
+    const when = days === undefined ? '' : `, dans ${days} ${days === 1 ? 'jour' : 'jours'}`;
+    return `${this.eventConfig.dateLabel()}${place ? ` à ${place}` : ''}${when}.`;
+  });
 
   /** The few things that most need attention, phrased as next actions. */
   readonly nextSteps = computed(() => {

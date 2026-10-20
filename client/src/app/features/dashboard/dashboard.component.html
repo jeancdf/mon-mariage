@@ -1,29 +1,21 @@
 <section class="page page-dashboard">
   @let s = summary();
 
-  <header class="dashboard-hero">
-    <div class="dashboard-hero-text">
-      <div class="script-note">{{ eventConfig.dateLabel() }}@if (eventConfig.configuration()?.weddingPlace; as place) { · {{ place }} }</div>
-      <h1>{{ greeting }}</h1>
-      <p>Voici où en est la préparation du mariage.</p>
-      @if (nextSteps().length) {
-        <ul class="next-steps" aria-label="Prochaines actions">
-          @for (step of nextSteps(); track step.label) {
-            <li><a [routerLink]="step.link">{{ step.label }}<app-icon name="chevron" [size]="12" /></a></li>
-          }
-        </ul>
-      } @else if (s) {
-        <p class="all-clear">Tout est à jour. Profitez-en !</p>
-      }
-    </div>
-    <div class="countdown" aria-label="Compte à rebours">
-      <span>{{ s?.daysRemaining ?? '–' }}</span>
-      <div>
-        <strong>{{ s?.daysRemaining === 1 ? 'jour' : 'jours' }}</strong>
-        <small>avant le grand jour</small>
-      </div>
-    </div>
+  <header class="page-header">
+    <h1>{{ greeting }}</h1>
+    <p>{{ subtitle() }}</p>
   </header>
+
+  @if (nextSteps().length) {
+    <section class="next-steps" aria-labelledby="next-steps-title">
+      <h2 id="next-steps-title">À traiter</h2>
+      <ul>
+        @for (step of nextSteps(); track step.label) {
+          <li><a [routerLink]="step.link">{{ step.label }}</a></li>
+        }
+      </ul>
+    </section>
+  }
 
   @if (!s) {
     <div class="stat-grid" aria-busy="true">
@@ -35,7 +27,7 @@
   <div class="stat-grid">
     @if (auth.can('guests')) {
     <a class="stat-card" routerLink="/invites">
-      <div class="stat-card-head"><div class="eyebrow">Invités</div><app-icon name="guests" /></div>
+      <span class="stat-card-label">Invités</span>
       <strong>{{ s.guests.confirmed }}<small> / {{ s.guests.total }}</small></strong>
       <span>confirmés · {{ s.guests.pending }} en attente</span>
       <div class="progress-track slim"><i [style.width.%]="percent(s.guests.confirmed, s.guests.total)"></i></div>
@@ -43,7 +35,7 @@
     }
     @if (auth.can('housing')) {
     <a class="stat-card" routerLink="/hebergement">
-      <div class="stat-card-head"><div class="eyebrow">Hébergement</div><app-icon name="housing" /></div>
+      <span class="stat-card-label">Hébergement</span>
       <strong>{{ s.housing.occupiedBeds }}<small> / {{ s.housing.totalBeds }}</small></strong>
       <span>places occupées · nuit du mariage</span>
       <div class="progress-track slim"><i [style.width.%]="percent(s.housing.occupiedBeds, s.housing.totalBeds)"></i></div>
@@ -51,7 +43,7 @@
     }
     @if (auth.can('seating')) {
     <a class="stat-card" routerLink="/plan-de-table">
-      <div class="stat-card-head"><div class="eyebrow">Plan de table</div><app-icon name="seating" /></div>
+      <span class="stat-card-label">Plan de table</span>
       <strong>{{ s.seating.seated }}<small> / {{ s.seating.totalSeats }}</small></strong>
       <span>invités placés</span>
       <div class="progress-track slim"><i [style.width.%]="percent(s.seating.seated, s.seating.totalSeats)"></i></div>
@@ -59,7 +51,7 @@
     }
     @if (auth.can('budget')) {
     <a class="stat-card" routerLink="/budget">
-      <div class="stat-card-head"><div class="eyebrow">Budget engagé</div><app-icon name="budget" /></div>
+      <span class="stat-card-label">Budget engagé</span>
       <strong>{{ fmtCurrency(s.budget.totalSpent) }}</strong>
       <span>sur {{ fmtCurrency(s.budget.totalEstimated) }} prévus</span>
       <div class="progress-track slim">
@@ -69,7 +61,7 @@
     }
     @if (auth.can('todos')) {
     <a class="stat-card" routerLink="/a-faire">
-      <div class="stat-card-head"><div class="eyebrow">À faire</div><app-icon name="todo" /></div>
+      <span class="stat-card-label">À faire</span>
       <strong>{{ s.todos.done }}<small> / {{ s.todos.total }}</small></strong>
       <span>tâches terminées</span>
       <div class="progress-track slim"><i [style.width.%]="percent(s.todos.done, s.todos.total)"></i></div>
@@ -77,7 +69,7 @@
     }
     @if (auth.can('vendors')) {
     <a class="stat-card" routerLink="/prestataires">
-      <div class="stat-card-head"><div class="eyebrow">Prestataires</div><app-icon name="vendors" /></div>
+      <span class="stat-card-label">Prestataires</span>
       <strong>{{ s.vendors.reserved }}<small> / {{ s.vendors.count }}</small></strong>
       <span>réservés · {{ fmtCurrency(s.vendors.totalCommitted) }} engagés</span>
       <div class="progress-track slim"><i [style.width.%]="percent(s.vendors.reserved, s.vendors.count)"></i></div>
@@ -87,10 +79,7 @@
 
   @if (auth.can('final_weeks')) {
   <a class="panel final-weeks-summary" routerLink="/dernieres-semaines">
-    <div class="final-weeks-summary-title">
-      <app-icon name="calendar" [size]="18" />
-      <div><div class="eyebrow">Dernières semaines</div><strong>Centre d’opérations</strong></div>
-    </div>
+    <strong class="final-weeks-summary-title">Dernières semaines</strong>
     <div class="summary-metric"><strong>{{ s.finalWeeks.currentlyPresent }}</strong><span>présents</span></div>
     <div class="summary-metric"><strong>{{ s.finalWeeks.todayMeals.lunch }} / {{ s.finalWeeks.todayMeals.dinner }}</strong><span>déjeuner / dîner</span></div>
     <div class="summary-metric"><strong>{{ s.finalWeeks.unfinished }}</strong><span>à terminer</span></div>
@@ -101,7 +90,7 @@
   <div class="two-column">
     @if (auth.can('guests')) {
     <article class="panel">
-      <div class="eyebrow panel-title">Réponses RSVP</div>
+      <h2 class="panel-title">Réponses RSVP</h2>
       @for (row of [
         { label: 'Confirmés', count: s.guests.confirmed, tone: 'positive' },
         { label: 'En attente', count: s.guests.pending, tone: 'warning' },
@@ -120,7 +109,7 @@
 
     @if (auth.can('budget')) {
     <article class="panel">
-      <div class="eyebrow panel-title">Budget par poste</div>
+      <h2 class="panel-title">Budget par poste</h2>
       @for (category of s.budget.categories.slice(0, 5); track category.id) {
         @let over = isOverBudget(category);
         <div class="budget-row">

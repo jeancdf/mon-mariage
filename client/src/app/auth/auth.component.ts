@@ -2,12 +2,11 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from './auth.service';
-import { IconComponent } from '../shared/icon.component';
 
 @Component({
   selector: 'app-auth',
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule],
   templateUrl: './auth.component.html',
 })
 export class AuthComponent {

@@ -1,13 +1,11 @@
 <section class="page page-wide admin-page">
   <header class="page-header">
-    <div class="script-note">Accès et sécurité</div>
     <h1>Administration</h1>
     <p>Créez le compte de ta fiancée ici, ou invitez les autres accès par e-mail.</p>
   </header>
 
   <article class="panel mail-test-panel">
     <div>
-      <div class="eyebrow">SMTP</div>
       <h2>Tester l’envoi d’e-mails</h2>
       <p class="muted">Envoie un message de test à {{ organizerEmail() || 'votre adresse' }} pour vérifier la configuration.</p>
       @if (mailStatus(); as mail) {
@@ -37,7 +35,6 @@
     <article class="panel admin-section">
       <header>
         <div>
-          <div class="eyebrow">Couple</div>
           <h2>Ajouter un organisateur</h2>
         </div>
       </header>
@@ -101,7 +98,6 @@
     <article class="panel admin-section">
       <header>
         <div>
-          <div class="eyebrow">Comptes</div>
           <h2>Accès internes</h2>
         </div>
       </header>
@@ -204,7 +200,6 @@
 
     <article class="panel password-panel">
       <div>
-        <div class="eyebrow">Mon compte</div>
         <h2>Changer mon mot de passe</h2>
       </div>
       <div class="inline-form">

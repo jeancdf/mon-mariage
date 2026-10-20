@@ -84,7 +84,6 @@ export class WeddingShellComponent {
   readonly themeKeys = THEME_KEYS;
   readonly themes = THEMES;
   readonly weddingDateLabel = computed(() => this.eventConfig.dateLabel());
-  readonly weddingPlace = computed(() => this.eventConfig.configuration()?.weddingPlace ?? '');
   readonly deploymentMetadata = signal<DeploymentMetadata | null>(null);
 
   constructor() {
@@ -106,7 +105,6 @@ export class WeddingShellComponent {
       style.setProperty('--accent-fg', theme.accentFg);
       style.setProperty('--badge-bg', theme.badgeBg);
       style.setProperty('--highlight', theme.highlight);
-      style.setProperty('--shadow', theme.shadow);
       style.colorScheme = this.store.theme() === 'nuit' ? 'dark' : 'light';
       this.document.documentElement.dataset['theme'] = this.store.theme();
     });
