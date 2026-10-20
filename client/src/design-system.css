@@ -742,3 +742,20 @@ textarea::placeholder {
     overflow: visible;
   }
 }
+
+/* ── Labels ────────────────────────────────────────────────────── */
+/* Sentence-case labels read calmer than tracked capitals. */
+.eyebrow,
+.field > span,
+th,
+.status-badge,
+.vendor-form .field > span,
+.vendor-form-section h3,
+.demo-invite-label,
+.permission-row.head,
+.gantt-person-label.axis-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
