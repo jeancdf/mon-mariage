@@ -64,7 +64,7 @@ export const THEMES: Record<ThemeKey, ThemeDef> = {
 };
 
 export type PageId = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todos' | 'vendors' | 'final_weeks';
-export type IconName = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todo' | 'vendors' | 'plus' | 'x' | 'edit' | 'trash' | 'bed' | 'chevron' | 'check' | 'menu' | 'calendar' | 'logout' | 'shield' | 'link' | 'heart';
+export type IconName = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todo' | 'vendors' | 'plus' | 'x' | 'edit' | 'trash' | 'bed' | 'chevron' | 'check' | 'menu' | 'calendar' | 'logout' | 'shield' | 'link' | 'heart' | 'search';
 export type PagePath = '/dashboard' | '/invites' | '/prestataires' | '/hebergement' | '/plan-de-table' | '/budget' | '/a-faire' | '/dernieres-semaines';
 
 export const NAV_ITEMS: { id: PageId; label: string; icon: IconName; path: PagePath; section: SectionKey }[] = [
