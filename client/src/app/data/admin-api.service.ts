@@ -8,6 +8,9 @@ export interface AdminAccount {
   guestId: string | null;
   email: string;
   status: 'pending' | 'active' | 'disabled';
+  hasPassword: boolean;
+  invitationSentAt: string | null;
+  invitationExpiresAt: string | null;
   profileKey: AccessProfileKey;
   isOrganizer: boolean;
   lastLoginAt: string | null;
@@ -18,6 +21,16 @@ export interface AdminProfile {
   key: AccessProfileKey;
   name: string;
   permissions: Array<{ id: string; section: SectionKey; canView: boolean; canEdit: boolean }>;
+}
+
+export interface MailStatus {
+  host: string;
+  port: number;
+  user: string;
+  from: string;
+  applicationUrl: string;
+  passwordConfigured: boolean;
+  passwordLength: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,21 +50,23 @@ export class AdminApiService {
     await firstValueFrom(this.http.post('/api/admin/accounts/organizers', input));
   }
 
-  async setStatus(
-    accountId: string,
-    status: AdminAccount['status'],
-  ): Promise<void> {
-    await firstValueFrom(this.http.patch(
-      `/api/admin/accounts/${accountId}/status`,
-      { status },
-    ));
+  async setStatus(accountId: string, status: 'active' | 'disabled'): Promise<void> {
+    await firstValueFrom(this.http.patch(`/api/admin/accounts/${accountId}/status`, { status }));
   }
-
-  async reset(accountId: string, newPassword?: string): Promise<void> {
-    await firstValueFrom(this.http.post(
-      `/api/admin/accounts/${accountId}/reset`,
-      newPassword ? { newPassword } : {},
-    ));
+  async invite(accountId: string): Promise<void> {
+    await firstValueFrom(this.http.post(`/api/admin/accounts/${accountId}/invite`, {}));
+  }
+  async cancelInvitation(accountId: string): Promise<void> {
+    await firstValueFrom(this.http.post(`/api/admin/accounts/${accountId}/cancel-invitation`, {}));
+  }
+  async deleteAccount(accountId: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`/api/admin/accounts/${accountId}`));
+  }
+  async sendTestEmail(): Promise<{ success: true; email: string }> {
+    return firstValueFrom(this.http.post<{ success: true; email: string }>('/api/admin/mail/test', {}));
+  }
+  mailStatus(): Promise<MailStatus> {
+    return firstValueFrom(this.http.get<MailStatus>('/api/admin/mail/status'));
   }
   async saveProfile(profile: AdminProfile): Promise<AdminProfile> {
     const permissions = Object.fromEntries(profile.permissions.map(permission => [permission.section, {

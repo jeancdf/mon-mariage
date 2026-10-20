@@ -41,6 +41,17 @@ services:
       PRIVATE_EVENT_CODE: ${PRIVATE_EVENT_CODE:?PRIVATE_EVENT_CODE is required}
       BOOTSTRAP_ORGANIZER_EMAIL: ${BOOTSTRAP_ORGANIZER_EMAIL:?BOOTSTRAP_ORGANIZER_EMAIL is required}
       BOOTSTRAP_ORGANIZER_PASSWORD: ${BOOTSTRAP_ORGANIZER_PASSWORD:?BOOTSTRAP_ORGANIZER_PASSWORD is required}
+      # Invitation e-mails (merged from main). The backend refuses to boot in
+      # production without these; defaults keep preprod bootable and the
+      # mailer reports the missing SMTP password instead of crashing.
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://preprod-mon-mariage.duckdns.org}
+      SMTP_HOST: "${SMTP_HOST:-smtp.gmail.com}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_SECURE: "${SMTP_SECURE:-false}"
+      SMTP_REQUIRE_TLS: "${SMTP_REQUIRE_TLS:-true}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      MAIL_FROM: "${MAIL_FROM:-Mon Mariage (préprod) <no-reply@preprod-mon-mariage.duckdns.org>}"
       WEDDING_DATE: ${WEDDING_DATE:-2027-07-16}
       WEDDING_PLACE: ${WEDDING_PLACE:-Escayrac}
       TIMEZONE: ${TIMEZONE:-Europe/Paris}

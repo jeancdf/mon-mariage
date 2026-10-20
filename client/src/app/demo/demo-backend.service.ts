@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { AdminProfile } from '../data/admin-api.service';
+import { AdminAccount, AdminProfile } from '../data/admin-api.service';
 import { DashboardSummary } from '../data/dashboard-api.service';
 import {
   FinalWeeksHub, FinalWeeksPerson, FinalWeeksTask, MealKind, TaskPayload,
@@ -73,11 +73,14 @@ export class DemoBackendService {
   // ── Auth ──────────────────────────────────────────────────────────
   private auth(method: string, rest: string[]): unknown {
     const [action] = rest;
-    if (action === 'me' || action === 'login' || action === 'claim') {
+    if (action === 'me' || action === 'login') {
       return { account: this.data.account, csrfToken: 'demo-csrf-token' };
     }
     if (action === 'logout') return { success: true };
     if (action === 'setup') return { configured: true };
+    if (action === 'invitation') {
+      throw new DemoHttpError(403, 'Les invitations ne s’utilisent pas en mode démonstration.');
+    }
     if (action === 'password') {
       throw new DemoHttpError(403, 'Le mot de passe ne peut pas être modifié en mode démonstration.');
     }
@@ -687,6 +690,18 @@ export class DemoBackendService {
 
   // ── Admin ─────────────────────────────────────────────────────────
   private admin(method: string, rest: string[], body: unknown): unknown {
+    if (rest[0] === 'mail') {
+      if (method === 'GET' && rest[1] === 'status') {
+        return {
+          host: '', port: 587, user: '', from: '', applicationUrl: '',
+          passwordConfigured: false, passwordLength: 0,
+        };
+      }
+      if (method === 'POST' && rest[1] === 'test') {
+        throw new DemoHttpError(503, "Les e-mails ne s’envoient pas en mode démonstration. Testez ce bouton sur l’application déployée.");
+      }
+      throw new DemoHttpError(404, `Route administration inconnue : ${method} ${rest.join('/')}`);
+    }
     if (rest[0] === 'accounts') {
       if (method === 'GET' && rest.length === 1) return this.data.accounts;
       if (method === 'POST' && rest.length === 2 && rest[1] === 'organizers') {
@@ -694,13 +709,32 @@ export class DemoBackendService {
       }
       if (method === 'POST' && rest.length === 3 && rest[1] === 'guests') {
         const guest = this.find(this.data.guests, rest[2], 'Invité introuvable.');
-        if (!this.data.accounts.some(account => account.guestId === guest.id)) {
-          this.data.accounts = [...this.data.accounts, {
-            id: newId(), guestId: guest.id, email: guest.email || `${guest.id}@exemple.fr`,
-            status: 'pending', profileKey: 'other', isOrganizer: false, lastLoginAt: null,
-            name: `${guest.firstName} ${guest.lastName}`.trim(),
-          }];
-        }
+        if (!guest.email) throw new DemoHttpError(400, 'Adresse e-mail invalide.');
+        const duplicate = this.data.accounts.find(account => account.email === guest.email && account.guestId !== guest.id);
+        if (duplicate) throw new DemoHttpError(409, 'Cette adresse e-mail est déjà utilisée.');
+        const existing = this.data.accounts.find(account => account.guestId === guest.id);
+        const created = existing ?? {
+          id: newId(),
+          guestId: guest.id,
+          email: guest.email,
+          status: 'pending' as const,
+          hasPassword: false,
+          invitationSentAt: null,
+          invitationExpiresAt: null,
+          profileKey: this.profileForGuest(guest),
+          isOrganizer: false,
+          lastLoginAt: null,
+          name: `${guest.firstName} ${guest.lastName}`.trim(),
+        };
+        const invited = this.markInvited({
+          ...created,
+          email: guest.email,
+          profileKey: this.profileForGuest(guest),
+          ...(created.hasPassword ? {} : { status: 'pending' as const }),
+        });
+        this.data.accounts = existing
+          ? this.data.accounts.map(account => account.id === invited.id ? invited : account)
+          : [...this.data.accounts, invited];
         return { success: true };
       }
       if (method === 'PATCH' && rest.length === 3 && rest[2] === 'status') {
@@ -709,13 +743,39 @@ export class DemoBackendService {
           account.id === rest[1] ? { ...account, status } : account);
         return { success: true };
       }
-      if (method === 'POST' && rest.length === 3 && rest[2] === 'reset') {
-        const { newPassword } = (body ?? {}) as { newPassword?: string };
-        this.data.accounts = this.data.accounts.map(account => {
-          if (account.id !== rest[1]) return account;
-          if (newPassword) return { ...account, status: 'active' };
-          return { ...account, status: 'pending', lastLoginAt: null };
-        });
+      if (method === 'POST' && rest.length === 3 && rest[2] === 'invite') {
+        const existing = this.find(this.data.accounts, rest[1], 'Compte introuvable.');
+        if (existing.status === 'disabled') {
+          throw new DemoHttpError(400, "Réactivez ce compte avant d'envoyer une invitation.");
+        }
+        this.data.accounts = this.data.accounts.map(account =>
+          account.id === existing.id ? this.markInvited(account) : account);
+        return { success: true };
+      }
+      if (method === 'POST' && rest.length === 3 && rest[2] === 'cancel-invitation') {
+        const existing = this.find(this.data.accounts, rest[1], 'Compte introuvable.');
+        if (!existing.invitationSentAt && existing.status !== 'pending') {
+          throw new DemoHttpError(400, "Aucune invitation en cours pour ce compte.");
+        }
+        if (!existing.hasPassword) {
+          this.data.accounts = this.data.accounts.filter(account => account.id !== existing.id);
+          return { success: true };
+        }
+        this.data.accounts = this.data.accounts.map(account =>
+          account.id === existing.id
+            ? { ...account, invitationSentAt: null, invitationExpiresAt: null }
+            : account);
+        return { success: true };
+      }
+      if (method === 'DELETE' && rest.length === 2) {
+        const existing = this.find(this.data.accounts, rest[1], 'Compte introuvable.');
+        if (existing.id === this.data.account.id) {
+          throw new DemoHttpError(400, 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+        if (existing.isOrganizer && this.data.accounts.filter(account => account.isOrganizer).length <= 1) {
+          throw new DemoHttpError(400, 'Le dernier compte organisateur ne peut pas être supprimé.');
+        }
+        this.data.accounts = this.data.accounts.filter(account => account.id !== existing.id);
         return { success: true };
       }
     }
@@ -774,6 +834,7 @@ export class DemoBackendService {
           email,
           name: displayName,
           status: 'active',
+          hasPassword: true,
           profileKey: 'organizer',
           isOrganizer: true,
         }
@@ -785,6 +846,9 @@ export class DemoBackendService {
       guestId: guest?.id ?? null,
       email,
       status: 'active',
+      hasPassword: true,
+      invitationSentAt: null,
+      invitationExpiresAt: null,
       profileKey: 'organizer',
       isOrganizer: true,
       lastLoginAt: null,
@@ -872,5 +936,21 @@ export class DemoBackendService {
     const found = items.find(item => item.id === id);
     if (!found) throw new DemoHttpError(404, message);
     return found;
+  }
+
+  private profileForGuest(guest: Guest): AdminAccount['profileKey'] {
+    const role = guest.organizationRole;
+    if (role === 'parent' || role === 'sibling' || role === 'witness' || role === 'friend_cousin') return role;
+    return 'other';
+  }
+
+  /** Mirrors the 48h invitation window the real API stamps on send. */
+  private markInvited(account: AdminAccount): AdminAccount {
+    const sentAt = new Date();
+    return {
+      ...account,
+      invitationSentAt: sentAt.toISOString(),
+      invitationExpiresAt: new Date(sentAt.getTime() + 48 * 60 * 60 * 1000).toISOString(),
+    };
   }
 }

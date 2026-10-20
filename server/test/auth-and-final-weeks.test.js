@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const { describe, it } = require('node:test');
 
 const { AccountsService, normalizeEmail, profileForOrganizationRole } = require('../dist/auth/accounts.service.js');
+const { InvitationMailerService } = require('../dist/auth/invitation-mailer.service.js');
 const { PasswordService } = require('../dist/auth/password.service.js');
 const { addDays } = require('../dist/event-config/event-config.service.js');
 const { expandRecurrenceDates, isDateInWindow } = require('../dist/final-weeks/final-weeks.utils.js');
@@ -21,6 +22,8 @@ const emptyRepository = () => ({
   count: async () => 0,
   update: async () => undefined,
   upsert: async () => undefined,
+  delete: async () => undefined,
+  remove: async value => value,
 });
 
 describe('password security', () => {
@@ -39,6 +42,35 @@ describe('password security', () => {
   it('rejects passwords shorter than twelve characters', async () => {
     const passwords = new PasswordService();
     await assert.rejects(() => passwords.hash('trop-court'));
+  });
+});
+
+describe('invitation mailer', () => {
+  it('rejects a test email when SMTP is not configured', async () => {
+    const mailer = new InvitationMailerService(config({}));
+    await assert.rejects(
+      () => mailer.sendTestEmail({ email: 'moi@example.com' }),
+      error => {
+        assert.match(String(error.message), /n'est pas configuré/);
+        return true;
+      },
+    );
+  });
+
+  it('rejects a test email when the SMTP password is missing', async () => {
+    const mailer = new InvitationMailerService(config({
+      PUBLIC_APP_URL: 'https://example.com',
+      MAIL_FROM: 'Mon Mariage <moi@example.com>',
+      SMTP_HOST: 'smtp.gmail.com',
+      SMTP_USER: 'moi@example.com',
+    }));
+    await assert.rejects(
+      () => mailer.sendTestEmail({ email: 'moi@example.com' }),
+      error => {
+        assert.match(String(error.message), /SMTP_PASSWORD/);
+        return true;
+      },
+    );
   });
 });
 
@@ -94,6 +126,53 @@ describe('guest account provisioning', () => {
     assert.equal(existing.email, 'new@example.com');
     assert.equal(existing.profileKey, 'witness');
     assert.equal(existing.status, 'active');
+  });
+
+  it('deletes another account and refuses to delete the signed-in one', async () => {
+    let deleted = null;
+    const accounts = {
+      ...emptyRepository(),
+      findOne: async ({ where }) => where.id === 'other' ? { id: 'other', isOrganizer: false } : null,
+      delete: async where => { deleted = where; },
+    };
+    const sessions = {
+      ...emptyRepository(),
+      update: async () => undefined,
+    };
+    const service = new AccountsService(
+      accounts, sessions, emptyRepository(), emptyRepository(), emptyRepository(),
+      new PasswordService(), config({ SESSION_SECRET: 'c'.repeat(32) }),
+    );
+    await assert.rejects(() => service.deleteAccount('me', 'me'));
+    await service.deleteAccount('other', 'me');
+    assert.deepEqual(deleted, { id: 'other' });
+  });
+
+  it('cancels a pending invitation by deleting the account', async () => {
+    let deleted = null;
+    const pending = {
+      id: 'pending-1', isOrganizer: false, passwordHash: null,
+      invitationTokenHash: 'hash', invitationSentAt: new Date(), status: 'pending',
+    };
+    const accounts = {
+      ...emptyRepository(),
+      createQueryBuilder: () => {
+        const builder = {
+          addSelect: () => builder,
+          where: () => builder,
+          getOne: async () => pending,
+        };
+        return builder;
+      },
+      findOne: async () => pending,
+      delete: async where => { deleted = where; },
+    };
+    const service = new AccountsService(
+      accounts, emptyRepository(), emptyRepository(), emptyRepository(), emptyRepository(),
+      new PasswordService(), config({ SESSION_SECRET: 'd'.repeat(32) }),
+    );
+    await service.cancelInvitation('pending-1', 'organizer');
+    assert.deepEqual(deleted, { id: 'pending-1' });
   });
 
   it('prevents an eligible guest from reusing another account email', async () => {

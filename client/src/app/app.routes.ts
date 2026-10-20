@@ -12,12 +12,14 @@ import { WeddingShellComponent } from './wedding-shell/wedding-shell.component';
 import { AccessDeniedComponent } from './auth/access-denied.component';
 import { PublicHomeComponent } from './features/public-site/public-home.component';
 import { RsvpComponent } from './features/public-site/rsvp.component';
+import { InvitationComponent } from './auth/invitation.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: PublicHomeComponent },
   { path: 'i/:token', component: RsvpComponent },
   { path: 'connexion', component: AuthComponent, data: { mode: 'login' } },
-  { path: 'activer', component: AuthComponent, data: { mode: 'claim' } },
+  { path: 'invitation', component: InvitationComponent },
+  { path: 'activer', redirectTo: 'connexion' },
   {
     path: '',
     component: WeddingShellComponent,

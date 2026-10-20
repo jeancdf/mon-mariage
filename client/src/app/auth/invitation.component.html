@@ -1,0 +1,39 @@
+<main class="auth-page">
+  <section class="auth-card">
+    <div class="script-note">Mariage · invitation privée</div>
+
+    @if (state() === 'checking') {
+      <h1>Vérification du lien…</h1>
+      <p class="muted">Veuillez patienter un instant.</p>
+    } @else if (state() === 'invalid') {
+      <h1>Lien expiré</h1>
+      <p class="muted">Cette invitation n’est plus valide. Demandez à un organisateur de vous en envoyer une nouvelle.</p>
+      <a class="btn secondary auth-submit" routerLink="/connexion">Retour à la connexion</a>
+    } @else if (state() === 'success') {
+      <h1>Mot de passe créé</h1>
+      <p class="muted">Votre compte est maintenant actif. Vous pouvez vous connecter avec votre adresse e-mail.</p>
+      <a class="btn primary auth-submit" routerLink="/connexion">Se connecter</a>
+    } @else {
+      <h1>Créer mon mot de passe</h1>
+      <p class="muted">Votre compte a été préparé par un organisateur. Choisissez maintenant votre mot de passe personnel.</p>
+
+      <form (ngSubmit)="submit()">
+        <label class="field">
+          <span>Nouveau mot de passe</span>
+          <input type="password" name="password" autocomplete="new-password" minlength="12" [(ngModel)]="password" required autofocus />
+          <small>12 caractères minimum</small>
+        </label>
+        <label class="field">
+          <span>Confirmer le mot de passe</span>
+          <input type="password" name="confirmation" autocomplete="new-password" [(ngModel)]="confirmation" required />
+        </label>
+        @if (error) {
+          <p class="form-error" role="alert">{{ error }}</p>
+        }
+        <button class="btn primary auth-submit" type="submit" [disabled]="loading() || !password || !confirmation">
+          {{ loading() ? 'Enregistrement…' : 'Créer mon mot de passe' }}
+        </button>
+      </form>
+    }
+  </section>
+</main>

@@ -431,15 +431,39 @@ const buildFinalTasks = (): FinalWeeksTask[] => {
   ];
 };
 
+const invitationFields = (
+  status: AdminAccount['status'],
+): Pick<AdminAccount, 'hasPassword' | 'invitationSentAt' | 'invitationExpiresAt'> => {
+  if (status === 'pending') {
+    return {
+      hasPassword: false,
+      invitationSentAt: at(shiftDays(TODAY, -1), '09:00'),
+      invitationExpiresAt: at(shiftDays(TODAY, 1), '09:00'),
+    };
+  }
+  return {
+    hasPassword: true,
+    invitationSentAt: at(shiftDays(TODAY, -14), '11:00'),
+    invitationExpiresAt: null,
+  };
+};
+
+const account = (
+  fields: Omit<AdminAccount, 'hasPassword' | 'invitationSentAt' | 'invitationExpiresAt'>,
+): AdminAccount => ({
+  ...fields,
+  ...invitationFields(fields.status),
+});
+
 const buildAccounts = (): AdminAccount[] => [
-  { id: 'demo-account', guestId: 'dg1', email: 'demo@mon-mariage.app', status: 'active', profileKey: 'organizer', isOrganizer: true, lastLoginAt: at(TODAY, '08:12'), name: 'Camille Rousseau' },
-  { id: 'dacc-alexandre', guestId: 'dg2', email: 'alexandre.vasseur@exemple.fr', status: 'active', profileKey: 'organizer', isOrganizer: true, lastLoginAt: at(shiftDays(TODAY, -1), '21:40'), name: 'Alexandre Vasseur' },
-  { id: 'dacc-helene', guestId: 'dg3', email: 'helene.rousseau@exemple.fr', status: 'active', profileKey: 'parent', isOrganizer: false, lastLoginAt: at(shiftDays(TODAY, -2), '18:05'), name: 'Hélène Rousseau' },
-  { id: 'dacc-francoise', guestId: 'dg4', email: 'francoise.vasseur@exemple.fr', status: 'active', profileKey: 'parent', isOrganizer: false, lastLoginAt: at(shiftDays(TODAY, -3), '09:22'), name: 'Françoise Vasseur' },
-  { id: 'dacc-julien', guestId: 'dg6', email: 'julien.vasseur@exemple.fr', status: 'active', profileKey: 'sibling', isOrganizer: false, lastLoginAt: at(shiftDays(TODAY, -1), '12:30'), name: 'Julien Vasseur' },
-  { id: 'dacc-chloe', guestId: 'dg9', email: 'chloe.marchand@exemple.fr', status: 'active', profileKey: 'witness', isOrganizer: false, lastLoginAt: at(shiftDays(TODAY, -4), '20:15'), name: 'Chloé Marchand' },
-  { id: 'dacc-karim', guestId: 'dg13', email: 'karim.benali@exemple.fr', status: 'active', profileKey: 'friend_cousin', isOrganizer: false, lastLoginAt: null, name: 'Karim Benali' },
-  { id: 'dacc-marion', guestId: 'dg7', email: 'marion.delacroix@exemple.fr', status: 'pending', profileKey: 'witness', isOrganizer: false, lastLoginAt: null, name: 'Marion Delacroix' },
+  account({ id: 'demo-account', guestId: 'dg1', email: 'demo@mon-mariage.app', status: 'active', profileKey: 'organizer', isOrganizer: true, lastLoginAt: at(TODAY, '08:12'), name: 'Camille Rousseau' }),
+  account({ id: 'dacc-alexandre', guestId: 'dg2', email: 'alexandre.vasseur@exemple.fr', status: 'active', profileKey: 'organizer', isOrganizer: true, lastLoginAt: at(shiftDays(TODAY, -1), '21:40'), name: 'Alexandre Vasseur' }),
+  account({ id: 'dacc-helene', guestId: 'dg3', email: 'helene.rousseau@exemple.fr', status: 'active', profileKey: 'parent', isOrganizer: false, lastLoginAt: at(shiftDays(TODAY, -2), '18:05'), name: 'Hélène Rousseau' }),
+  account({ id: 'dacc-francoise', guestId: 'dg4', email: 'francoise.vasseur@exemple.fr', status: 'active', profileKey: 'parent', isOrganizer: false, lastLoginAt: at(shiftDays(TODAY, -3), '09:22'), name: 'Françoise Vasseur' }),
+  account({ id: 'dacc-julien', guestId: 'dg6', email: 'julien.vasseur@exemple.fr', status: 'active', profileKey: 'sibling', isOrganizer: false, lastLoginAt: at(shiftDays(TODAY, -1), '12:30'), name: 'Julien Vasseur' }),
+  account({ id: 'dacc-chloe', guestId: 'dg9', email: 'chloe.marchand@exemple.fr', status: 'active', profileKey: 'witness', isOrganizer: false, lastLoginAt: at(shiftDays(TODAY, -4), '20:15'), name: 'Chloé Marchand' }),
+  account({ id: 'dacc-karim', guestId: 'dg13', email: 'karim.benali@exemple.fr', status: 'active', profileKey: 'friend_cousin', isOrganizer: false, lastLoginAt: null, name: 'Karim Benali' }),
+  account({ id: 'dacc-marion', guestId: 'dg7', email: 'marion.delacroix@exemple.fr', status: 'pending', profileKey: 'witness', isOrganizer: false, lastLoginAt: null, name: 'Marion Delacroix' }),
 ];
 
 const profilePermissions = (

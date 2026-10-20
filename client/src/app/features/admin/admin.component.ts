@@ -1,17 +1,19 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
-import { AdminAccount, AdminApiService, AdminProfile } from '../../data/admin-api.service';
+import { AdminAccount, AdminApiService, AdminProfile, MailStatus } from '../../data/admin-api.service';
 import { WeddingStore } from '../../data/store';
+import { Guest } from '../../data/types';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { IconComponent } from '../../shared/icon.component';
 import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [FormsModule, ConfirmDialogComponent, DatePipe],
+  imports: [FormsModule, DatePipe, ConfirmDialogComponent, IconComponent],
   templateUrl: './admin.component.html',
 })
 export class AdminComponent {
@@ -23,61 +25,45 @@ export class AdminComponent {
   readonly accounts = signal<AdminAccount[]>([]);
   readonly profiles = signal<AdminProfile[]>([]);
   readonly loading = signal(true);
+  readonly mailTestPending = signal(false);
   readonly organizerBusy = signal(false);
-  resetPending: AdminAccount | null = null;
-  passwordPending: AdminAccount | null = null;
+  newOrganizerName = '';
+  newOrganizerEmail = '';
+  newOrganizerPassword = '';
+  newOrganizerPasswordConfirm = '';
+  readonly mailStatus = signal<MailStatus | null>(null);
+  readonly mailTestError = signal<string | null>(null);
+  readonly organizerEmail = computed(() => this.auth.account()?.email ?? '');
+  invitationPendingId: string | null = null;
+  accountPendingAction: { account: AdminAccount; kind: 'delete' | 'cancel' } | null = null;
   currentPassword = '';
   newPassword = '';
-  pendingPassword = '';
-  organizerName = '';
-  organizerEmail = '';
-  organizerPassword = '';
-  organizerPasswordConfirm = '';
 
   readonly sections = [
-    { key: 'dashboard', label: 'Tableau de bord' },
-    { key: 'guests', label: 'Invités' },
-    { key: 'vendors', label: 'Prestataires' },
-    { key: 'housing', label: 'Hébergement' },
-    { key: 'seating', label: 'Plan de table' },
-    { key: 'budget', label: 'Budget' },
-    { key: 'todos', label: 'À faire' },
-    { key: 'final_weeks', label: 'Dernières semaines' },
+    { key: 'dashboard', label: 'Tableau de bord' }, { key: 'guests', label: 'Invités' },
+    { key: 'vendors', label: 'Prestataires' }, { key: 'housing', label: 'Hébergement' },
+    { key: 'seating', label: 'Plan de table' }, { key: 'budget', label: 'Budget' },
+    { key: 'todos', label: 'À faire' }, { key: 'final_weeks', label: 'Dernières semaines' },
   ] as const;
 
-  constructor() { void this.reload(); }
-
-  currentAccountId(): string | undefined {
-    return this.auth.account()?.id;
+  constructor() {
+    void this.reload();
+    void this.loadMailStatus();
   }
 
-  canCreateOrganizer(): boolean {
-    return Boolean(
-      this.organizerName.trim()
-      && this.organizerEmail.trim()
-      && this.organizerPassword.length >= 12
-      && this.organizerPassword === this.organizerPasswordConfirm,
-    );
-  }
-
-  profileLabel(account: AdminAccount): string {
-    return account.isOrganizer ? 'Organisateur' : account.profileKey;
-  }
-
-  async reload(): Promise<void> {
-    this.loading.set(true);
+  async reload(options?: { silent?: boolean }): Promise<void> {
+    if (!options?.silent) this.loading.set(true);
     try {
-      const [accounts, profiles] = await Promise.all([
-        this.api.listAccounts(),
-        this.api.listProfiles(),
-      ]);
+      const [accounts, profiles] = await Promise.all([this.api.listAccounts(), this.api.listProfiles()]);
       this.accounts.set(accounts);
       this.profiles.set(profiles);
-    } catch {
-      this.toast.error("Impossible de charger l'administration.");
-    } finally {
-      this.loading.set(false);
-    }
+    } catch { this.toast.error("Impossible de charger l'administration."); }
+    finally { this.loading.set(false); }
+  }
+
+  async loadMailStatus(): Promise<void> {
+    try { this.mailStatus.set(await this.api.mailStatus()); }
+    catch { this.mailStatus.set(null); }
   }
 
   permission(profile: AdminProfile, section: typeof this.sections[number]['key']) {
@@ -87,100 +73,144 @@ export class AdminComponent {
   async saveProfile(profile: AdminProfile): Promise<void> {
     try {
       const saved = await this.api.saveProfile(profile);
-      this.profiles.update(profiles => profiles.map(item =>
-        item.key === saved.key ? saved : item));
+      this.profiles.update(profiles => profiles.map(item => item.key === saved.key ? saved : item));
       this.toast.success(`Profil « ${saved.name} » enregistré.`);
-    } catch {
-      this.toast.error("Impossible d'enregistrer ce profil.");
-    }
+    } catch { this.toast.error("Impossible d'enregistrer ce profil."); }
+  }
+
+  canCreateOrganizer(): boolean {
+    return Boolean(
+      this.newOrganizerName.trim()
+      && this.newOrganizerEmail.trim()
+      && this.newOrganizerPassword.length >= 12
+      && this.newOrganizerPassword === this.newOrganizerPasswordConfirm,
+    );
   }
 
   async createOrganizer(): Promise<void> {
     if (!this.canCreateOrganizer() || this.organizerBusy()) return;
-    if (this.organizerPassword !== this.organizerPasswordConfirm) {
-      this.toast.error('Les deux mots de passe ne correspondent pas.');
-      return;
-    }
     this.organizerBusy.set(true);
     try {
       await this.api.createOrganizer({
-        displayName: this.organizerName.trim(),
-        email: this.organizerEmail.trim(),
-        password: this.organizerPassword,
+        displayName: this.newOrganizerName.trim(),
+        email: this.newOrganizerEmail.trim(),
+        password: this.newOrganizerPassword,
       });
-      this.organizerName = '';
-      this.organizerEmail = '';
-      this.organizerPassword = '';
-      this.organizerPasswordConfirm = '';
-      await this.reload();
-      this.toast.success('Compte organisateur créé. Elle peut se connecter.');
+      this.newOrganizerName = '';
+      this.newOrganizerEmail = '';
+      this.newOrganizerPassword = '';
+      this.newOrganizerPasswordConfirm = '';
+      await this.reload({ silent: true });
+      this.toast.success('Compte organisateur créé : il peut se connecter immédiatement.');
     } catch (error: unknown) {
-      this.toast.error(this.messageOf(
-        error,
-        'Impossible de créer ce compte.',
-      ));
+      const response = error as { error?: { message?: string } };
+      this.toast.error(response.error?.message ?? 'Impossible de créer ce compte.');
     } finally {
       this.organizerBusy.set(false);
     }
   }
 
-  async enableGuest(guestId: string): Promise<void> {
+  async inviteGuest(guest: Guest): Promise<void> {
+    this.invitationPendingId = guest.id;
     try {
-      await this.api.enableGuest(guestId);
-      await this.reload();
-      this.toast.success('Compte préparé.');
+      await this.api.enableGuest(guest.id);
+      await this.reload({ silent: true });
+      this.toast.success(`Compte créé et invitation envoyée à ${guest.email}.`);
     } catch (error: unknown) {
-      this.toast.error(this.messageOf(error, 'Impossible de préparer ce compte.'));
+      const response = error as { error?: { message?: string } };
+      this.toast.error(response.error?.message ?? "Impossible d'envoyer l'invitation.");
+    } finally {
+      this.invitationPendingId = null;
     }
   }
 
-  async setStatus(account: AdminAccount, status: AdminAccount['status']): Promise<void> {
+  async inviteAccount(account: AdminAccount): Promise<void> {
+    this.invitationPendingId = account.id;
+    try {
+      await this.api.invite(account.id);
+      await this.reload({ silent: true });
+      this.toast.success(`Invitation envoyée à ${account.email}.`);
+    } catch (error: unknown) {
+      const response = error as { error?: { message?: string } };
+      this.toast.error(response.error?.message ?? "Impossible d'envoyer l'invitation.");
+    } finally {
+      this.invitationPendingId = null;
+    }
+  }
+
+  async setStatus(account: AdminAccount, status: 'active' | 'disabled'): Promise<void> {
     if (account.status === status) return;
+    try { await this.api.setStatus(account.id, status); await this.reload({ silent: true }); }
+    catch (error: unknown) { const response = error as { error?: { message?: string } }; this.toast.error(response.error?.message ?? 'Impossible de modifier ce compte.'); }
+  }
+
+  hasAccount(guestId: string): boolean { return this.accounts().some(account => account.guestId === guestId); }
+
+  isCurrentAccount(account: AdminAccount): boolean {
+    return account.id === this.auth.account()?.id;
+  }
+
+  canInvite(account: AdminAccount): boolean {
+    return !this.isCurrentAccount(account) && account.status !== 'disabled';
+  }
+
+  canCancelInvitation(account: AdminAccount): boolean {
+    if (this.isCurrentAccount(account)) return false;
+    return account.status === 'pending' || Boolean(account.invitationSentAt);
+  }
+
+  canDeleteAccount(account: AdminAccount): boolean {
+    if (this.isCurrentAccount(account)) return false;
+    if (account.status === 'pending') return false;
+    if (account.isOrganizer && this.accounts().filter(item => item.isOrganizer).length <= 1) return false;
+    return true;
+  }
+
+  requestCancelInvitation(account: AdminAccount): void {
+    this.accountPendingAction = { account, kind: 'cancel' };
+  }
+
+  requestDeleteAccount(account: AdminAccount): void {
+    this.accountPendingAction = { account, kind: 'delete' };
+  }
+
+  cancelAccountAction(): void {
+    this.accountPendingAction = null;
+  }
+
+  async confirmAccountAction(): Promise<void> {
+    const pending = this.accountPendingAction;
+    if (!pending) return;
+    this.accountPendingAction = null;
     try {
-      await this.api.setStatus(account.id, status);
-      await this.reload();
+      if (pending.kind === 'cancel') {
+        await this.api.cancelInvitation(pending.account.id);
+        this.toast.success(`Invitation annulée pour ${pending.account.email}.`);
+      } else {
+        await this.api.deleteAccount(pending.account.id);
+        this.toast.success(`Compte supprimé : ${pending.account.email}.`);
+      }
+      await this.reload({ silent: true });
     } catch (error: unknown) {
-      this.toast.error(this.messageOf(error, 'Impossible de modifier ce compte.'));
+      const response = error as { error?: { message?: string } };
+      this.toast.error(response.error?.message ?? 'Impossible de modifier ce compte.');
     }
   }
 
-  async confirmReset(): Promise<void> {
-    const account = this.resetPending;
-    this.resetPending = null;
-    if (!account) return;
+  async sendTestEmail(): Promise<void> {
+    this.mailTestPending.set(true);
+    this.mailTestError.set(null);
     try {
-      await this.api.reset(account.id);
-      await this.reload();
-      this.toast.success('Compte remis en attente d’activation.');
-    } catch {
-      this.toast.error('Impossible de réinitialiser ce compte.');
-    }
-  }
-
-  cancelPassword(): void {
-    this.passwordPending = null;
-    this.pendingPassword = '';
-  }
-
-  async confirmPassword(): Promise<void> {
-    const account = this.passwordPending;
-    const password = this.pendingPassword;
-    if (!account || password.length < 12) return;
-    this.cancelPassword();
-    try {
-      await this.api.reset(account.id, password);
-      await this.reload();
-      this.toast.success('Mot de passe enregistré.');
+      const result = await this.api.sendTestEmail();
+      this.toast.success(`E-mail de test envoyé à ${result.email}. Vérifiez aussi les spams.`);
     } catch (error: unknown) {
-      this.toast.error(this.messageOf(
-        error,
-        'Impossible d’enregistrer ce mot de passe.',
-      ));
+      const response = error as { error?: { message?: string } };
+      const message = response.error?.message ?? "Impossible d'envoyer l'e-mail de test.";
+      this.mailTestError.set(message);
+      this.toast.error(message);
+    } finally {
+      this.mailTestPending.set(false);
     }
-  }
-
-  hasAccount(guestId: string): boolean {
-    return this.accounts().some(account => account.guestId === guestId);
   }
 
   async changePassword(): Promise<void> {
@@ -188,15 +218,8 @@ export class AdminComponent {
       await this.auth.changePassword(this.currentPassword, this.newPassword);
       await this.router.navigateByUrl('/connexion');
     } catch (error: unknown) {
-      this.toast.error(this.messageOf(
-        error,
-        'Impossible de changer le mot de passe.',
-      ));
+      const response = error as { error?: { message?: string } };
+      this.toast.error(response.error?.message ?? 'Impossible de changer le mot de passe.');
     }
-  }
-
-  private messageOf(error: unknown, fallback: string): string {
-    const response = error as { error?: { message?: string } };
-    return response.error?.message ?? fallback;
   }
 }

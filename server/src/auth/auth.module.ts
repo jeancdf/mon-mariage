@@ -11,6 +11,7 @@ import { AccountEntity } from './entities/account.entity';
 import { PermissionEntity } from './entities/permission.entity';
 import { SessionEntity } from './entities/session.entity';
 import { PasswordService } from './password.service';
+import { InvitationMailerService } from './invitation-mailer.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([
@@ -24,6 +25,7 @@ import { PasswordService } from './password.service';
   providers: [
     AccountsService,
     PasswordService,
+    InvitationMailerService,
     { provide: APP_GUARD, useClass: SessionGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: PermissionGuard },

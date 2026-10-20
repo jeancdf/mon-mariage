@@ -19,7 +19,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       const publicRequest = request.url.includes('/api/public/')
         || request.url.includes('/api/health');
       const authenticationRequest = request.url.includes('/api/auth/login')
-        || request.url.includes('/api/auth/claim')
+        || request.url.includes('/api/auth/invitation/')
         || request.url.includes('/api/auth/me');
       if (!authenticationRequest && !publicRequest) queueMicrotask(() => void router.navigateByUrl('/connexion'));
     }
