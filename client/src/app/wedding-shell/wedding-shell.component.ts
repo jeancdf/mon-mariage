@@ -1,4 +1,4 @@
-import { Component, DOCUMENT, computed, effect, inject, signal } from '@angular/core';
+import { Component, DOCUMENT, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -46,6 +46,7 @@ interface DeploymentMetadata {
 })
 export class WeddingShellComponent {
   readonly store = inject(WeddingStore);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
   private readonly title = inject(Title);
   private readonly toast = inject(ToastService);
@@ -177,23 +178,27 @@ export class WeddingShellComponent {
   }
 
   private async loadInitialData(): Promise<void> {
+    const account = this.auth.account();
+    const active = () => !this.destroyRef.destroyed && this.auth.account() === account;
+    const accept = <T>(write: (value: T) => void) => (value: T) => { if (active()) write(value); };
     try {
       // allSettled, not all: one failed request must not blank the five others.
       // A failed section keeps its seed data (frontend-only development included).
       const requests = [
-        this.auth.can('guests') ? this.guestApi.loadGuests().then(value => this.store.replaceGuests(value)) : Promise.resolve(),
-        this.auth.can('housing') ? this.housingApi.loadHousing().then(value => this.store.replaceHouses(value)) : Promise.resolve(),
-        this.auth.can('seating') ? this.seatingApi.loadTables().then(value => this.store.replaceTables(value)) : Promise.resolve(),
-        this.auth.can('budget') ? this.budgetApi.loadBudget().then(value => this.store.replaceBudget(value)) : Promise.resolve(),
-        this.auth.can('todos') ? this.todosApi.loadTodos().then(value => this.store.replaceTodos(value)) : Promise.resolve(),
-        this.auth.can('vendors') ? this.vendorsApi.loadVendors().then(value => this.store.replaceVendors(value)) : Promise.resolve(),
+        this.auth.can('guests') ? this.guestApi.loadGuests().then(accept(value => this.store.replaceGuests(value))) : Promise.resolve(),
+        this.auth.can('housing') ? this.housingApi.loadHousing().then(accept(value => this.store.replaceHouses(value))) : Promise.resolve(),
+        this.auth.can('housing') && !this.auth.can('guests') ? this.housingApi.loadPeople().then(accept(value => this.store.housingPeople.set(value))) : Promise.resolve(),
+        this.auth.can('seating') ? this.seatingApi.loadTables().then(accept(value => this.store.replaceTables(value))) : Promise.resolve(),
+        this.auth.can('budget') ? this.budgetApi.loadBudget().then(accept(value => this.store.replaceBudget(value))) : Promise.resolve(),
+        this.auth.can('todos') ? this.todosApi.loadTodos().then(accept(value => this.store.replaceTodos(value))) : Promise.resolve(),
+        this.auth.can('vendors') ? this.vendorsApi.loadVendors().then(accept(value => this.store.replaceVendors(value))) : Promise.resolve(),
       ];
       const results = await Promise.allSettled(requests);
-      if (results.some(result => result.status === 'rejected')) {
+      if (active() && results.some(result => result.status === 'rejected')) {
         this.toast.error("Certaines données n'ont pas pu être chargées. Rechargez la page pour réessayer.");
       }
     } finally {
-      this.store.markLoaded();
+      if (active()) this.store.markLoaded();
     }
   }
 

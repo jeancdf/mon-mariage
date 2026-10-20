@@ -5,12 +5,13 @@ import { BedType, House, Room } from '../../data/types';
 import { WeddingStore } from '../../data/store';
 import { IconComponent } from '../../shared/icon.component';
 import { GuestSidebarComponent } from '../../shared/guest-sidebar.component';
-import { HousingApiService } from '../../data/housing-api.service';
+import { HousingApiService, HousingCalendar, HousingPerson } from '../../data/housing-api.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ToastService } from '../../shared/toast.service';
-import { GuestPerson, allGuestPeople, plusOneGuestId } from '../../shared/wedding-utils';
+import { GuestPerson, plusOneGuestId } from '../../shared/wedding-utils';
 import { AutofocusDirective } from '../../shared/autofocus.directive';
 import { AuthService } from '../../auth/auth.service';
+import { apiError } from '../../shared/api-error';
 
 interface RoomFormState {
   name: string;
@@ -47,18 +48,121 @@ export class HousingComponent {
   roomPendingDeletion: Room | null = null;
   readonly dragging = signal(false);
   readonly pairSuggestion = signal<PairSuggestion | null>(null);
+  readonly assigning = signal(false);
+  readonly housingFilter = signal<'requested' | 'all' | 'pending'>('requested');
+  selectedPersonId = '';
+  selectedRoomId = '';
+  savingRoomId: string | null = null;
+  readonly calendar = signal<HousingCalendar | null>(null);
+  readonly calendarLoading = signal(true);
+  readonly calendarError = signal('');
+  readonly selectedNight = signal('');
+  assignmentFrom = '';
+  assignmentUntil = '';
+  stayArrival = '';
+  stayDeparture = '';
+  readonly houses = computed(() => {
+    const calendar = this.calendar();
+    if (!calendar) return [];
+    const assignments = calendar.assignments.filter(item => item.night === this.selectedNight());
+    return calendar.houses.map(house => ({ ...house, rooms: house.rooms.map(room => ({
+      ...room, guestIds: assignments.filter(item => item.roomId === room.id).map(item => item.guestId),
+    })) }));
+  });
 
-  readonly guests = computed(() => allGuestPeople(this.store.guests()));
+  readonly guests = computed(() => this.calendar()?.people ?? []);
   readonly guestMap = computed(() => new Map(this.guests().map(guest => [guest.id, guest])));
-  readonly assignedGuestIds = computed(() => new Set(this.store.houses().flatMap(house => house.rooms.flatMap(room => room.guestIds))));
-  readonly unassignedGuests = computed(() =>
-    this.guests().filter(guest => guest.rsvp !== 'declined' && !this.assignedGuestIds().has(guest.id)));
+  readonly assignedGuestIds = computed(() => new Set(this.houses().flatMap(house => house.rooms.flatMap(room => room.guestIds))));
+  readonly allUnassignedGuests = computed(() =>
+    this.guests().filter(guest => guest.rsvp !== 'declined' && this.presentForNight(guest, this.selectedNight()) && !this.assignedGuestIds().has(guest.id)));
+  readonly requestedGuests = computed(() => this.allUnassignedGuests().filter(guest => guest.needsHousing));
+  readonly unassignedGuests = computed(() => this.allUnassignedGuests().filter(guest =>
+    this.housingFilter() === 'all' || (this.housingFilter() === 'pending' ? guest.rsvp === 'pending' : guest.needsHousing)));
+  readonly availablePeople = computed(() => this.guests().filter(guest => guest.rsvp !== 'declined'));
+  readonly roomOptions = computed(() => this.houses().flatMap(house => house.rooms.map(room => ({
+    room, label: `${house.name} · ${room.name} (${room.guestIds.length}/${this.roomCapacity(room)})`,
+  }))));
   readonly totals = computed(() => {
-    const houses = this.store.houses();
+    const houses = this.houses();
     const totalBeds = houses.reduce((sum, house) => sum + house.rooms.reduce((roomSum, room) => roomSum + this.roomCapacity(room), 0), 0);
     const occupied = houses.reduce((sum, house) => sum + house.rooms.reduce((roomSum, room) => roomSum + room.guestIds.length, 0), 0);
     return { totalBeds, occupied };
   });
+
+  constructor() { void this.reloadCalendar(); }
+
+  async reloadCalendar(): Promise<void> {
+    this.calendarLoading.set(true);
+    this.calendarError.set('');
+    try {
+      const calendar = await this.housingApi.loadCalendar();
+      this.calendar.set(calendar);
+      if (!calendar.nights.includes(this.selectedNight())) this.selectNight(calendar.weddingDate);
+    } catch (error) {
+      this.calendarError.set(apiError(error, 'Impossible de charger le calendrier des chambres.'));
+    } finally { this.calendarLoading.set(false); }
+  }
+
+  private async refreshHousing(houses: House[]): Promise<void> {
+    this.store.replaceHouses(houses);
+    await this.reloadCalendar();
+  }
+
+  nextDate(date: string): string {
+    const value = new Date(`${date}T12:00:00Z`);
+    value.setUTCDate(value.getUTCDate() + 1);
+    return value.toISOString().slice(0, 10);
+  }
+
+  selectNight(night: string): void {
+    this.selectedNight.set(night);
+    this.assignmentFrom = night;
+    this.assignmentUntil = this.nextDate(night);
+    this.pairSuggestion.set(null);
+  }
+
+  nightLabel(night: string): string {
+    return new Date(`${night}T12:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  occupiedForNight(night: string): number {
+    return this.calendar()?.assignments.filter(item => item.night === night).length ?? 0;
+  }
+
+  presentForNight(person: HousingPerson, night: string): boolean {
+    return (!person.arrivalDate || person.arrivalDate <= night) && (!person.departureDate || night < person.departureDate);
+  }
+
+  selectPerson(id: string): void {
+    this.selectedPersonId = id;
+    const person = this.guestMap().get(id);
+    this.stayArrival = person?.arrivalDate ?? this.selectedNight();
+    this.stayDeparture = person?.departureDate ?? this.nextDate(this.selectedNight());
+  }
+
+  async saveStay(): Promise<void> {
+    if (!this.auth.can('housing', 'edit') || !this.selectedPersonId || this.assigning()) return;
+    this.assigning.set(true);
+    try {
+      await this.housingApi.saveStay(this.selectedPersonId, this.stayArrival, this.stayDeparture);
+      await this.reloadCalendar();
+      this.toast.success('Dates de séjour enregistrées. Les chambres se réservent séparément pour chaque période.');
+    } catch (error) { this.toast.error(apiError(error, 'Impossible d’enregistrer le séjour.')); }
+    finally { this.assigning.set(false); }
+  }
+
+  roomForNight(guestId: string, night: string): string {
+    const assignment = this.calendar()?.assignments.find(item => item.guestId === guestId && item.night === night);
+    if (!assignment) {
+      const person = this.guestMap().get(guestId);
+      return person && !this.presentForNight(person, night) ? 'Hors séjour' : 'Sans réservation';
+    }
+    for (const house of this.calendar()?.houses ?? []) {
+      const room = house.rooms.find(item => item.id === assignment.roomId);
+      if (room) return `${house.name} · ${room.name}`;
+    }
+    return 'Chambre indisponible';
+  }
 
   roomCapacity(room: Room): number {
     return room.beds * (room.bedType === 'double' ? 2 : 1);
@@ -66,7 +170,7 @@ export class HousingComponent {
 
   bedLabel(room: Room): string {
     const label = room.bedType === 'double' ? 'double' : 'simple';
-    return `${room.beds} lit${room.beds > 1 ? 's' : ''} ${label}${room.beds > 1 && room.bedType === 'double' ? 's' : ''}`;
+    return `${room.beds} lit${room.beds > 1 ? 's' : ''} ${label}${room.beds > 1 ? 's' : ''}`;
   }
 
   houseCapacity(house: House): number {
@@ -115,6 +219,17 @@ export class HousingComponent {
     await this.moveGuest(guestId, null);
   }
 
+  async assignSelection(): Promise<void> {
+    if (!this.selectedPersonId || !this.selectedRoomId) return;
+    const room = this.roomById(this.selectedRoomId);
+    if (!room) return;
+    await this.moveGuest(this.selectedPersonId, room, this.assignmentFrom, this.assignmentUntil);
+  }
+
+  async removeSelection(): Promise<void> {
+    if (this.selectedPersonId) await this.moveGuest(this.selectedPersonId, null, this.assignmentFrom, this.assignmentUntil);
+  }
+
   async acceptPairSuggestion(): Promise<void> {
     const suggestion = this.pairSuggestion();
     if (!suggestion) return;
@@ -128,17 +243,22 @@ export class HousingComponent {
     this.pairSuggestion.set(null);
   }
 
-  private async moveGuest(guestId: string, room: Room | null): Promise<void> {
-    if (!this.auth.can('housing', 'edit')) return;
-    const snapshot = this.store.houses();
-    this.store.assignGuestRoom(guestId, room ? this.houseIdOf(room.id) : null, room?.id ?? null);
+  private async moveGuest(guestId: string, room: Room | null, from = this.selectedNight(), until = this.nextDate(from)): Promise<void> {
+    if (!this.auth.can('housing', 'edit') || this.assigning()) return;
+    if (room && from === this.selectedNight() && until === this.nextDate(from) && this.isRoomFull(room) && !room.guestIds.includes(guestId)) {
+      this.toast.error('Cette chambre est complète. Choisissez une autre chambre.');
+      return;
+    }
+    this.assigning.set(true);
     try {
-      const houses = await this.housingApi.assignGuest(guestId, room?.id ?? null);
-      this.store.replaceHouses(houses);
-      if (room) this.suggestPartner(guestId, room.id);
-    } catch {
-      this.store.houses.set(snapshot);
-      this.toast.error("Impossible d'enregistrer l'affectation. Vérifiez la connexion et réessayez.");
+      const houses = await this.housingApi.assignGuest(guestId, room?.id ?? null, from, until);
+      await this.refreshHousing(houses);
+      if (room && until === this.nextDate(from) && from === this.selectedNight()) this.suggestPartner(guestId, room.id);
+      this.toast.success(`Hébergement ${room ? 'enregistré' : 'retiré'} du ${this.nightLabel(from)} au ${this.nightLabel(until)} (départ).`);
+    } catch (error) {
+      this.toast.error(apiError(error, "Impossible d'enregistrer l'affectation. Vérifiez la connexion et réessayez."));
+    } finally {
+      this.assigning.set(false);
     }
   }
 
@@ -148,7 +268,7 @@ export class HousingComponent {
     if (person.isKid) return;
     const partnerId = person.isPlusOne ? person.parentGuestId : plusOneGuestId(person.id);
     const partner = this.guestMap().get(partnerId);
-    if (!partner || partner.rsvp === 'declined') return;
+    if (!partner || partner.rsvp === 'declined' || !this.presentForNight(partner, this.selectedNight())) return;
     if (this.assignedGuestIds().has(partnerId)) return;
     const room = this.roomById(roomId);
     if (!room || this.isRoomFull(room)) return;
@@ -160,15 +280,11 @@ export class HousingComponent {
   }
 
   private roomById(roomId: string): Room | undefined {
-    for (const house of this.store.houses()) {
+    for (const house of this.houses()) {
       const room = house.rooms.find(r => r.id === roomId);
       if (room) return room;
     }
     return undefined;
-  }
-
-  private houseIdOf(roomId: string): string | null {
-    return this.store.houses().find(house => house.rooms.some(room => room.id === roomId))?.id ?? null;
   }
 
   toggleHouse(houseId: string): void {
@@ -181,7 +297,7 @@ export class HousingComponent {
     if (!name) return;
     try {
       const houses = await this.housingApi.createHouse(name);
-      this.store.replaceHouses(houses);
+      await this.refreshHousing(houses);
       this.houseName = '';
       this.addingHouse = false;
     } catch {
@@ -208,7 +324,7 @@ export class HousingComponent {
   private async deleteHouse(id: string): Promise<void> {
     try {
       const houses = await this.housingApi.deleteHouse(id);
-      this.store.replaceHouses(houses);
+      await this.refreshHousing(houses);
     } catch {
       this.toast.error('Impossible de supprimer le logement.');
     }
@@ -224,7 +340,7 @@ export class HousingComponent {
         bedType: this.roomForm.bedType,
         beds: this.normalizeBeds(this.roomForm.beds),
       });
-      this.store.replaceHouses(houses);
+      await this.refreshHousing(houses);
       this.roomForm = { name: '', bedType: 'double', beds: 1 };
       this.addingRoomFor = null;
     } catch {
@@ -244,20 +360,27 @@ export class HousingComponent {
   }
 
   async saveRoom(room: Room): Promise<void> {
-    if (!this.auth.can('housing', 'edit')) return;
+    if (!this.auth.can('housing', 'edit') || this.savingRoomId) return;
     const name = this.editRoomForm.name.trim();
     if (!name) return;
     const beds = this.normalizeBeds(this.editRoomForm.beds);
     const bedType = this.editRoomForm.bedType;
     const capacity = beds * (bedType === 'double' ? 2 : 1);
-    const guestIds = room.guestIds.slice(0, capacity);
-    const nextRoom: Room = { ...room, name, bedType, beds, guestIds };
+    if (capacity < room.guestIds.length) {
+      const names = room.guestIds.map(id => this.guestById(id)?.firstName || 'un occupant').join(', ');
+      this.toast.error(`Déplacez ${room.guestIds.length - capacity} personne(s) avant de réduire la capacité. Occupants : ${names}.`);
+      return;
+    }
+    const nextRoom: Room = { ...room, name, bedType, beds };
+    this.savingRoomId = room.id;
     try {
       const houses = await this.housingApi.updateRoom(nextRoom);
-      this.store.replaceHouses(houses);
+      await this.refreshHousing(houses);
       this.cancelEditingRoom();
-    } catch {
-      this.toast.error('Impossible de modifier la chambre.');
+    } catch (error) {
+      this.toast.error(apiError(error, 'Impossible de modifier la chambre.'));
+    } finally {
+      this.savingRoomId = null;
     }
   }
 
@@ -280,7 +403,7 @@ export class HousingComponent {
   private async deleteRoom(roomId: string): Promise<void> {
     try {
       const houses = await this.housingApi.deleteRoom(roomId);
-      this.store.replaceHouses(houses);
+      await this.refreshHousing(houses);
       if (this.editingRoomId === roomId) {
         this.cancelEditingRoom();
       }

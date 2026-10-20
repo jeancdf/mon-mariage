@@ -41,8 +41,4 @@ export class ConfirmDialogComponent {
     this.cancel.emit();
   }
 
-  @HostListener('document:keydown.enter')
-  onEnter(): void {
-    this.confirm.emit();
-  }
 }

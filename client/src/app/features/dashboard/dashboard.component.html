@@ -45,7 +45,7 @@
     <a class="stat-card" routerLink="/hebergement">
       <div class="stat-card-head"><div class="eyebrow">Hébergement</div><app-icon name="housing" /></div>
       <strong>{{ s.housing.occupiedBeds }}<small> / {{ s.housing.totalBeds }}</small></strong>
-      <span>couchages attribués</span>
+      <span>places occupées · nuit du mariage</span>
       <div class="progress-track slim"><i [style.width.%]="percent(s.housing.occupiedBeds, s.housing.totalBeds)"></i></div>
     </a>
     }

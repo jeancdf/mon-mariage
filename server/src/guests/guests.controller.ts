@@ -4,8 +4,13 @@ import { GuestsService } from './guests.service';
 import { RequirePermission } from '../auth/auth.decorators';
 
 interface ReplaceGuestsBody {
-  guests: Array<Omit<GuestEntity, 'id'> & { id?: string }>;
+  guests: Partial<GuestEntity>[];
 }
+
+export const guestResponse = (guest: GuestEntity) => {
+  const { inviteToken, inviteTokenCreatedAt: _createdAt, ...fields } = guest;
+  return { ...fields, hasInviteLink: Boolean(inviteToken) };
+};
 
 @Controller('guests')
 @RequirePermission('guests')
@@ -13,14 +18,14 @@ export class GuestsController {
   constructor(private readonly guestsService: GuestsService) {}
 
   @Get()
-  findAll(): Promise<GuestEntity[]> {
-    return this.guestsService.findAll();
+  async findAll() {
+    return (await this.guestsService.findAll()).map(guestResponse);
   }
 
   @Post()
   @RequirePermission('guests', 'edit')
-  create(@Body() guest: Omit<GuestEntity, 'id'>): Promise<GuestEntity> {
-    return this.guestsService.create(guest);
+  async create(@Body() guest: Omit<GuestEntity, 'id'>) {
+    return guestResponse(await this.guestsService.create(guest));
   }
 
   @Post(':id/invite-link')
@@ -39,11 +44,11 @@ export class GuestsController {
 
   @Patch(':id')
   @RequirePermission('guests', 'edit')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() guest: Partial<Omit<GuestEntity, 'id'>>,
-  ): Promise<GuestEntity> {
-    return this.guestsService.update(id, guest);
+  ) {
+    return guestResponse(await this.guestsService.update(id, guest));
   }
 
   @Delete(':id')
@@ -55,8 +60,8 @@ export class GuestsController {
 
   @Put('import')
   @RequirePermission('guests', 'edit')
-  replaceAll(@Body() body: ReplaceGuestsBody): Promise<GuestEntity[]> {
+  async importGuests(@Body() body: ReplaceGuestsBody) {
     const guests = Array.isArray(body?.guests) ? body.guests : [];
-    return this.guestsService.replaceAll(guests);
+    return (await this.guestsService.importGuests(guests)).map(guestResponse);
   }
 }

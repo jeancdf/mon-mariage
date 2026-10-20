@@ -1,7 +1,7 @@
 <div class="modal-backdrop" (click)="closeModal.emit()">
-  <div class="modal wide" (click)="$event.stopPropagation()">
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="guest-modal-title" (click)="$event.stopPropagation()">
     <header class="modal-header">
-      <h2>{{ isEditing ? "Modifier l'invité" : "Ajouter un invité" }}</h2>
+      <h2 id="guest-modal-title">{{ isEditing ? "Modifier le foyer" : "Ajouter un foyer" }}</h2>
       <button class="icon-button" type="button" (click)="closeModal.emit()" aria-label="Fermer">
         <app-icon name="x" />
       </button>
@@ -38,13 +38,18 @@
         </select>
       </label>
       <label class="field">
-        <span>RSVP</span>
+        <span>RSVP de {{ form.firstName || 'l’invité principal' }}</span>
         <select [(ngModel)]="form.rsvp">
           @for (option of rsvpOptions; track option.value) {
             <option [value]="option.value">{{ option.label }}</option>
           }
         </select>
       </label>
+    </div>
+
+    <div class="field">
+      <button class="btn secondary small" type="button" [disabled]="saving" (click)="applyHouseholdRsvp(form.rsvp)">Appliquer cette réponse à tout le foyer</button>
+      <small>Un refus libère la chambre et le siège de la personne concernée. Les horaires de séjour restent à vérifier dans Dernières semaines.</small>
     </div>
 
     <div class="field">
@@ -88,6 +93,9 @@
         <button class="chip" type="button" [class.active]="form.hasPlusOne" (click)="form.hasPlusOne = !form.hasPlusOne">+1</button>
         @if (form.hasPlusOne) {
           <input [(ngModel)]="form.plusOneName" placeholder="Nom" />
+          <select aria-label="RSVP de l’accompagnateur" [(ngModel)]="form.plusOneRsvp">
+            @for (option of rsvpOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+          </select>
         }
       </div>
     </div>
@@ -98,6 +106,9 @@
         <div class="inline-form kid-row">
           <input [(ngModel)]="kid.name" placeholder="Prénom" />
           <input class="age-input" type="number" min="0" max="17" [(ngModel)]="kid.age" placeholder="Âge" />
+          <select [attr.aria-label]="'RSVP de ' + (kid.name || 'l’enfant')" [(ngModel)]="kid.rsvp">
+            @for (option of rsvpOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+          </select>
           <button class="icon-button" type="button" (click)="removeKid($index)" aria-label="Retirer l'enfant">
             <app-icon name="x" />
           </button>
@@ -115,7 +126,7 @@
 
     <footer class="modal-actions">
       <button class="btn secondary" type="button" (click)="closeModal.emit()">Annuler</button>
-      <button class="btn primary" type="button" [disabled]="!form.firstName || !form.lastName" (click)="submit()">Enregistrer</button>
+      <button class="btn primary" type="button" [disabled]="saving || !valid()" (click)="submit()">{{ saving ? 'Enregistrement…' : 'Enregistrer' }}</button>
     </footer>
   </div>
 </div>

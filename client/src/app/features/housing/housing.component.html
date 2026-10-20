@@ -1,9 +1,9 @@
 <section class="split-pane" cdkDropListGroup>
   <app-guest-sidebar
-    label="Sans logement"
+    [label]="housingFilter() === 'requested' ? 'Couchages demandés' : housingFilter() === 'pending' ? 'RSVP en attente' : 'Sans logement'"
     [guests]="unassignedGuests()"
-    [loading]="!store.loaded()"
-    [dragDisabled]="!auth.can('housing', 'edit')"
+    [loading]="calendarLoading()"
+    [dragDisabled]="!auth.can('housing', 'edit') || assigning()"
     (guestDropped)="unassignGuest($event)"
     (dragStarted)="onDragStarted()"
     (dragEnded)="onDragEnded()" />
@@ -12,7 +12,7 @@
     <header class="page-header split">
       <div>
         <h1>Hébergement</h1>
-        <p>{{ totals().occupied }} / {{ totals().totalBeds }} places · {{ unassignedGuests().length }} sans logement · glissez un invité vers une chambre</p>
+        <p>{{ totals().occupied }} / {{ totals().totalBeds }} places · {{ requestedGuests().length }} couchages demandés à attribuer</p>
       </div>
       @if (auth.can('housing', 'edit')) {
       <button class="btn primary" type="button" (click)="addingHouse = true">
@@ -20,6 +20,66 @@
       </button>
       }
     </header>
+
+    @if (calendarError()) { <p class="form-error" role="alert">{{ calendarError() }} <button class="btn secondary small" type="button" (click)="reloadCalendar()">Réessayer</button></p> }
+    @if (calendar(); as schedule) {
+      <nav class="housing-calendar" aria-label="Nuit à afficher">
+        @for (night of schedule.nights; track night) {
+          <button type="button" [class.active]="selectedNight() === night" [class.wedding-night]="night === schedule.weddingDate" [attr.aria-pressed]="selectedNight() === night" [disabled]="assigning()" (click)="selectNight(night)">
+            <strong>{{ nightLabel(night) }}</strong>
+            <span>{{ night === schedule.weddingDate ? 'Nuit du mariage' : night < schedule.weddingDate ? 'Préparation' : 'Après le mariage' }}</span>
+            <small>{{ occupiedForNight(night) }} / {{ totals().totalBeds }} places</small>
+          </button>
+        }
+      </nav>
+      <h2>Nuit du {{ nightLabel(selectedNight()) }}</h2>
+      <p class="muted">Les chambres ci-dessous et le glisser-déposer concernent cette nuit uniquement. Une même personne peut changer de maison d’une nuit à l’autre.</p>
+    } @else if (calendarLoading()) { <p>Chargement du calendrier…</p> }
+
+    <div class="chip-row housing-filters" aria-label="Filtrer les personnes sans logement">
+      <button class="chip" type="button" [class.active]="housingFilter() === 'requested'" (click)="housingFilter.set('requested')">Couchage demandé</button>
+      <button class="chip" type="button" [class.active]="housingFilter() === 'pending'" (click)="housingFilter.set('pending')">RSVP en attente</button>
+      <button class="chip" type="button" [class.active]="housingFilter() === 'all'" (click)="housingFilter.set('all')">Tous sans logement ({{ allUnassignedGuests().length }})</button>
+    </div>
+
+    @if (auth.can('housing', 'edit')) {
+      <form class="panel housing-assignment" (ngSubmit)="assignSelection()">
+        <label class="field"><span>Personne à affecter ou déplacer</span>
+          <select name="person" [ngModel]="selectedPersonId" (ngModelChange)="selectPerson($event)" [disabled]="assigning()">
+            <option value="">Choisir une personne…</option>
+            @for (person of availablePeople(); track person.id) { <option [value]="person.id">{{ person.firstName }} {{ person.lastName }}{{ assignedGuestIds().has(person.id) ? ' · déjà logé' : '' }}{{ person.rsvp === 'pending' ? ' · RSVP en attente' : '' }}</option> }
+          </select>
+        </label>
+        <label class="field"><span>Chambre de destination</span>
+          <select name="room" [(ngModel)]="selectedRoomId" [disabled]="assigning()">
+            <option value="">Choisir une chambre…</option>
+            @for (option of roomOptions(); track option.room.id) { <option [value]="option.room.id">{{ option.label }}</option> }
+          </select>
+        </label>
+        <label class="field"><span>Première nuit</span><input type="date" name="from" [(ngModel)]="assignmentFrom" [min]="calendar()?.startDate" [max]="calendar()?.nights?.slice(-1)?.[0]" [disabled]="assigning()" /></label>
+        <label class="field"><span>Départ de cette chambre (exclu)</span><input type="date" name="until" [(ngModel)]="assignmentUntil" [min]="assignmentFrom" [max]="calendar()?.endDate" [disabled]="assigning()" /></label>
+        <p class="housing-form-note muted">La réservation remplace les chambres sur cette période seulement. La nuit du départ n’est pas incluse. Toute la période est refusée si une seule nuit est complète.</p>
+        <button class="btn primary" type="submit" [disabled]="assigning() || !selectedPersonId || !selectedRoomId || !assignmentFrom || assignmentUntil <= assignmentFrom">{{ assigning() ? 'Enregistrement…' : 'Réserver cette période' }}</button>
+        <button class="btn secondary" type="button" [disabled]="assigning() || !selectedPersonId || !assignmentFrom || assignmentUntil <= assignmentFrom" (click)="removeSelection()">Libérer cette période</button>
+      </form>
+
+      @if (selectedPersonId) {
+        <section class="panel housing-stay">
+          <h2>Séjour et changements de lieu</h2>
+          <p>Indiquez les dates de présence pour repérer les nuits où cette personne a besoin d’une chambre.</p>
+          <div class="housing-assignment">
+            <label class="field"><span>Arrivée sur place</span><input type="date" [(ngModel)]="stayArrival" [min]="calendar()?.startDate" [max]="calendar()?.endDate" [disabled]="assigning()" /></label>
+            <label class="field"><span>Départ du séjour</span><input type="date" [(ngModel)]="stayDeparture" [min]="stayArrival" [max]="calendar()?.endDate" [disabled]="assigning()" /></label>
+            <button class="btn secondary" type="button" [disabled]="assigning() || !stayArrival || stayDeparture <= stayArrival" (click)="saveStay()">Enregistrer les dates du séjour</button>
+          </div>
+          <div class="housing-itinerary">
+            @for (night of calendar()?.nights ?? []; track night) {
+              <div [class.wedding-night]="night === calendar()?.weddingDate"><strong>{{ nightLabel(night) }}{{ night === calendar()?.weddingDate ? ' · Mariage' : '' }}</strong><span>{{ roomForNight(selectedPersonId, night) }}</span></div>
+            }
+          </div>
+        </section>
+      }
+    }
 
     @if (addingHouse) {
       <div class="inline-panel">
@@ -30,7 +90,7 @@
     }
 
     <div class="stack">
-      @for (house of store.houses(); track house.id) {
+      @for (house of houses(); track house.id) {
         @let open = expanded[house.id] !== false;
         @let houseFull = isHouseFull(house);
         <article class="collapsible" [class.complete]="houseFull">
@@ -58,7 +118,7 @@
                     class="room-card"
                     cdkDropList
                     cdkDropListSortingDisabled
-                    [cdkDropListDisabled]="!auth.can('housing', 'edit')"
+                    [cdkDropListDisabled]="!auth.can('housing', 'edit') || assigning()"
                     [cdkDropListData]="room"
                     [cdkDropListEnterPredicate]="roomEnterPredicate(room)"
                     [class.full]="full && !editing"
@@ -87,7 +147,7 @@
                           <option value="single">Lit(s) simple(s)</option>
                         </select>
                         <input class="number-input" type="number" min="1" max="8" [(ngModel)]="editRoomForm.beds" />
-                        <button class="btn primary small" type="button" (click)="saveRoom(room)">OK</button>
+                        <button class="btn primary small" type="button" [disabled]="!!savingRoomId" (click)="saveRoom(room)">{{ savingRoomId === room.id ? 'Enregistrement…' : 'OK' }}</button>
                         <button class="btn secondary small" type="button" (click)="cancelEditingRoom()">Annuler</button>
                       </div>
                     }
@@ -100,17 +160,19 @@
                             <div
                               class="room-guest draggable-chip"
                               cdkDrag
-                              [cdkDragDisabled]="!auth.can('housing', 'edit')"
+                              [cdkDragDisabled]="!auth.can('housing', 'edit') || assigning()"
                               [cdkDragData]="guestId"
                               (cdkDragStarted)="onDragStarted()"
                               (cdkDragEnded)="onDragEnded()">
                               <span>{{ guest.firstName }} {{ guest.lastName }}{{ guest.isKid ? ' (enfant)' : guest.isPlusOne ? ' (+1)' : '' }}</span>
                               @if (auth.can('housing', 'edit')) {
-                              <button type="button" (click)="$event.stopPropagation(); unassignGuest(guestId)" aria-label="Retirer">
+                              <button type="button" [disabled]="assigning()" (click)="$event.stopPropagation(); unassignGuest(guestId)" aria-label="Retirer">
                                 <app-icon name="x" [size]="11" />
                               </button>
                               }
                             </div>
+                          } @else {
+                            <span class="muted">Occupant en cours de chargement…</span>
                           }
                         }
                       </div>
@@ -164,7 +226,7 @@
     <app-confirm-dialog
       title="Supprimer cette maison ?"
       [message]="'Supprimer la maison ' + house.name + ' ?'"
-      details="Toutes ses chambres seront supprimées et les invités hébergés redeviendront sans logement."
+      details="Toutes ses chambres et leurs réservations seront supprimées pour toutes les nuits du séjour."
       titleId="confirm-delete-house-title"
       (cancel)="cancelDeleteHouse()"
       (confirm)="confirmDeleteHouse()" />
@@ -174,7 +236,7 @@
     <app-confirm-dialog
       title="Supprimer cette chambre ?"
       [message]="'Supprimer la chambre ' + room.name + ' ?'"
-      [details]="'Ses ' + room.guestIds.length + ' occupant' + (room.guestIds.length > 1 ? 's' : '') + ' redeviendront sans logement.'"
+      details="Les réservations de cette chambre seront supprimées pour toutes les nuits, pas seulement la nuit affichée."
       titleId="confirm-delete-room-title"
       (cancel)="cancelDeleteRoom()"
       (confirm)="confirmDeleteRoom()" />

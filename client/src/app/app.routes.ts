@@ -10,9 +10,9 @@ import { TodosComponent } from './features/todos/todos.component';
 import { VendorsComponent } from './features/vendors/vendors.component';
 import { WeddingShellComponent } from './wedding-shell/wedding-shell.component';
 import { AccessDeniedComponent } from './auth/access-denied.component';
+import { InvitationComponent } from './auth/invitation.component';
 import { PublicHomeComponent } from './features/public-site/public-home.component';
 import { RsvpComponent } from './features/public-site/rsvp.component';
-import { InvitationComponent } from './auth/invitation.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: PublicHomeComponent },

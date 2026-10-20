@@ -15,7 +15,10 @@ interface CategoryOption {
   standalone: true,
   imports: [FormsModule, CdkDrag, CdkDropList],
   template: `
-    <aside class="guest-sidebar">
+    <aside class="guest-sidebar" [class.guest-sidebar-expanded]="expanded()">
+      <button class="guest-sidebar-toggle btn secondary" type="button" [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())">
+        {{ expanded() ? 'Masquer les personnes' : 'Voir les personnes' }} · {{ guests().length }}
+      </button>
       <div class="guest-sidebar-head">
         <div class="eyebrow">{{ label() }} · {{ guests().length }}</div>
         <input
@@ -79,6 +82,7 @@ export class GuestSidebarComponent {
   readonly dragEnded = output<void>();
 
   readonly search = signal('');
+  readonly expanded = signal(false);
   readonly categoryFilter = signal<'all' | GuestCategory>('all');
 
   readonly categoryOptions: CategoryOption[] = [

@@ -202,7 +202,7 @@
           @for (person of data.people; track person.id) {
             <article class="panel person-card" [class.person-present]="isPresentOnSelectedDate(person)">
               <header>
-                <div><strong>{{ person.firstName }} {{ person.lastName }}</strong><small>{{ person.room ? person.room.houseName + ' · ' + person.room.name : 'Aucun lit attribué' }}</small></div>
+                <div><strong>{{ person.firstName }} {{ person.lastName }}</strong>@let room = person.roomsByNight?.[selectedDate()];<small>{{ room ? room.houseName + ' · ' + room.name : 'Aucun lit attribué pour cette nuit' }}</small></div>
                 <span class="status-pill">{{ isPresentOnSelectedDate(person) ? 'Sur place' : 'Absent' }}</span>
               </header>
               <div class="form-grid compact-grid">

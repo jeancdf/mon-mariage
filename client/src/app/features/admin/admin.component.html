@@ -2,7 +2,7 @@
   <header class="page-header">
     <div class="script-note">Accès et sécurité</div>
     <h1>Administration</h1>
-    <p>Créez les comptes ici : chaque utilisateur recevra un lien personnel pour choisir son mot de passe.</p>
+    <p>Créez le compte de ta fiancée ici, ou invitez les autres accès par e-mail.</p>
   </header>
 
   <article class="panel mail-test-panel">
@@ -41,27 +41,60 @@
           <h2>Ajouter un organisateur</h2>
         </div>
       </header>
-      <p class="muted">Choisissez l’e-mail et le mot de passe : le compte est actif immédiatement, avec tous les droits d’administration.</p>
+      <p class="muted">
+        Tu choisis son e-mail et son mot de passe ici. Elle se connecte
+        ensuite comme toi, avec les mêmes droits d’administration, sans
+        lien d’invitation.
+      </p>
       <div class="form-grid organizer-account-form">
         <label class="field">
           <span>Nom affiché</span>
-          <input [(ngModel)]="newOrganizerName" name="newOrganizerName" autocomplete="off" placeholder="Alice" />
+          <input
+            [(ngModel)]="partnerName"
+            name="partnerName"
+            autocomplete="name"
+            placeholder="Alice"
+          />
         </label>
         <label class="field">
           <span>Adresse e-mail</span>
-          <input type="email" [(ngModel)]="newOrganizerEmail" name="newOrganizerEmail" autocomplete="off" placeholder="alice@exemple.fr" />
+          <input
+            type="email"
+            [(ngModel)]="partnerEmail"
+            name="partnerEmail"
+            autocomplete="off"
+            placeholder="alice@exemple.fr"
+          />
         </label>
         <label class="field">
           <span>Mot de passe</span>
-          <input type="password" [(ngModel)]="newOrganizerPassword" name="newOrganizerPassword" autocomplete="new-password" minlength="12" placeholder="12 caractères minimum" />
+          <input
+            type="password"
+            [(ngModel)]="partnerPassword"
+            name="partnerPassword"
+            autocomplete="new-password"
+            minlength="12"
+            placeholder="12 caractères minimum"
+          />
         </label>
         <label class="field">
           <span>Confirmer le mot de passe</span>
-          <input type="password" [(ngModel)]="newOrganizerPasswordConfirm" name="newOrganizerPasswordConfirm" autocomplete="new-password" minlength="12" />
+          <input
+            type="password"
+            [(ngModel)]="partnerPasswordConfirm"
+            name="partnerPasswordConfirm"
+            autocomplete="new-password"
+            minlength="12"
+          />
         </label>
       </div>
-      <button class="btn primary" type="button" [disabled]="!canCreateOrganizer() || organizerBusy()" (click)="createOrganizer()">
-        {{ organizerBusy() ? 'Création…' : 'Créer le compte organisateur' }}
+      <button
+        class="btn primary"
+        type="button"
+        [disabled]="!canCreatePartner() || partnerBusy()"
+        (click)="createPartner()"
+      >
+        {{ partnerBusy() ? 'Création…' : 'Créer le compte organisateur' }}
       </button>
     </article>
 

@@ -7,8 +7,9 @@ import {
 import {
   Budget, BudgetCategory, BudgetItem, Guest, House, Room, Table, Task, TodoGroup, Vendor,
 } from '../data/types';
-import { allGuestPeople, guestPeople } from '../shared/wedding-utils';
+import { allGuestPeople, emptyGuest, guestPeople } from '../shared/wedding-utils';
 import { DemoDataset, DemoPresence, createDemoDataset } from './demo-data';
+import { HousingCalendar } from '../data/housing-api.service';
 
 const MEAL_KINDS: MealKind[] = ['breakfast', 'lunch', 'dinner'];
 /** Tasks without an explicit end are drawn as one hour, matching the final-weeks gantt. */
@@ -43,9 +44,17 @@ export class DemoHttpError extends Error {
 @Injectable({ providedIn: 'root' })
 export class DemoBackendService {
   private data: DemoDataset = createDemoDataset();
+  private nightAssignments = this.initialNightAssignments();
+  private housingStays: Record<string, { arrivalDate: string; departureDate: string }> = {};
+
+  private initialNightAssignments(): HousingCalendar['assignments'] {
+    return this.data.houses.flatMap(house => house.rooms.flatMap(room => room.guestIds.map(guestId => ({ guestId, roomId: room.id, night: this.data.eventConfig.weddingDate }))));
+  }
 
   reset(): void {
     this.data = createDemoDataset();
+    this.nightAssignments = this.initialNightAssignments();
+    this.housingStays = {};
   }
 
   handle(method: string, path: string, body: unknown): unknown {
@@ -96,18 +105,34 @@ export class DemoBackendService {
   }
 
   // ── Guests ────────────────────────────────────────────────────────
+  private guestResponse(guest: Guest): Guest {
+    const { inviteToken, ...fields } = guest;
+    return { ...fields, hasInviteLink: Boolean(inviteToken) };
+  }
+
   private guests(method: string, rest: string[], body: unknown): unknown {
-    if (method === 'GET' && rest.length === 0) return this.data.guests;
+    if (method === 'GET' && rest.length === 0) return this.data.guests.map(guest => this.guestResponse(guest));
     if (method === 'PUT' && rest[0] === 'import') {
-      const payload = body as { guests?: Guest[] };
-      this.data.guests = (payload.guests ?? []).map(guest => ({ ...guest, id: guest.id || newId() }));
+      const payload = body as { guests?: Partial<Guest>[] };
+      if (!payload.guests?.length) throw new DemoHttpError(400, 'Import vide.');
+      const next = [...this.data.guests];
+      const seen = new Set<string>();
+      for (const row of payload.guests) {
+        if (row.id) {
+          if (seen.has(row.id)) throw new DemoHttpError(400, 'Un foyer est sélectionné plusieurs fois.');
+          seen.add(row.id);
+          const current = this.find(next, row.id, 'Foyer introuvable.');
+          next[next.indexOf(current)] = { ...current, ...row, inviteToken: current.inviteToken };
+        } else next.push({ ...emptyGuest(), events: [], ...row, id: newId(), inviteToken: null });
+      }
+      this.data.guests = next;
       this.pruneAssignments();
-      return this.data.guests;
+      return this.data.guests.map(guest => this.guestResponse(guest));
     }
     if (method === 'POST' && rest.length === 0) {
       const guest = { ...(body as Guest), id: (body as Guest).id || newId() };
       this.data.guests = [...this.data.guests, guest];
-      return guest;
+      return this.guestResponse(guest);
     }
     if (method === 'PATCH' && rest.length === 1) {
       const existing = this.find(this.data.guests, rest[0], 'Invité introuvable.');
@@ -116,7 +141,7 @@ export class DemoBackendService {
       const updated = { ...existing, ...safePatch, id: existing.id, inviteToken: existing.inviteToken };
       this.data.guests = this.data.guests.map(guest => guest.id === updated.id ? updated : guest);
       this.pruneAssignments();
-      return updated;
+      return this.guestResponse(updated);
     }
     if (method === 'POST' && rest.length === 2 && rest[1] === 'invite-link') {
       const guest = this.find(this.data.guests, rest[0], 'Invité introuvable.');
@@ -139,13 +164,16 @@ export class DemoBackendService {
   /** Drops room seats, table seats and presence rows pointing at people who no longer exist. */
   private pruneAssignments(): void {
     const valid = new Set(allGuestPeople(this.data.guests).map(person => person.id));
+    const active = new Set(allGuestPeople(this.data.guests).filter(person => person.rsvp !== 'declined').map(person => person.id));
+    this.nightAssignments = this.nightAssignments.filter(item => active.has(item.guestId));
+    for (const id of Object.keys(this.housingStays)) if (!valid.has(id)) delete this.housingStays[id];
     this.data.houses = this.data.houses.map(house => ({
       ...house,
-      rooms: house.rooms.map(room => ({ ...room, guestIds: room.guestIds.filter(id => valid.has(id)) })),
+      rooms: house.rooms.map(room => ({ ...room, guestIds: room.guestIds.filter(id => active.has(id)) })),
     }));
     this.data.tables = this.data.tables.map(table => ({
       ...table,
-      assignments: table.assignments.filter(assignment => valid.has(assignment.guestId)),
+      assignments: table.assignments.filter(assignment => active.has(assignment.guestId)),
     }));
     for (const personId of Object.keys(this.data.presences)) {
       if (!valid.has(personId)) delete this.data.presences[personId];
@@ -153,8 +181,44 @@ export class DemoBackendService {
   }
 
   // ── Housing ───────────────────────────────────────────────────────
-  private housing(method: string, rest: string[], body: unknown): House[] {
+  private housingNights(from: string, until: string): string[] {
+    const start = this.data.eventConfig.dailyStart;
+    const end = shiftDays(this.data.eventConfig.weddingDate, 2);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(until) || !Number.isFinite(Date.parse(from)) || !Number.isFinite(Date.parse(until)) || from < start || until > end || until <= from) throw new DemoHttpError(400, 'Dates du séjour invalides.');
+    const nights: string[] = [];
+    for (let night = from; night < until; night = shiftDays(night, 1)) nights.push(night);
+    return nights;
+  }
+
+  private housingCalendar(): HousingCalendar {
+    const roomIds = new Set(this.data.houses.flatMap(house => house.rooms.map(room => room.id)));
+    this.nightAssignments = this.nightAssignments.filter(item => roomIds.has(item.roomId));
+    const weddingDate = this.data.eventConfig.weddingDate;
+    const startDate = this.data.eventConfig.dailyStart;
+    const endDate = shiftDays(weddingDate, 2);
+    return { weddingDate, startDate, endDate, nights: this.housingNights(startDate, endDate), houses: this.data.houses,
+      assignments: [...this.nightAssignments],
+      people: allGuestPeople(this.data.guests).map(person => {
+        const stay = this.housingStays[person.id];
+        const presence = this.data.presences[person.id];
+        return { ...person, needsHousing: person.needsHousing || Boolean(stay), arrivalDate: stay?.arrivalDate ?? presence?.arrivalAt?.slice(0, 10) ?? null,
+          departureDate: stay?.departureDate ?? presence?.departureAt?.slice(0, 10) ?? null };
+      }),
+    };
+  }
+
+  private housing(method: string, rest: string[], body: unknown): unknown {
     if (method === 'GET' && rest.length === 0) return this.data.houses;
+    if (method === 'GET' && rest[0] === 'people') return allGuestPeople(this.data.guests);
+    if (method === 'GET' && rest[0] === 'calendar') return this.housingCalendar();
+    if (method === 'PUT' && rest[0] === 'people' && rest[2] === 'stay') {
+      const { arrivalDate, departureDate } = body as { arrivalDate: string; departureDate: string };
+      this.find(allGuestPeople(this.data.guests), rest[1], 'Personne introuvable.');
+      const nights = this.housingNights(arrivalDate, departureDate);
+      if (this.nightAssignments.some(item => item.guestId === rest[1] && !nights.includes(item.night))) throw new DemoHttpError(409, 'Retirez les réservations en dehors de ces dates avant de raccourcir le séjour.');
+      this.housingStays[rest[1]] = { arrivalDate, departureDate };
+      return { success: true };
+    }
 
     if (rest[0] === 'houses') {
       if (method === 'POST' && rest.length === 1) {
@@ -179,6 +243,13 @@ export class DemoBackendService {
     if (rest[0] === 'rooms' && rest.length === 2) {
       if (method === 'PATCH') {
         const patch = body as Partial<Room>;
+        const existing = this.find(this.data.houses.flatMap(house => house.rooms), rest[1], 'Chambre introuvable.');
+        const beds = patch.beds ?? existing.beds;
+        const bedType = patch.bedType ?? existing.bedType;
+        if (!Number.isInteger(beds) || beds < 1 || beds > 8 || !['single', 'double'].includes(bedType)) throw new DemoHttpError(400, 'Indiquez entre 1 et 8 lits, simples ou doubles.');
+        for (const night of this.housingCalendar().nights) {
+          if (this.nightAssignments.filter(item => item.roomId === existing.id && item.night === night).length > beds * (bedType === 'double' ? 2 : 1)) throw new DemoHttpError(409, `Déplacez des occupants de la nuit du ${night} avant de réduire la capacité.`);
+        }
         this.data.houses = this.data.houses.map(house => ({
           ...house,
           rooms: house.rooms.map(room => room.id === rest[1]
@@ -198,24 +269,27 @@ export class DemoBackendService {
 
     if (rest[0] === 'assignments' && rest.length === 2) {
       const guestId = rest[1];
-      const cleared = this.data.houses.map(house => ({
-        ...house,
-        rooms: house.rooms.map(room => ({ ...room, guestIds: room.guestIds.filter(id => id !== guestId) })),
-      }));
-      if (method === 'DELETE') {
-        this.data.houses = cleared;
-        return this.data.houses;
+      const payload = body as { roomId: string | null; from?: string; until?: string } | null;
+      const from = payload?.from ?? this.data.eventConfig.weddingDate;
+      const nights = this.housingNights(from, payload?.until ?? shiftDays(from, 1));
+      const roomId = method === 'DELETE' ? null : payload?.roomId;
+      const cleared = this.nightAssignments.filter(item => item.guestId !== guestId || !nights.includes(item.night));
+      if (roomId) {
+        const person = this.find(allGuestPeople(this.data.guests), guestId, 'Personne introuvable.');
+        if (person.rsvp === 'declined') throw new DemoHttpError(409, 'Cette personne a décliné l’invitation.');
+        const stay = this.housingStays[guestId];
+        if (stay && nights.some(night => night < stay.arrivalDate || night >= stay.departureDate)) throw new DemoHttpError(409, 'Ces nuits sont en dehors du séjour.');
+        const destination = this.find(this.data.houses.flatMap(house => house.rooms), roomId, 'Chambre introuvable.');
+        for (const night of nights) {
+          if (cleared.filter(item => item.roomId === roomId && item.night === night).length >= destination.beds * (destination.bedType === 'double' ? 2 : 1)) throw new DemoHttpError(409, `Cette chambre est complète la nuit du ${night}. Aucune nuit n’a été modifiée.`);
+        }
+        cleared.push(...nights.map(night => ({ guestId, roomId, night })));
       }
-      if (method === 'PUT') {
-        const { roomId } = body as { roomId: string };
-        this.data.houses = cleared.map(house => ({
-          ...house,
-          rooms: house.rooms.map(room => room.id === roomId
-            ? { ...room, guestIds: [...room.guestIds, guestId] }
-            : room),
-        }));
-        return this.data.houses;
-      }
+      this.nightAssignments = cleared;
+      this.data.houses = this.data.houses.map(house => ({ ...house, rooms: house.rooms.map(room => ({ ...room,
+        guestIds: cleared.filter(item => item.roomId === room.id && item.night === this.data.eventConfig.weddingDate).map(item => item.guestId),
+      })) }));
+      return this.data.houses;
     }
 
     throw new DemoHttpError(404, `Route hébergement inconnue : ${method} ${rest.join('/')}`);
@@ -449,9 +523,7 @@ export class DemoBackendService {
   private dashboard(): DashboardSummary {
     const partySize = (guest: Guest): number =>
       1 + (guest.hasPlusOne ? 1 : 0) + guest.kids.filter(kid => kid.name.trim()).length;
-    const countBy = (rsvp: Guest['rsvp']): number => this.data.guests
-      .filter(guest => guest.rsvp === rsvp)
-      .reduce((total, guest) => total + partySize(guest), 0);
+    const countBy = (rsvp: Guest['rsvp']): number => allGuestPeople(this.data.guests).filter(person => person.rsvp === rsvp).length;
 
     const rooms = this.data.houses.flatMap(house => house.rooms);
     const spentOf = (category: BudgetCategory): number =>
@@ -667,6 +739,13 @@ export class DemoBackendService {
         mealSelections: presence?.mealSelections ?? {},
         account: (person.id === guest.id ? accountByGuest.get(guest.id) : undefined) ?? null,
         room: roomByPerson.get(person.id) ?? null,
+        roomsByNight: Object.fromEntries(this.nightAssignments.filter(item => item.guestId === person.id).flatMap(item => {
+          for (const house of this.data.houses) {
+            const room = house.rooms.find(room => room.id === item.roomId);
+            if (room) return [[item.night, { id: room.id, name: room.name, houseName: house.name }]];
+          }
+          return [];
+        })),
       } satisfies FinalWeeksPerson;
     }));
   }
@@ -834,9 +913,11 @@ export class DemoBackendService {
           email,
           name: displayName,
           status: 'active',
-          hasPassword: true,
           profileKey: 'organizer',
           isOrganizer: true,
+          hasPassword: true,
+          invitationSentAt: null,
+          invitationExpiresAt: null,
         }
         : account);
       return { success: true };
@@ -846,11 +927,11 @@ export class DemoBackendService {
       guestId: guest?.id ?? null,
       email,
       status: 'active',
+      profileKey: 'organizer',
+      isOrganizer: true,
       hasPassword: true,
       invitationSentAt: null,
       invitationExpiresAt: null,
-      profileKey: 'organizer',
-      isOrganizer: true,
       lastLoginAt: null,
       name: displayName,
     }];
@@ -901,6 +982,7 @@ export class DemoBackendService {
         if (payload.dietary !== undefined) guest.dietary = payload.dietary;
         if (payload.transport !== undefined) guest.transport = payload.transport;
         if (payload.needsHousing !== undefined) guest.needsHousing = payload.needsHousing;
+        this.pruneAssignments();
         return this.toPublicHousehold(guest);
       }
     }

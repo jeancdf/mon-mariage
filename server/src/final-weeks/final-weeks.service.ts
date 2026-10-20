@@ -234,7 +234,8 @@ export class FinalWeeksService {
   private buildPeople(guests: GuestEntity[], accounts: AccountEntity[], presences: PresenceEntity[], rooms: RoomGuestEntity[]) {
     const accountByGuestId = new Map(accounts.filter(account => account.guestId).map(account => [account.guestId!, account]));
     const presenceByPersonId = new Map(presences.map(presence => [presence.guestPersonId, presence]));
-    const roomByPersonId = new Map(rooms.map(assignment => [assignment.guestId, assignment]));
+    const weddingDate = this.eventConfig.getConfiguration().weddingDate;
+    const roomByPersonId = new Map(rooms.filter(assignment => !assignment.night || assignment.night === weddingDate).map(assignment => [assignment.guestId, assignment]));
     const people: Array<Record<string, unknown>> = [];
     for (const guest of guests) {
       const sourcePeople = [
@@ -272,6 +273,9 @@ export class FinalWeeksService {
             name: assignment.room.name,
             houseName: assignment.room.house?.name ?? '',
           } : null,
+          roomsByNight: Object.fromEntries(rooms.filter(item => item.guestId === person.id).map(item => [item.night ?? weddingDate, {
+            id: item.roomId, name: item.room.name, houseName: item.room.house?.name ?? '',
+          }])),
         });
       }
     }

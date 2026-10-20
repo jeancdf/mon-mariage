@@ -1,255 +1,146 @@
-import { EventKey, Guest, GuestCategory, Kid, OrganizationRole, Rsvp } from '../../data/types';
-import { EVENT_LABELS, RSVP_LABELS, gid } from '../../data/seed';
+import { Guest, GuestCategory, OrganizationRole, Rsvp, EventKey } from '../../data/types';
+import { CATS, EVENT_LABELS, RSVP_LABELS, gid } from '../../data/seed';
 
-export interface GuestImportResult {
-  guests: Guest[];
-  skippedRows: number;
+export type GuestImportRow = Partial<Guest> & { firstName: string; lastName: string };
+export interface GuestImportResult { guests: GuestImportRow[]; skippedRows: number; }
+export interface ImportPreviewRow { guest: GuestImportRow; targetId: string; }
+const normalize = (value: unknown): string => String(value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const cell = (value: unknown): string => String(value ?? '').trim();
+const nameKey = (guest: Pick<Guest, 'firstName' | 'lastName'>) => normalize(`${guest.firstName} ${guest.lastName}`);
+
+export async function parseGuestWorkbook(file: File): Promise<GuestImportResult> {
+  const xlsx = await import('xlsx');
+  const workbook = xlsx.read(await file.arrayBuffer(), { type: 'array' });
+  const result: GuestImportResult = { guests: [], skippedRows: 0 };
+  for (const sheetName of workbook.SheetNames.slice(0, 2)) {
+    const parsed = parseGuestRows(xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, blankrows: false }) as unknown[][], sheetName);
+    result.guests.push(...parsed.guests);
+    result.skippedRows += parsed.skippedRows;
+  }
+  return result;
 }
 
-interface ExcelParser {
-  utils: {
-    sheet_to_json: (
-      sheet: unknown,
-      options: { header: 1; blankrows: false },
-    ) => unknown[][];
-  };
-  read: (data: ArrayBuffer, options: { type: 'array' }) => {
-    SheetNames: string[];
-    Sheets: Record<string, unknown>;
-  };
-}
-
-const DEFAULT_EVENTS = ['ceremony', 'dinner'] as const;
-
-export const parseGuestWorkbook = async (
-  file: File,
-): Promise<GuestImportResult> => {
-  const xlsx = (await import('xlsx')) as ExcelParser;
-  const data = await file.arrayBuffer();
-  const workbook = xlsx.read(data, { type: 'array' });
-  const firstTwoSheets = workbook.SheetNames.slice(0, 2);
-  const importedGuests: Guest[] = [];
+export function parseGuestRows(rows: unknown[][], sheetName = 'Invités'): GuestImportResult {
+  if (!rows.length) return { guests: [], skippedRows: 0 };
+  const [headers, ...body] = rows;
+  const column = (...names: string[]) => headers.findIndex(header => names.map(normalize).includes(normalize(header)));
+  const first = column('Prénom', 'Prenom');
+  const last = column('Nom');
+  const combined = column('Prénom nom', 'Nom complet', 'Nom');
+  if (first < 0 && combined < 0) throw new Error(`Feuille « ${sheetName} » : colonne Prénom ou Nom complet manquante.`);
+  const guests: GuestImportRow[] = [];
   let skippedRows = 0;
-
-  for (const sheetName of firstTwoSheets) {
-    const sheet = workbook.Sheets[sheetName];
-    if (!sheet) continue;
-
-    const rows = xlsx.utils.sheet_to_json(sheet, {
-      header: 1,
-      blankrows: false,
-    });
-    const guestsFromSheet = parseSheetRows(rows, sheetName);
-    importedGuests.push(...guestsFromSheet.guests);
-    skippedRows += guestsFromSheet.skippedRows;
-  }
-
-  return {
-    guests: importedGuests,
-    skippedRows,
-  };
-};
-
-const parseSheetRows = (
-  rows: unknown[][],
-  sheetName: string,
-): GuestImportResult => {
-  if (!rows.length) {
-    return { guests: [], skippedRows: 0 };
-  }
-
-  const [header, ...bodyRows] = rows;
-  const firstNameCol = findColumnIndex(header, ['prénom', 'prenom']);
-  const lastNameCol = findColumnIndex(header, ['nom']);
-  const nameCol = findColumnIndex(header, [
-    'prénom nom',
-    'prenom nom',
-    'nom',
-  ]);
-  const plusOneCol = findColumnIndex(header, ['+1 (nom)', 'plus 1']);
-  const linkCol = findColumnIndex(header, ['liens', 'invite par', 'invité par']);
-  const categoryCol = findColumnIndex(header, ['catégorie', 'categorie']);
-  const rsvpCol = findColumnIndex(header, ['rsvp']);
-  const kidsCol = findColumnIndex(header, ['enfants']);
-  const dietaryCol = findColumnIndex(header, ['régime', 'regime']);
-  const eventsCol = findColumnIndex(header, ['événements', 'evenements']);
-  const transportCol = findColumnIndex(header, ['transport']);
-  const notesCol = findColumnIndex(header, ['notes']);
-  const emailCol = findColumnIndex(header, ['adresse e-mail', 'email', 'e-mail', 'mail']);
-  const organizationRoleCol = findColumnIndex(header, ['rôle organisation', 'role organisation', 'organisation']);
-  const ownerCategory = getOwnerCategory(sheetName);
-  const hasSeparateNameColumns = firstNameCol >= 0 && lastNameCol >= 0 && firstNameCol !== lastNameCol;
-
-  if (nameCol < 0 && !hasSeparateNameColumns) {
-    return { guests: [], skippedRows: bodyRows.length };
-  }
-
-  const guests: Guest[] = [];
-  let skippedRows = 0;
-
-  for (const row of bodyRows) {
-    const fullName = hasSeparateNameColumns
-      ? `${getCellText(row[firstNameCol])} ${getCellText(row[lastNameCol])}`.trim()
-      : getCellText(row[nameCol]);
-    if (!isValidGuestName(fullName)) {
-      skippedRows += 1;
-      continue;
+  for (const [index, row] of body.entries()) {
+    if (row.every(value => !cell(value))) continue;
+    const fullName = cell(row[combined]).split(/\s+/);
+    const guest: GuestImportRow = {
+      firstName: first >= 0 ? cell(row[first]) : fullName[0],
+      lastName: first >= 0 ? cell(row[last]) : fullName.slice(1).join(' '),
+    };
+    if (!guest.firstName || /^\d+$/.test(guest.firstName)) { skippedRows++; continue; }
+    const read = (names: string[], apply: (value: string) => void) => {
+      const col = column(...names);
+      if (col >= 0) apply(cell(row[col]));
+    };
+    try {
+      read(['Version format'], value => { if (value !== '2') throw new Error('Version du format non prise en charge.'); });
+      read(['Identifiant foyer'], value => { if (value) guest.id = value; });
+      read(['Adresse e-mail', 'Email', 'E-mail', 'Mail'], value => guest.email = value.toLowerCase());
+      read(['Catégorie', 'Categorie'], value => {
+        const category = (Object.keys(CATS) as GuestCategory[]).find(key => normalize(key) === normalize(value) || normalize(CATS[key].label) === normalize(value));
+        if (!category && value) throw new Error(`Catégorie inconnue : ${value}`);
+        if (category) guest.category = category;
+      });
+      read(['Rôle organisation', 'Organisation'], value => {
+        const roles: Record<string, OrganizationRole> = { parent: 'parent', parents: 'parent', sibling: 'sibling', fratrie: 'sibling', witness: 'witness', temoin: 'witness', friend_cousin: 'friend_cousin', 'ami / cousin': 'friend_cousin', other: 'other', autre: 'other' };
+        if (!roles[normalize(value)] && value) throw new Error(`Rôle inconnu : ${value}`);
+        if (value) guest.organizationRole = roles[normalize(value)];
+      });
+      read(['RSVP'], value => guest.rsvp = parseRsvp(value));
+      read(['+1 (nom)', 'Plus 1'], value => { guest.plusOneName = value; guest.hasPlusOne = Boolean(value); });
+      read(['Accompagnateur autorisé'], value => guest.hasPlusOne = parseBoolean(value));
+      read(['RSVP accompagnateur'], value => guest.plusOneRsvp = parseRsvp(value));
+      if (column('Enfants JSON') >= 0) {
+        read(['Enfants JSON'], value => {
+          const kids: unknown = JSON.parse(value || '[]');
+          if (!Array.isArray(kids)) throw new Error('Liste des enfants invalide.');
+          guest.kids = kids.map(item => {
+            if (!item || typeof item.name !== 'string' || !item.name.trim()) throw new Error('Prénom enfant manquant.');
+            return { id: typeof item.id === 'string' && item.id ? item.id : gid(), name: item.name.trim(), age: item.age ?? '', ...(item.rsvp !== undefined ? { rsvp: parseRsvp(item.rsvp) } : {}) };
+          });
+        });
+      } else {
+        read(['Enfants'], value => guest.kids = value.split(',').map(part => part.trim()).filter(Boolean).map(part => {
+          const match = part.match(/^(.*?)\s*\((\d+)\s*(?:ans?)?\)$/i);
+          return { id: gid(), name: match?.[1]?.trim() || part, age: match?.[2] ?? '' };
+        }));
+      }
+      read(['Régime', 'Restrictions alimentaires'], value => guest.dietary = value);
+      read(['Événements'], value => {
+        guest.events = value ? value.split(',').map(part => {
+          const event = (Object.keys(EVENT_LABELS) as EventKey[]).find(key => normalize(key) === normalize(part) || normalize(EVENT_LABELS[key]) === normalize(part));
+          if (!event) throw new Error(`Événement inconnu : ${part}`);
+          return event;
+        }) : [];
+      });
+      read(['Transport'], value => guest.transport = value);
+      read(['Besoin de couchage'], value => guest.needsHousing = parseBoolean(value));
+      read(['Notes'], value => guest.notes = value);
+    } catch (error) {
+      throw new Error(`${sheetName}, ligne ${index + 2} : ${error instanceof Error ? error.message : 'Données invalides.'}`);
     }
-
-    const plusOneName = getCellText(row[plusOneCol]);
-    const relation = getCellText(row[linkCol]);
-    const explicitCategory = getCellText(row[categoryCol]);
-    const category = mapToGuestCategory(
-      explicitCategory || relation,
-      ownerCategory,
-    );
-    const name = splitName(fullName);
-
-    guests.push({
-      id: gid(),
-      firstName: name.firstName,
-      lastName: name.lastName,
-      email: getCellText(row[emailCol]).toLowerCase(),
-      organizationRole: parseOrganizationRole(getCellText(row[organizationRoleCol]) || relation, category),
-      category,
-      rsvp: parseRsvp(getCellText(row[rsvpCol])),
-      hasPlusOne: Boolean(plusOneName),
-      plusOneName,
-      kids: parseKids(getCellText(row[kidsCol])),
-      dietary: getCellText(row[dietaryCol]),
-      events: parseEvents(getCellText(row[eventsCol])),
-      transport: getCellText(row[transportCol]),
-      notes: getCellText(row[notesCol]) || `Importé depuis ${sheetName}`,
-    });
+    guests.push(guest);
   }
-
   return { guests, skippedRows };
-};
+}
 
-const findColumnIndex = (header: unknown[], names: string[]): number => {
-  const normalizedHeader = header.map(cell =>
-    normalize(getCellText(cell)),
-  );
-  for (const name of names) {
-    const expected = normalize(name);
-    const exactMatchIndex = normalizedHeader.findIndex(column =>
-      column === expected,
-    );
-    if (exactMatchIndex >= 0) {
-      return exactMatchIndex;
-    }
-  }
+function parseRsvp(value: string): Rsvp {
+  const key = (Object.keys(RSVP_LABELS) as Rsvp[]).find(key => normalize(key) === normalize(value) || normalize(RSVP_LABELS[key]) === normalize(value));
+  if (!key && value) throw new Error(`RSVP inconnu : ${value}`);
+  return key ?? 'pending';
+}
+function parseBoolean(value: string): boolean {
+  if (['oui', 'true', '1'].includes(normalize(value))) return true;
+  if (['non', 'false', '0', ''].includes(normalize(value))) return false;
+  throw new Error(`Choix oui/non invalide : ${value}`);
+}
 
-  for (const name of names) {
-    const expected = normalize(name);
-    const looseMatchIndex = normalizedHeader.findIndex(column =>
-      column.includes(expected),
-    );
-    if (looseMatchIndex >= 0) {
-      return looseMatchIndex;
-    }
-  }
+export function previewGuestImport(rows: GuestImportRow[], existing: Guest[]): ImportPreviewRow[] {
+  return rows.map(guest => {
+    if (guest.id) return { guest, targetId: existing.some(item => item.id === guest.id) ? guest.id : 'unresolved' };
+    const emails = guest.email ? existing.filter(item => normalize(item.email) === normalize(guest.email)) : [];
+    if (emails.length === 1) return { guest, targetId: emails[0].id };
+    const possibleDuplicate = existing.some(item => nameKey(item) === nameKey(guest))
+      || rows.some(other => other !== guest && nameKey(other) === nameKey(guest));
+    return { guest, targetId: emails.length > 1 || possibleDuplicate ? 'unresolved' : 'new' };
+  });
+}
 
-  return -1;
-};
+export function importPayload(row: ImportPreviewRow, existing: Guest[]): Partial<Guest> {
+  const { id: _id, ...patch } = row.guest;
+  if (row.targetId === 'new') return patch;
+  const target = existing.find(guest => guest.id === row.targetId);
+  if (!target) throw new Error('Choisissez le foyer à mettre à jour.');
+  // Preserve child IDs in legacy spreadsheets when an unambiguous name matches.
+  const kids = patch.kids?.map(kid => {
+    const byId = target.kids.find(item => item.id === kid.id);
+    const sameName = target.kids.filter(item => normalize(item.name) === normalize(kid.name));
+    const previous = byId ?? (sameName.length === 1 ? sameName[0] : undefined);
+    return previous ? { ...previous, ...kid, id: previous.id, rsvp: kid.rsvp ?? previous.rsvp } : kid;
+  });
+  return { ...patch, ...(kids ? { kids } : {}), id: target.id };
+}
 
-const getOwnerCategory = (sheetName: string): GuestCategory => {
-  const normalizedSheet = normalize(sheetName);
-  return normalizedSheet.includes('alice') ? 'famille-elle' : 'famille-moi';
-};
-
-const mapToGuestCategory = (
-  source: string,
-  fallback: GuestCategory,
-): GuestCategory => {
-  const normalized = normalize(source);
-
-  if (!normalized) return fallback;
-  if (normalized.includes('moi')) return 'famille-moi';
-  if (normalized.includes('elle')) return 'famille-elle';
-  if (normalized.includes('temoin')) return 'temoins';
-  if (normalized.includes('enfant')) return 'enfants';
-  if (normalized.includes('pote')) return 'amis';
-  if (normalized.includes('ami')) return 'amis';
-  if (normalized.includes('famille')) return fallback;
-  if (normalized.includes('cousin')) return fallback;
-  if (normalized.includes('oncle')) return fallback;
-  if (normalized.includes('tante')) return fallback;
-  return fallback;
-};
-
-const parseRsvp = (source: string): Rsvp => {
-  const normalized = normalize(source);
-  for (const [value, label] of Object.entries(RSVP_LABELS)) {
-    if (normalized === normalize(label) || normalized === value) return value as Rsvp;
-  }
-  return 'pending';
-};
-
-const parseOrganizationRole = (source: string, category: GuestCategory): OrganizationRole => {
-  const normalized = normalize(source);
-  if (normalized.includes('parent') || normalized.includes('pere') || normalized.includes('mere')) return 'parent';
-  if (normalized.includes('fratrie') || normalized.includes('frere') || normalized.includes('soeur')) return 'sibling';
-  if (normalized.includes('temoin') || category === 'temoins') return 'witness';
-  if (normalized.includes('ami') || normalized.includes('cousin')) return 'friend_cousin';
-  return 'other';
-};
-
-const parseEvents = (source: string): EventKey[] => {
-  const normalized = normalize(source);
-  if (!normalized) return [...DEFAULT_EVENTS];
-  const events = Object.entries(EVENT_LABELS)
-    .filter(([, label]) => normalized.includes(normalize(label)))
-    .map(([value]) => value as EventKey);
-  return events.length ? events : [...DEFAULT_EVENTS];
-};
-
-const parseKids = (source: string): Kid[] =>
-  source
-    .split(',')
-    .map(value => value.trim())
-    .filter(Boolean)
-    .map(value => {
-      const match = value.match(/^(.*?)\s*(?:\((\d+)|,\s*(\d+)|\s+(\d+)\s*a?)/i);
-      return {
-        id: gid(),
-        name: (match?.[1] ?? value).trim(),
-        age: match?.[2] ?? match?.[3] ?? match?.[4] ?? '',
-      };
-    });
-
-const splitName = (raw: string): { firstName: string; lastName: string } => {
-  const cleaned = raw.trim().replace(/\s+/g, ' ');
-  const parts = cleaned.split(' ');
-
-  if (parts.length === 1) {
-    return { firstName: parts[0], lastName: '' };
-  }
-
-  return {
-    firstName: parts[0],
-    lastName: parts.slice(1).join(' '),
-  };
-};
-
-const isValidGuestName = (value: string): boolean => {
-  const normalized = normalize(value);
-  if (!normalized) return false;
-  if (/^\d+$/.test(normalized)) return false;
-  if (normalized.includes('label')) return false;
-  if (normalized.includes('nombre d')) return false;
-  if (normalized.includes('pourcentage')) return false;
-  return true;
-};
-
-const getCellText = (value: unknown): string => {
-  if (value === null || value === undefined) return '';
-  return String(value).trim();
-};
-
-const normalize = (value: string): string =>
-  value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
+export function exportGuestRows(guests: Guest[]): Record<string, string>[] {
+  return guests.map(guest => ({
+    'Version format': '2', 'Identifiant foyer': guest.id,
+    Prénom: guest.firstName, Nom: guest.lastName, 'Adresse e-mail': guest.email,
+    'Rôle organisation': guest.organizationRole, Catégorie: CATS[guest.category].label,
+    RSVP: guest.rsvp, 'Accompagnateur autorisé': guest.hasPlusOne ? 'Oui' : 'Non',
+    '+1 (nom)': guest.plusOneName, 'RSVP accompagnateur': guest.plusOneRsvp ?? guest.rsvp,
+    Enfants: guest.kids.map(kid => `${kid.name}${kid.age !== '' ? ` (${kid.age} ans)` : ''}`).join(', '),
+    'Enfants JSON': JSON.stringify(guest.kids.map(kid => ({ ...kid, rsvp: kid.rsvp ?? guest.rsvp }))), Régime: guest.dietary,
+    Événements: guest.events.map(event => EVENT_LABELS[event]).join(', '),
+    Transport: guest.transport, 'Besoin de couchage': guest.needsHousing ? 'Oui' : 'Non', Notes: guest.notes,
+  }));
+}
