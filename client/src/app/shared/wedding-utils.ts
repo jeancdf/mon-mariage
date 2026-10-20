@@ -12,6 +12,9 @@ export interface ThemeDef {
   accent: string;
   accentFg: string;
   badgeBg: string;
+  /** Champagne accent used for highlights, focus rings and the countdown. */
+  highlight: string;
+  shadow: string;
   name: string;
 }
 
@@ -26,6 +29,8 @@ export const THEMES: Record<ThemeKey, ThemeDef> = {
     accent: '#111110',
     accentFg: '#FFFFFF',
     badgeBg: '#EBEBE8',
+    highlight: '#9A7B3F',
+    shadow: '0 1px 2px rgba(17, 17, 16, 0.04), 0 8px 24px rgba(17, 17, 16, 0.06)',
     name: 'Blanc',
   },
   nuit: {
@@ -38,6 +43,8 @@ export const THEMES: Record<ThemeKey, ThemeDef> = {
     accent: '#EEE9E1',
     accentFg: '#0C0C0A',
     badgeBg: '#222220',
+    highlight: '#D4B47A',
+    shadow: '0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.35)',
     name: 'Nuit',
   },
   ivoire: {
@@ -50,12 +57,14 @@ export const THEMES: Record<ThemeKey, ThemeDef> = {
     accent: '#211C10',
     accentFg: '#FAF6EE',
     badgeBg: '#E4DBCA',
+    highlight: '#8C6A2E',
+    shadow: '0 1px 2px rgba(33, 28, 16, 0.05), 0 8px 24px rgba(33, 28, 16, 0.08)',
     name: 'Ivoire',
   },
 };
 
 export type PageId = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todos' | 'vendors' | 'final_weeks';
-export type IconName = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todo' | 'vendors' | 'plus' | 'x' | 'edit' | 'trash' | 'bed' | 'chevron' | 'check';
+export type IconName = 'dashboard' | 'guests' | 'housing' | 'seating' | 'budget' | 'todo' | 'vendors' | 'plus' | 'x' | 'edit' | 'trash' | 'bed' | 'chevron' | 'check' | 'menu' | 'calendar' | 'logout' | 'shield' | 'link' | 'heart';
 export type PagePath = '/dashboard' | '/invites' | '/prestataires' | '/hebergement' | '/plan-de-table' | '/budget' | '/a-faire' | '/dernieres-semaines';
 
 export const NAV_ITEMS: { id: PageId; label: string; icon: IconName; path: PagePath; section: SectionKey }[] = [
@@ -66,7 +75,7 @@ export const NAV_ITEMS: { id: PageId; label: string; icon: IconName; path: PageP
   { id: 'seating', label: 'Plan de table', icon: 'seating', path: '/plan-de-table', section: 'seating' },
   { id: 'budget', label: 'Budget', icon: 'budget', path: '/budget', section: 'budget' },
   { id: 'todos', label: 'À faire', icon: 'todo', path: '/a-faire', section: 'todos' },
-  { id: 'final_weeks', label: 'Dernières semaines', icon: 'todo', path: '/dernieres-semaines', section: 'final_weeks' },
+  { id: 'final_weeks', label: 'Dernières semaines', icon: 'calendar', path: '/dernieres-semaines', section: 'final_weeks' },
 ];
 
 export const THEME_KEYS: ThemeKey[] = ['blanc', 'nuit', 'ivoire'];

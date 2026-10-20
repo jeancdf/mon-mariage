@@ -60,7 +60,6 @@ button {
 }
 
 .brand-title,
-.sidebar-count,
 .page h1,
 .modal h2,
 .stat-card strong,
@@ -86,11 +85,6 @@ button {
   font-size: 12px;
 }
 
-.nav-list {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
 
 .nav-item {
   display: flex;
@@ -119,35 +113,10 @@ button {
   padding: 16px 22px 14px;
 }
 
-.theme-swatches {
-  display: flex;
-  gap: 7px;
-}
 
-.theme-swatch {
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  cursor: pointer;
-}
 
-.theme-swatch.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--accent);
-}
 
-.sidebar-total {
-  border-top: 1px solid var(--border);
-  padding: 16px 22px 0;
-  color: var(--muted);
-  font-size: 11px;
-}
 
-.sidebar-count {
-  color: var(--text);
-  font-size: 22px;
-}
 
 .deploy-meta {
   padding: 10px 22px 0;
@@ -2450,18 +2419,7 @@ td small {
     border-bottom: 1px solid var(--border);
   }
 
-  .brand,
-  .sidebar-total,
-  .deploy-meta,
-  .theme-picker {
-    display: none;
-  }
 
-  .nav-list {
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 0 12px;
-  }
 
   .nav-item {
     width: auto;
@@ -2705,25 +2663,8 @@ td small {
   }
 }
 
-.account-panel {
-  display: grid;
-  gap: 7px;
-  padding: 14px 22px 0;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 10px;
-  overflow-wrap: anywhere;
-}
 
-.account-panel .btn {
-  justify-self: start;
-}
 
-.admin-link {
-  flex: 0 0 auto;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
 
 .hub-tabs {
   display: flex;

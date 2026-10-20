@@ -3,9 +3,8 @@
   "configurations": [
     {
       "name": "client",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["ng", "serve", "--port", "4300"],
-      "cwd": "client",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "client", "run", "start", "--", "--port", "4300"],
       "port": 4300
     }
   ]

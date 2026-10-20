@@ -133,14 +133,16 @@
                   class="btn ghost small"
                   type="button"
                   [disabled]="inviteBusyId === guest.id"
+                  [attr.title]="guest.inviteToken ? 'Copier le lien d’invitation' : 'Créer le lien d’invitation'"
                   (click)="copyInviteLink(guest)">
-                  {{ guest.inviteToken ? 'Copier le lien' : 'Créer le lien' }}
+                  <app-icon name="link" /> {{ guest.inviteToken ? 'Copier' : 'Créer' }}
                 </button>
                 @if (guest.inviteToken) {
                   <button
                     class="btn ghost small"
                     type="button"
                     [disabled]="inviteBusyId === guest.id"
+                    title="Régénérer le lien (l’ancien ne fonctionnera plus)"
                     (click)="requestRegenerateInvite(guest)">
                     Régénérer
                   </button>

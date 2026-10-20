@@ -1,75 +1,96 @@
 <section class="page page-dashboard">
-  <header class="page-header split">
-    <div>
-      <div class="script-note">{{ eventConfig.dateLabel() }} · {{ eventConfig.configuration()?.weddingPlace }}</div>
-      <h1>Tableau de bord</h1>
+  @let s = summary();
+
+  <header class="dashboard-hero">
+    <div class="dashboard-hero-text">
+      <div class="script-note">{{ eventConfig.dateLabel() }}@if (eventConfig.configuration()?.weddingPlace; as place) { · {{ place }} }</div>
+      <h1>{{ greeting }}</h1>
+      <p>Voici où en est la préparation du mariage.</p>
+      @if (nextSteps().length) {
+        <ul class="next-steps" aria-label="Prochaines actions">
+          @for (step of nextSteps(); track step.label) {
+            <li><a [routerLink]="step.link">{{ step.label }}<app-icon name="chevron" [size]="12" /></a></li>
+          }
+        </ul>
+      } @else if (s) {
+        <p class="all-clear">Tout est à jour. Profitez-en !</p>
+      }
     </div>
-    <div class="countdown">
-      <span>{{ summary()?.daysRemaining ?? 0 }}</span>
+    <div class="countdown" aria-label="Compte à rebours">
+      <span>{{ s?.daysRemaining ?? '–' }}</span>
       <div>
-        <strong>jours</strong>
-        <strong>restants</strong>
+        <strong>{{ s?.daysRemaining === 1 ? 'jour' : 'jours' }}</strong>
+        <small>avant le grand jour</small>
       </div>
     </div>
   </header>
 
-  @let s = summary();
   @if (!s) {
-    <article class="panel">Chargement du tableau de bord...</article>
+    <div class="stat-grid" aria-busy="true">
+      @for (placeholder of [1, 2, 3, 4, 5, 6]; track placeholder) {
+        <div class="stat-card skeleton"></div>
+      }
+    </div>
   } @else {
   <div class="stat-grid">
     @if (auth.can('guests')) {
     <a class="stat-card" routerLink="/invites">
-      <div class="eyebrow">Invités</div>
-      <strong>{{ s.guests.total }}</strong>
-      <span>{{ s.guests.confirmed }} confirmés · {{ s.guests.pending }} en attente</span>
-    </a>
-    <a class="stat-card" routerLink="/invites">
-      <div class="eyebrow">Confirmés</div>
-      <strong>{{ s.guests.confirmed }}</strong>
-      <span>{{ percent(s.guests.confirmed, s.guests.total) }}% du total</span>
+      <div class="stat-card-head"><div class="eyebrow">Invités</div><app-icon name="guests" /></div>
+      <strong>{{ s.guests.confirmed }}<small> / {{ s.guests.total }}</small></strong>
+      <span>confirmés · {{ s.guests.pending }} en attente</span>
+      <div class="progress-track slim"><i [style.width.%]="percent(s.guests.confirmed, s.guests.total)"></i></div>
     </a>
     }
     @if (auth.can('housing')) {
     <a class="stat-card" routerLink="/hebergement">
-      <div class="eyebrow">Hébergement</div>
-      <strong>{{ s.housing.occupiedBeds }}/{{ s.housing.totalBeds }}</strong>
-      <span>places occupées</span>
+      <div class="stat-card-head"><div class="eyebrow">Hébergement</div><app-icon name="housing" /></div>
+      <strong>{{ s.housing.occupiedBeds }}<small> / {{ s.housing.totalBeds }}</small></strong>
+      <span>couchages attribués</span>
+      <div class="progress-track slim"><i [style.width.%]="percent(s.housing.occupiedBeds, s.housing.totalBeds)"></i></div>
     </a>
     }
     @if (auth.can('seating')) {
     <a class="stat-card" routerLink="/plan-de-table">
-      <div class="eyebrow">Plan de table</div>
-      <strong>{{ s.seating.seated }}/{{ s.seating.totalSeats }}</strong>
+      <div class="stat-card-head"><div class="eyebrow">Plan de table</div><app-icon name="seating" /></div>
+      <strong>{{ s.seating.seated }}<small> / {{ s.seating.totalSeats }}</small></strong>
       <span>invités placés</span>
+      <div class="progress-track slim"><i [style.width.%]="percent(s.seating.seated, s.seating.totalSeats)"></i></div>
     </a>
     }
     @if (auth.can('budget')) {
     <a class="stat-card" routerLink="/budget">
-      <div class="eyebrow">Budget engagé</div>
+      <div class="stat-card-head"><div class="eyebrow">Budget engagé</div><app-icon name="budget" /></div>
       <strong>{{ fmtCurrency(s.budget.totalSpent) }}</strong>
-      <span>sur {{ fmtCurrency(s.budget.totalEstimated) }}</span>
+      <span>sur {{ fmtCurrency(s.budget.totalEstimated) }} prévus</span>
+      <div class="progress-track slim">
+        <i [class.danger-fill]="s.budget.totalSpent > s.budget.totalEstimated" [style.width.%]="Math.min(percent(s.budget.totalSpent, s.budget.totalEstimated), 100)"></i>
+      </div>
     </a>
     }
     @if (auth.can('todos')) {
     <a class="stat-card" routerLink="/a-faire">
-      <div class="eyebrow">À faire</div>
-      <strong>{{ s.todos.done }}/{{ s.todos.total }}</strong>
-      <span>tâches complétées</span>
+      <div class="stat-card-head"><div class="eyebrow">À faire</div><app-icon name="todo" /></div>
+      <strong>{{ s.todos.done }}<small> / {{ s.todos.total }}</small></strong>
+      <span>tâches terminées</span>
+      <div class="progress-track slim"><i [style.width.%]="percent(s.todos.done, s.todos.total)"></i></div>
     </a>
     }
     @if (auth.can('vendors')) {
     <a class="stat-card" routerLink="/prestataires">
-      <div class="eyebrow">Prestataires</div>
-      <strong>{{ s.vendors.reserved }}/{{ s.vendors.count }}</strong>
-      <span>{{ fmtCurrency(s.vendors.totalCommitted) }} engagés</span>
+      <div class="stat-card-head"><div class="eyebrow">Prestataires</div><app-icon name="vendors" /></div>
+      <strong>{{ s.vendors.reserved }}<small> / {{ s.vendors.count }}</small></strong>
+      <span>réservés · {{ fmtCurrency(s.vendors.totalCommitted) }} engagés</span>
+      <div class="progress-track slim"><i [style.width.%]="percent(s.vendors.reserved, s.vendors.count)"></i></div>
     </a>
     }
   </div>
 
   @if (auth.can('final_weeks')) {
   <a class="panel final-weeks-summary" routerLink="/dernieres-semaines">
-    <div><div class="eyebrow">Dernières semaines</div><strong>Centre d’opérations</strong></div>
+    <div class="final-weeks-summary-title">
+      <app-icon name="calendar" [size]="18" />
+      <div><div class="eyebrow">Dernières semaines</div><strong>Centre d’opérations</strong></div>
+    </div>
     <div class="summary-metric"><strong>{{ s.finalWeeks.currentlyPresent }}</strong><span>présents</span></div>
     <div class="summary-metric"><strong>{{ s.finalWeeks.todayMeals.lunch }} / {{ s.finalWeeks.todayMeals.dinner }}</strong><span>déjeuner / dîner</span></div>
     <div class="summary-metric"><strong>{{ s.finalWeeks.unfinished }}</strong><span>à terminer</span></div>
@@ -80,16 +101,16 @@
   <div class="two-column">
     @if (auth.can('guests')) {
     <article class="panel">
-      <div class="eyebrow panel-title">Répartition RSVP</div>
+      <div class="eyebrow panel-title">Réponses RSVP</div>
       @for (row of [
-        { label: 'Confirmés', count: s.guests.confirmed, color: '#22c55e' },
-        { label: 'En attente', count: s.guests.pending, color: '#f59e0b' },
-        { label: 'Déclinés', count: s.guests.declined, color: '#ef4444' }
+        { label: 'Confirmés', count: s.guests.confirmed, tone: 'positive' },
+        { label: 'En attente', count: s.guests.pending, tone: 'warning' },
+        { label: 'Déclinés', count: s.guests.declined, tone: 'negative' }
       ]; track row.label) {
         <div class="progress-row">
           <span>{{ row.label }}</span>
           <div class="progress-track">
-            <i [style.width.%]="percent(row.count, s.guests.total)" [style.background]="row.color"></i>
+            <i [attr.data-tone]="row.tone" [style.width.%]="percent(row.count, s.guests.total)"></i>
           </div>
           <strong>{{ row.count }}</strong>
         </div>
@@ -113,7 +134,7 @@
         </div>
       }
       @if (s.budget.categories.length > 5) {
-        <p class="dashboard-more">+ {{ s.budget.categories.length - 5 }} autres postes</p>
+        <a class="dashboard-more" routerLink="/budget">+ {{ s.budget.categories.length - 5 }} autres postes</a>
       }
     </article>
     }

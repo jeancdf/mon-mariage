@@ -1,6 +1,8 @@
 import { Component, DOCUMENT, computed, effect, inject, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { ThemeKey } from '../data/types';
 import { BudgetApiService } from '../data/budget-api.service';
 import { GuestApiService } from '../data/guest-api.service';
@@ -15,6 +17,8 @@ import { ToastService } from '../shared/toast.service';
 import { NAV_ITEMS, THEMES, THEME_KEYS } from '../shared/wedding-utils';
 import { AuthService } from '../auth/auth.service';
 import { EventConfigService } from '../data/event-config.service';
+
+const LOGISTICS_PAGES = new Set(['housing', 'seating', 'final_weeks']);
 
 interface DeploymentMetadata {
   readonly deployedAt: string;
@@ -33,6 +37,7 @@ interface DeploymentMetadata {
     ToastComponent,
   ],
   templateUrl: './wedding-shell.component.html',
+  host: { '(document:keydown.escape)': 'navOpen.set(false)' },
 })
 export class WeddingShellComponent {
   readonly store = inject(WeddingStore);
@@ -49,6 +54,23 @@ export class WeddingShellComponent {
   private readonly todosApi = inject(TodosApiService);
   private readonly vendorsApi = inject(VendorsApiService);
   readonly navItems = computed(() => NAV_ITEMS.filter(item => this.auth.can(item.section)));
+  /** Planning pages first, then the on-site logistics the couple uses closer to the day. */
+  readonly navGroups = computed(() => [
+    { label: 'Organisation', items: this.navItems().filter(item => !LOGISTICS_PAGES.has(item.id)) },
+    { label: 'Logistique', items: this.navItems().filter(item => LOGISTICS_PAGES.has(item.id)) },
+  ].filter(group => group.items.length));
+  readonly navOpen = signal(false);
+  readonly daysRemaining = computed(() => {
+    const date = this.eventConfig.configuration()?.weddingDate;
+    if (!date) return null;
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    return Math.max(0, Math.round((new Date(`${date}T12:00:00`).getTime() - today.getTime()) / 86_400_000));
+  });
+  readonly accountInitials = computed(() => {
+    const email = this.auth.account()?.email ?? '';
+    return email.slice(0, 2).toUpperCase();
+  });
   readonly themeKeys = THEME_KEYS;
   readonly themes = THEMES;
   readonly weddingDateLabel = computed(() => this.eventConfig.dateLabel());
@@ -73,7 +95,13 @@ export class WeddingShellComponent {
       style.setProperty('--accent', theme.accent);
       style.setProperty('--accent-fg', theme.accentFg);
       style.setProperty('--badge-bg', theme.badgeBg);
+      style.setProperty('--highlight', theme.highlight);
+      style.setProperty('--shadow', theme.shadow);
+      style.colorScheme = this.store.theme() === 'nuit' ? 'dark' : 'light';
     });
+    this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd), takeUntilDestroyed())
+      .subscribe(() => this.navOpen.set(false));
   }
 
   setTheme(theme: ThemeKey): void {

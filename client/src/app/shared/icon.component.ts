@@ -63,6 +63,30 @@ import { IconName } from './wedding-utils';
         @case ('check') {
           <path d="M2.5 7.5l3.5 3.5 6-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
         }
+        @case ('menu') {
+          <path d="M2 4h11M2 7.5h11M2 11h11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+        }
+        @case ('calendar') {
+          <rect x="1.5" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2" />
+          <path d="M1.5 6h12M4.5 1v3M10.5 1v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          <circle cx="5" cy="9.5" r="0.8" fill="currentColor" />
+          <circle cx="7.5" cy="9.5" r="0.8" fill="currentColor" />
+        }
+        @case ('logout') {
+          <path d="M6 2H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M9.5 4.5L13 7.5l-3.5 3M13 7.5H6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+        }
+        @case ('shield') {
+          <path d="M7.5 1.5l5 2v3.6c0 3-2.1 5.4-5 6.4-2.9-1-5-3.4-5-6.4V3.5l5-2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+          <path d="M5.3 7.6l1.5 1.5 3-3.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+        }
+        @case ('link') {
+          <path d="M6.5 8.5a2.5 2.5 0 0 0 3.5 0l2.3-2.3a2.5 2.5 0 0 0-3.5-3.5l-.8.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M8.5 6.5a2.5 2.5 0 0 0-3.5 0L2.7 8.8a2.5 2.5 0 0 0 3.5 3.5l.8-.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+        }
+        @case ('heart') {
+          <path d="M7.5 13S1.5 9.4 1.5 5.4A3 3 0 0 1 7.5 4a3 3 0 0 1 6 1.4c0 4-6 7.6-6 7.6z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+        }
       }
     </svg>
   `,

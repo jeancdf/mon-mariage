@@ -39,6 +39,11 @@ export class AdminComponent {
   currentPassword = '';
   newPassword = '';
 
+  profileLabel(account: AdminAccount): string {
+    if (account.isOrganizer) return 'Organisateur';
+    return this.profiles().find(profile => profile.key === account.profileKey)?.name ?? account.profileKey;
+  }
+
   readonly sections = [
     { key: 'dashboard', label: 'Tableau de bord' }, { key: 'guests', label: 'Invités' },
     { key: 'vendors', label: 'Prestataires' }, { key: 'housing', label: 'Hébergement' },

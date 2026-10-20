@@ -90,7 +90,7 @@
               <tr>
                 <td><strong>{{ account.name }}</strong></td>
                 <td>{{ account.email }}</td>
-                <td>{{ account.profileKey }}</td>
+                <td>{{ profileLabel(account) }}</td>
                 <td>
                   <select
                     [disabled]="account.isOrganizer || account.status === 'pending'"
@@ -104,7 +104,7 @@
                     <option value="disabled">Désactivé</option>
                   </select>
                 </td>
-                <td>{{ account.lastLoginAt ? (account.lastLoginAt | date:'short') : 'Jamais' }}</td>
+                <td>{{ account.lastLoginAt ? (account.lastLoginAt | date:'dd/MM/yyyy à HH:mm') : 'Jamais' }}</td>
                 <td>
                   <div class="row-actions">
                     @if (canInvite(account)) {

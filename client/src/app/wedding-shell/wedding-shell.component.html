@@ -1,62 +1,108 @@
-<div class="app-shell">
-  <aside class="sidebar">
+<div class="app-shell" [class.nav-open]="navOpen()">
+  <header class="mobile-bar">
+    <button
+      type="button"
+      class="icon-button mobile-menu-button"
+      aria-controls="app-sidebar"
+      [attr.aria-expanded]="navOpen()"
+      aria-label="Ouvrir le menu"
+      (click)="navOpen.set(true)">
+      <app-icon name="menu" [size]="18" />
+    </button>
+    <a class="mobile-brand" routerLink="/dashboard">
+      <span class="brand-mark" aria-hidden="true"><app-icon name="heart" [size]="13" /></span>
+      <span class="brand-title">Notre mariage</span>
+    </a>
+    @if (daysRemaining() !== null) {
+      <span class="countdown-pill" [attr.title]="weddingDateLabel()">J−{{ daysRemaining() }}</span>
+    }
+  </header>
+
+  <div class="nav-scrim" aria-hidden="true" (click)="navOpen.set(false)"></div>
+
+  <aside class="sidebar" id="app-sidebar" aria-label="Navigation principale">
     <div class="brand">
-      <div class="brand-title">Mariage</div>
-      <div class="brand-subtitle">{{ weddingDateLabel() }} · {{ weddingPlace() }}</div>
+      <span class="brand-mark" aria-hidden="true"><app-icon name="heart" [size]="14" /></span>
+      <div class="brand-text">
+        <div class="brand-title">Notre mariage</div>
+        <div class="brand-subtitle">{{ weddingDateLabel() }}@if (weddingPlace()) { · {{ weddingPlace() }} }</div>
+      </div>
+      <button type="button" class="icon-button sidebar-close" aria-label="Fermer le menu" (click)="navOpen.set(false)">
+        <app-icon name="x" />
+      </button>
     </div>
 
-    <nav class="nav-list" aria-label="Sections du planning">
-      @for (item of navItems(); track item.id) {
-        <a
-          class="nav-item"
-          [routerLink]="item.path"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: item.id !== 'final_weeks' }">
-          <app-icon [name]="item.icon" />
-          <span>{{ item.label }}</span>
-        </a>
+    @if (daysRemaining() !== null) {
+      <div class="sidebar-countdown">
+        <strong>{{ daysRemaining() }}</strong>
+        <span>{{ daysRemaining() === 1 ? 'jour' : 'jours' }} avant le grand jour</span>
+      </div>
+    }
+
+    <nav class="nav-groups" aria-label="Sections du planning">
+      @for (group of navGroups(); track group.label) {
+        <div class="nav-group">
+          <div class="nav-group-label">{{ group.label }}</div>
+          @for (item of group.items; track item.id) {
+            <a
+              class="nav-item"
+              [routerLink]="item.path"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="{ exact: item.id !== 'final_weeks' }">
+              <app-icon [name]="item.icon" />
+              <span>{{ item.label }}</span>
+              @if (item.id === 'guests') {
+                <span class="nav-count" title="Invités confirmés">{{ store.confirmedCount() }}</span>
+              }
+            </a>
+          }
+        </div>
+      }
+      @if (auth.isOrganizer()) {
+        <div class="nav-group">
+          <div class="nav-group-label">Compte</div>
+          <a class="nav-item" routerLink="/administration" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <app-icon name="shield" />
+            <span>Administration</span>
+          </a>
+        </div>
       }
     </nav>
 
-    @if (auth.isOrganizer()) {
-      <a class="nav-item admin-link" routerLink="/administration" routerLinkActive="active">
-        <app-icon name="guests" />
-        <span>Administration</span>
-      </a>
-    }
-
-    <div class="theme-picker">
-      <div class="eyebrow">Thème</div>
-      <div class="theme-swatches">
+    <div class="sidebar-footer">
+      <div class="theme-picker" role="radiogroup" aria-label="Thème">
         @for (themeKey of themeKeys; track themeKey) {
           <button
-            class="theme-swatch"
+            class="theme-option"
             type="button"
+            role="radio"
+            [attr.aria-checked]="store.theme() === themeKey"
             [class.active]="store.theme() === themeKey"
-            [style.background]="themes[themeKey].bg"
-            [attr.title]="themes[themeKey].name"
             (click)="setTheme(themeKey)">
+            <span class="theme-dot" [style.background]="themes[themeKey].bg" [style.border-color]="themes[themeKey].border"></span>
+            {{ themes[themeKey].name }}
           </button>
         }
       </div>
-    </div>
 
-    <div class="sidebar-total">
-      <div class="sidebar-count">{{ store.confirmedCount() }}</div>
-      <div>invités confirmés</div>
-    </div>
-
-    <div class="account-panel">
-      <span>{{ auth.account()?.email }}</span>
-      <button type="button" class="btn ghost small" (click)="logout()">Déconnexion</button>
-    </div>
-
-    @if (deploymentMetadata(); as deployment) {
-      <div class="deploy-meta">
-        <strong>Version {{ deployment.version }}</strong>
-        <time [attr.datetime]="deployment.deployedAt">{{ deployedAtLabel() }}</time>
+      <div class="account-card">
+        <span class="account-avatar" aria-hidden="true">{{ accountInitials() }}</span>
+        <div class="account-text">
+          <strong>{{ auth.isOrganizer() ? 'Organisateur' : 'Invité' }}</strong>
+          <span [attr.title]="auth.account()?.email">{{ auth.account()?.email }}</span>
+        </div>
+        <button type="button" class="icon-button" aria-label="Se déconnecter" title="Se déconnecter" (click)="logout()">
+          <app-icon name="logout" />
+        </button>
       </div>
-    }
+
+      @if (deploymentMetadata(); as deployment) {
+        <div class="deploy-meta">
+          Version {{ deployment.version }} · <time [attr.datetime]="deployment.deployedAt">{{ deployedAtLabel() }}</time>
+        </div>
+      }
+    </div>
   </aside>
 
   <main class="main-panel">

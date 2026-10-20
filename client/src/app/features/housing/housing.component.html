@@ -65,8 +65,10 @@
                     (cdkDropListDropped)="onDrop($event)">
                     <header>
                       <app-icon name="bed" />
-                      <strong>{{ room.name }}</strong>
-                      <span class="room-count" [class.full]="full">{{ room.guestIds.length }}/{{ roomCapacity(room) }} · {{ bedLabel(room) }}</span>
+                      <div class="room-title">
+                        <strong [attr.title]="room.name">{{ room.name }}</strong>
+                        <span class="room-count" [class.full]="full">{{ room.guestIds.length }}/{{ roomCapacity(room) }} · {{ bedLabel(room) }}</span>
+                      </div>
                       @if (auth.can('housing', 'edit')) {
                       <button class="icon-button" type="button" (click)="$event.stopPropagation(); startEditingRoom(room)" aria-label="Modifier la chambre">
                         <app-icon name="edit" />
