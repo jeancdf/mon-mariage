@@ -80,7 +80,7 @@ const normalize = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, ''
         </div>
 
         @if (!options().length) {
-          <p class="palette-empty">Aucun résultat</p>
+          <p class="palette-empty" role="status">Aucun résultat</p>
         }
       </section>
     </div>

@@ -131,7 +131,9 @@ export class WeddingShellComponent {
 
   dismissPalette(): void {
     this.paletteOpen.set(false);
-    this.paletteTrigger?.focus();
+    // The sidebar trigger is hidden once the mobile drawer closes; fall back to the mobile-bar button.
+    const trigger = this.paletteTrigger?.checkVisibility?.() ? this.paletteTrigger : this.document.querySelector<HTMLElement>('.mobile-search-button');
+    trigger?.focus();
   }
 
   setTheme(theme: ThemeKey): void {
