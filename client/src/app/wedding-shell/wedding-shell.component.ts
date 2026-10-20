@@ -108,6 +108,7 @@ export class WeddingShellComponent {
       style.setProperty('--highlight', theme.highlight);
       style.setProperty('--shadow', theme.shadow);
       style.colorScheme = this.store.theme() === 'nuit' ? 'dark' : 'light';
+      this.document.documentElement.dataset['theme'] = this.store.theme();
     });
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd), takeUntilDestroyed())

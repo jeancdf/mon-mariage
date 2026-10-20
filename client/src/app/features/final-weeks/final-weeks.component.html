@@ -210,7 +210,7 @@
                 <label class="field"><span>Départ</span><input type="datetime-local" [disabled]="!canEditPerson(person)" [ngModel]="toInputDateTime(person.departureAt)" (ngModelChange)="updateDateTime(person, 'departureAt', $event)" /></label>
               </div>
               <div class="field"><span>Repas pris sur place ce jour</span><div class="meal-checks">@for (meal of meals; track meal.value) { <button type="button" class="chip" [disabled]="!canEditPerson(person)" [class.active]="mealSelected(person, meal.value)" (click)="togglePersonMeal(person, meal.value)">{{ meal.label }}</button> }</div></div>
-              <div class="person-account-line"><span>Compte</span><strong>{{ person.account?.status || 'sans compte' }}</strong></div>
+              <div class="person-account-line"><span>Compte</span><strong>{{ accountStatusLabel(person.account?.status) }}</strong></div>
               @if (canEditPerson(person)) { <button type="button" class="btn secondary small" [disabled]="saving()" (click)="savePresence(person)">Enregistrer les horaires</button> }
             </article>
           } @empty {

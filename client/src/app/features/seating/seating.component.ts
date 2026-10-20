@@ -19,8 +19,13 @@ const SEAT_PITCH = 38;
 const SEAT_GAP = 27;
 const DEFAULT_TABLE_SEATS = 10;
 const ZOOM_LEVELS = [0.25, 0.35, 0.5, 0.65, 0.8, 1, 1.2, 1.4];
-/** On phones the whole 1400px room fits only at the smallest level; start there so tables are visible. */
-const INITIAL_ZOOM = typeof window !== 'undefined' && window.innerWidth < 700 ? 0.25 : 1;
+/** Largest zoom level at which the whole room fits beside the app and guest sidebars, so every table is visible on arrival. */
+const fittingZoom = (): number => {
+  if (typeof window === 'undefined') return 1;
+  const sidebars = window.innerWidth > 860 ? 248 + 240 : 0;
+  const available = window.innerWidth - sidebars - 80;
+  return [...ZOOM_LEVELS].reverse().find(level => FLOOR_WIDTH * level <= available) ?? ZOOM_LEVELS[0];
+};
 
 interface SeatSpot {
   index: number;
@@ -81,7 +86,7 @@ export class SeatingComponent {
   editTableForm: TableForm = { name: '', seats: DEFAULT_TABLE_SEATS };
   tablePendingDeletion: Table | null = null;
 
-  readonly zoom = signal(INITIAL_ZOOM);
+  readonly zoom = signal(fittingZoom());
   readonly dragging = signal(false);
   readonly draggingTableId = signal<string | null>(null);
   readonly hoveredSeat = signal<SeatRef | null>(null);

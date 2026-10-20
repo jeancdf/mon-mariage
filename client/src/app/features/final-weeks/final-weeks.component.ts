@@ -491,6 +491,13 @@ export class FinalWeeksComponent {
     return CATEGORIES.find(item => item.value === category)?.label ?? category;
   }
 
+  accountStatusLabel(status: string | undefined): string {
+    if (status === 'active') return 'Actif';
+    if (status === 'pending') return 'Invitation en attente';
+    if (status === 'disabled') return 'Désactivé';
+    return 'Sans compte';
+  }
+
   statusLabel(status: TaskStatus): string {
     return ({ todo: 'À faire', in_progress: 'En cours', done: 'Terminée', cancelled: 'Annulée' })[status];
   }

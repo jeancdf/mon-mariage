@@ -972,3 +972,14 @@ textarea::placeholder {
     white-space: nowrap;
   }
 }
+
+/* ── Category colors on the dark theme ─────────────────────────── */
+/* styles.css uses 700-level tints made for light backgrounds. */
+[data-theme='nuit'] :is(.badge, .guest-row-cat, .guest-avatar, .floor-seat-guest)[data-cat='famille-moi'] { color: #93b4ff; }
+[data-theme='nuit'] :is(.badge, .guest-row-cat, .guest-avatar, .floor-seat-guest)[data-cat='famille-elle'] { color: #f9a8d4; }
+[data-theme='nuit'] :is(.badge, .guest-row-cat, .guest-avatar, .floor-seat-guest)[data-cat='amis'] { color: #5eead4; }
+[data-theme='nuit'] :is(.badge, .guest-row-cat, .guest-avatar, .floor-seat-guest)[data-cat='temoins'] { color: #c4b5fd; }
+[data-theme='nuit'] :is(.badge, .guest-row-cat, .guest-avatar, .floor-seat-guest)[data-cat='enfants'] { color: #fdba74; }
+[data-theme='nuit'] :is(.badge, .rsvp-select).confirmed { color: #86efac; }
+[data-theme='nuit'] :is(.badge, .rsvp-select).pending { color: #fcd34d; }
+[data-theme='nuit'] :is(.badge, .rsvp-select).declined { color: #fca5a5; }
