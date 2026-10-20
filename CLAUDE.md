@@ -34,7 +34,7 @@ To look at pages from an agent, if the `agent-browser` CLI is missing, use Playw
 
 - Standalone components, Angular signals, `inject()` over constructor params, French UI labels.
 - API services return the full updated list; components call `store.replaceX(...)`.
-- Global design tokens and component styles live in `client/src/styles.css` (themes: `blanc`, `nuit`, `ivoire` via `data-theme` on `<html>`).
+- Component styles live in `client/src/styles.css`; shared tokens (champagne `--highlight`, radii, shadows), the shell and cross-page polish live in `client/src/design-system.css`, loaded after it. Themes (`blanc`, `nuit`, `ivoire`, defined in `shared/wedding-utils.ts`) are applied as CSS variables on `<html>` by the wedding shell. Use the variables, never hard-coded colors.
 - Every page must stay usable at 375px width.
 
 ## Behavioral guidelines (Karpathy)
