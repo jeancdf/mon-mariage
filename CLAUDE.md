@@ -26,7 +26,9 @@ cd client && npx ng test --watch=false
 ## Running the UI
 
 The real server needs Postgres (`docker compose up -d postgres`, then `cd server && npm run start:dev`).
-Without it, use **demo mode**: `cd client && npx ng serve --port <port>`, open `/connexion` and click the demo button. Demo mode replaces the whole API with an in-browser fake dataset (`client/src/app/demo/`), so every page can be exercised.
+Without it, use **demo mode**: `cd client && npx ng serve --port <port>`, open `/connexion` and click the demo button ("Explorer la démonstration"). Demo mode replaces the whole API with an in-browser fake dataset (`client/src/app/demo/`), so every page can be exercised.
+
+To look at pages from an agent, if the `agent-browser` CLI is missing, use Playwright from a temp folder outside the repo (`npm i playwright && npx playwright install chromium`) and drive `http://localhost:<port>` headless: enter demo mode as above, then `page.goto` any route and take screenshots at 1440px and 390px widths.
 
 ## Conventions
 
