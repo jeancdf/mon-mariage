@@ -27,6 +27,8 @@ interface CategoryOption {
           placeholder="Rechercher…"
           [ngModel]="search()"
           (ngModelChange)="search.set($event)" />
+        <ng-content select="[sidebarFilter]" />
+        @if (showCategories()) {
         <div class="guest-sidebar-filters">
           @for (option of categoryOptions; track option.value) {
             <button
@@ -38,6 +40,7 @@ interface CategoryOption {
             </button>
           }
         </div>
+        }
       </div>
 
       <div
@@ -49,7 +52,7 @@ interface CategoryOption {
         (cdkDropListDropped)="onDrop($event)">
         <div class="guest-sidebar-dropzone">Déposer ici pour retirer</div>
         @if (filtered().length === 0) {
-          <div class="guest-sidebar-empty">{{ loading() ? 'Chargement…' : 'Aucun résultat' }}</div>
+          <div class="guest-sidebar-empty">{{ loading() ? 'Chargement…' : emptyLabel() }}</div>
         }
         @for (guest of filtered(); track guest.id) {
           <div
@@ -59,6 +62,7 @@ interface CategoryOption {
             [cdkDragData]="guest.id"
             (cdkDragStarted)="dragStarted.emit()"
             (cdkDragEnded)="dragEnded.emit()"
+            (click)="guestSelected.emit(guest.id)"
             [attr.data-cat]="guest.category">
             <span class="guest-avatar" [attr.data-cat]="guest.category">{{ initials(guest) }}</span>
             <span class="guest-row-text">
@@ -77,6 +81,9 @@ export class GuestSidebarComponent {
   readonly label = input('');
   readonly loading = input(false);
   readonly dragDisabled = input(false);
+  readonly showCategories = input(true);
+  readonly emptyLabel = input('Aucun résultat');
+  readonly guestSelected = output<string>();
   readonly guestDropped = output<string>();
   readonly dragStarted = output<void>();
   readonly dragEnded = output<void>();

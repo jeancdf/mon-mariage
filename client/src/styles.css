@@ -173,21 +173,6 @@ button {
 
 .guest-sidebar .guest-sidebar-toggle { display: none; }
 
-.housing-filters { margin-bottom: 16px; }
-.housing-calendar { display: flex; gap: 8px; overflow-x: auto; padding: 8px 0 16px; margin-bottom: 12px; }
-.housing-calendar button { display: flex; flex-direction: column; gap: 6px; flex: 0 0 148px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); text-align: left; cursor: pointer; }
-.housing-calendar button.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-.housing-calendar button span, .housing-calendar button small { font-size: 11px; }
-.housing-calendar button.wedding-night { border-width: 2px; }
-.housing-form-note { flex-basis: 100%; margin: 0; }
-.housing-stay { margin-bottom: 24px; }
-.housing-itinerary { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
-.housing-itinerary > div { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
-.housing-itinerary .wedding-night { border-color: var(--accent); }
-.housing-itinerary span { font-size: 12px; }
-.housing-assignment { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 20px; }
-.housing-assignment .field { flex: 1 1 220px; min-width: 0; }
-.housing-assignment select { width: 100%; }
 .import-preview { margin-bottom: 24px; }
 .import-preview-row { padding: 16px 0; border-bottom: 1px solid var(--border); }
 .import-preview-row select { max-width: 100%; }
@@ -1797,12 +1782,6 @@ td small {
   .vendor-editor-actions .btn.danger {
     margin-right: 0;
   }
-}
-
-.house-count.full,
-.room-count.full {
-  color: #15803d;
-  font-weight: 600;
 }
 
 .collapsible.complete {

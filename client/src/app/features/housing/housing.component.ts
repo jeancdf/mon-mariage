@@ -37,7 +37,6 @@ export class HousingComponent {
   private readonly housingApi = inject(HousingApiService);
   private readonly toast = inject(ToastService);
   readonly auth = inject(AuthService);
-  expanded: Record<string, boolean> = { h1: true, h2: true, h3: true };
   addingHouse = false;
   houseName = '';
   addingRoomFor: string | null = null;
@@ -49,7 +48,9 @@ export class HousingComponent {
   readonly dragging = signal(false);
   readonly pairSuggestion = signal<PairSuggestion | null>(null);
   readonly assigning = signal(false);
-  readonly housingFilter = signal<'requested' | 'all' | 'pending'>('requested');
+  readonly housingFilter = signal<'requested' | 'all' | 'pending'>('all');
+  /** Add, edit and delete controls stay hidden until the organiser asks for them. */
+  readonly managing = signal(false);
   selectedPersonId = '';
   selectedRoomId = '';
   savingRoomId: string | null = null;
@@ -76,9 +77,18 @@ export class HousingComponent {
   readonly allUnassignedGuests = computed(() =>
     this.guests().filter(guest => guest.rsvp !== 'declined' && this.presentForNight(guest, this.selectedNight()) && !this.assignedGuestIds().has(guest.id)));
   readonly requestedGuests = computed(() => this.allUnassignedGuests().filter(guest => guest.needsHousing));
+  readonly pendingGuests = computed(() => this.allUnassignedGuests().filter(guest => guest.rsvp === 'pending'));
   readonly unassignedGuests = computed(() => this.allUnassignedGuests().filter(guest =>
     this.housingFilter() === 'all' || (this.housingFilter() === 'pending' ? guest.rsvp === 'pending' : guest.needsHousing)));
-  readonly availablePeople = computed(() => this.guests().filter(guest => guest.rsvp !== 'declined'));
+  readonly previousNight = computed(() => {
+    const nights = this.calendar()?.nights ?? [];
+    return nights[nights.indexOf(this.selectedNight()) - 1];
+  });
+  readonly nextNight = computed(() => {
+    const nights = this.calendar()?.nights ?? [];
+    const index = nights.indexOf(this.selectedNight());
+    return index < 0 ? undefined : nights[index + 1];
+  });
   readonly roomOptions = computed(() => this.houses().flatMap(house => house.rooms.map(room => ({
     room, label: `${house.name} · ${room.name} (${room.guestIds.length}/${this.roomCapacity(room)})`,
   }))));
@@ -138,6 +148,25 @@ export class HousingComponent {
     const person = this.guestMap().get(id);
     this.stayArrival = person?.arrivalDate ?? this.selectedNight();
     this.stayDeparture = person?.departureDate ?? this.nextDate(this.selectedNight());
+    this.assignmentFrom = this.selectedNight();
+    this.assignmentUntil = this.nextDate(this.selectedNight());
+    this.selectedRoomId = this.calendar()?.assignments.find(item => item.guestId === id && item.night === this.selectedNight())?.roomId ?? '';
+  }
+
+  selectedPerson(): HousingPerson | undefined {
+    return this.selectedPersonId ? this.guestMap().get(this.selectedPersonId) : undefined;
+  }
+
+  closePerson(): void {
+    this.selectedPersonId = '';
+    this.selectedRoomId = '';
+  }
+
+  toggleManaging(): void {
+    this.managing.update(value => !value);
+    this.addingHouse = false;
+    this.addingRoomFor = null;
+    this.cancelEditingRoom();
   }
 
   async saveStay(): Promise<void> {
@@ -183,6 +212,10 @@ export class HousingComponent {
 
   guestById(id: string): GuestPerson | undefined {
     return this.guestMap().get(id);
+  }
+
+  freePlaces(room: Room): number {
+    return Math.max(0, this.roomCapacity(room) - room.guestIds.length);
   }
 
   isRoomFull(room: Room): boolean {
@@ -285,10 +318,6 @@ export class HousingComponent {
       if (room) return room;
     }
     return undefined;
-  }
-
-  toggleHouse(houseId: string): void {
-    this.expanded = { ...this.expanded, [houseId]: this.expanded[houseId] === false };
   }
 
   async addHouse(): Promise<void> {

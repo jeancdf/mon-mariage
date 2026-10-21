@@ -69,4 +69,30 @@ describe('Housing calendar', () => {
     await component.unassignGuest('guest');
     expect(assignGuest).toHaveBeenCalledWith('guest', null, '2027-07-15', '2027-07-16');
   });
+
+  it('opens a person on the displayed night with their current room preselected', () => {
+    component.selectPerson('guest');
+    expect(component.selectedPerson()?.firstName).toBe('Camille');
+    expect(component.selectedRoomId).toBe('wedding');
+    expect(component.assignmentFrom).toBe('2027-07-16');
+    expect(component.assignmentUntil).toBe('2027-07-17');
+    component.closePerson();
+    expect(component.selectedPerson()).toBeUndefined();
+  });
+
+  it('steps between nights and stops at the ends of the calendar', () => {
+    expect(component.previousNight()).toBe('2027-07-15');
+    expect(component.nextNight()).toBe('2027-07-17');
+    component.selectNight('2027-07-14');
+    expect(component.previousNight()).toBeUndefined();
+    component.selectNight('2027-07-17');
+    expect(component.nextNight()).toBeUndefined();
+  });
+
+  it('lists everyone without a bed by default', () => {
+    component.calendar.set({ ...calendar, assignments: [] });
+    component.selectNight('2027-07-15');
+    expect(component.housingFilter()).toBe('all');
+    expect(component.unassignedGuests().map(guest => guest.id)).toEqual(['guest']);
+  });
 });
